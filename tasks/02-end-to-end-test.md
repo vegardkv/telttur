@@ -34,9 +34,9 @@ The pipeline is: download → extract roads → buffer → extract lakes → cla
 5. **Fix the `--skip-download` flag** if it doesn't correctly find existing .gdb files.
 
 ## Acceptance Criteria
-- [ ] `uv run telttur generate` completes without errors
-- [ ] `output/map.html` opens in a browser and shows a working map
-- [ ] Road buffers are visible as semi-transparent colored polygons
-- [ ] Lakes are visible as blue polygons
-- [ ] Layer toggle and legend work
-- [ ] `uv run ruff check src/` passes
+- [x] `uv run telttur generate` completes without errors
+- [x] `output/map.html` opens in a browser and shows a working map
+- [x] Road buffers are visible as semi-transparent colored polygons
+- [x] Lakes are visible as blue polygons
+- [x] Layer toggle and legend work
+- [x] `uv run ruff check src/` passes

@@ -4,6 +4,7 @@ import json
 
 import folium
 import geopandas as gpd
+import pandas as pd
 
 from telttur.config import Config
 from telttur.landcover import get_wms_config
@@ -13,6 +14,17 @@ KARTVERKET_WMTS_URL = (
     "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png"
 )
 KARTVERKET_ATTR = '&copy; <a href="https://www.kartverket.no/">Kartverket</a>'
+
+
+def _prepare_for_json(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Convert non-JSON-serializable columns (e.g. Timestamp) to strings."""
+    gdf = gdf.copy()
+    for col in gdf.columns:
+        if col == "geometry":
+            continue
+        if pd.api.types.is_datetime64_any_dtype(gdf[col]):
+            gdf[col] = gdf[col].astype(str)
+    return gdf
 
 
 def _style_road_buffer(feature: dict) -> dict:
@@ -166,7 +178,7 @@ def generate_map(
 
     # Road buffers layer
     if not road_buffers.empty:
-        road_geojson = json.loads(road_buffers.to_json())
+        road_geojson = json.loads(_prepare_for_json(road_buffers).to_json())
         folium.GeoJson(
             road_geojson,
             name=f"Road buffer ({config.buffer_distance_m:.0f}m)",
@@ -175,7 +187,8 @@ def generate_map(
 
     # Lakes layer
     if not lakes.empty:
-        lake_geojson = json.loads(lakes.to_json())
+        lakes_clean = _prepare_for_json(lakes)
+        lake_geojson = json.loads(lakes_clean.to_json())
         lake_layer = folium.GeoJson(
             lake_geojson,
             name="Lakes",
@@ -183,8 +196,8 @@ def generate_map(
         )
         # Add popups for lakes
         folium.GeoJsonPopup(
-            fields=[c for c in lakes.columns if c != "geometry"],
-            aliases=[c for c in lakes.columns if c != "geometry"],
+            fields=[c for c in lakes_clean.columns if c != "geometry"],
+            aliases=[c for c in lakes_clean.columns if c != "geometry"],
             localize=True,
         ).add_to(lake_layer)
         lake_layer.add_to(m)
