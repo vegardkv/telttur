@@ -12,15 +12,24 @@ from telttur.config import BBox
 CRS_UTM33 = "EPSG:25833"
 CRS_WGS84 = "EPSG:4326"
 
-# Road category styling (vegkategori values in N50)
+# Road category styling — vegkategori single-letter codes and typeveg values from N50
 ROAD_CATEGORIES: dict[str, dict] = {
+    # vegkategori values (single uppercase letter)
     "E": {"label": "Europavei", "color": "#d73027"},
     "R": {"label": "Riksvei", "color": "#fc8d59"},
     "F": {"label": "Fylkesvei", "color": "#fee08b"},
     "K": {"label": "Kommunalvei", "color": "#d9ef8b"},
     "P": {"label": "Privat vei", "color": "#91cf60"},
     "S": {"label": "Skogsvei", "color": "#1a9850"},
+    # typeveg values (for roads without vegkategori)
+    "enkelBilveg": {"label": "Bilveg", "color": "#bababa"},
+    "traktorveg": {"label": "Traktorveg", "color": "#4575b4"},
+    "gangOgSykkelveg": {"label": "Gang- og sykkelvei", "color": "#74add1"},
+    "sti": {"label": "Sti / turvei", "color": "#e0f3f8"},
 }
+
+# typeveg values that represent water routes — skip buffering on land
+_FERRY_TYPEVEG = {"passasjerferje", "bilferje"}
 
 
 def find_road_layers(gdb_path: Path) -> list[str]:
@@ -105,23 +114,38 @@ def buffer_roads(
             crs=CRS_WGS84,
         )
 
-    # Identify the road category column
-    cat_col = None
-    for candidate in ["vegkategori", "VEGKATEGORI", "motorvegtype", "typeveg", "objtype"]:
-        if candidate in roads.columns:
-            cat_col = candidate
-            break
+    roads = roads.copy()
 
-    if cat_col is None:
-        # Fallback: treat all roads as one category
-        roads = roads.copy()
+    # Filter out railways (Bane) — they are not roads
+    if "objtype" in roads.columns:
+        roads = roads[roads["objtype"] != "Bane"]
+
+    # Filter out ferry routes — water crossings, not land roads
+    if "typeveg" in roads.columns:
+        roads = roads[~roads["typeveg"].isin(_FERRY_TYPEVEG)]
+
+    if roads.empty:
+        return gpd.GeoDataFrame(
+            columns=["category", "label", "color", "geometry"],
+            crs=CRS_WGS84,
+        )
+
+    # Assign a unified category: vegkategori where set, otherwise typeveg
+    if "vegkategori" in roads.columns and "typeveg" in roads.columns:
+        roads["_category"] = roads["vegkategori"].where(
+            roads["vegkategori"].notna(), roads["typeveg"]
+        )
+    elif "vegkategori" in roads.columns:
+        roads["_category"] = roads["vegkategori"].fillna("other")
+    elif "typeveg" in roads.columns:
+        roads["_category"] = roads["typeveg"].fillna("other")
+    else:
         roads["_category"] = "other"
-        cat_col = "_category"
 
     results = []
-    for cat_value, group in roads.groupby(cat_col):
-        cat_key = str(cat_value).strip().upper()[:1] if cat_value else "other"
-        style = ROAD_CATEGORIES.get(cat_key, {"label": str(cat_value), "color": "#999999"})
+    for cat_value, group in roads.groupby("_category", dropna=False):
+        cat_key = str(cat_value).strip() if cat_value and str(cat_value) != "nan" else "other"
+        style = ROAD_CATEGORIES.get(cat_key, {"label": cat_key, "color": "#999999"})
 
         buffered = group.geometry.buffer(buffer_distance_m)
 
