@@ -46,8 +46,11 @@ def find_landcover_layers(gdb_path: Path) -> list[str]:
     """List layers that contain land cover / arealdekke data."""
     all_layers = fiona.listlayers(str(gdb_path))
     keywords = ["arealdekke", "arealbruk", "markslag", "landcover"]
-    matches = [layer for layer in all_layers if any(kw.lower() in layer.lower() for kw in keywords)]
-    return matches
+    return [
+        layer
+        for layer in all_layers
+        if any(kw in layer.lower() for kw in keywords) and "omrade" in layer.lower()
+    ]
 
 
 def _bbox_to_utm33(bbox: BBox) -> tuple[float, float, float, float]:

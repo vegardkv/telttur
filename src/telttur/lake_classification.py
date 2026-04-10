@@ -18,9 +18,12 @@ BUILDING_METADATA_UUID = "24d7e9d1-87f6-45a0-b38e-3447f8d7f9a1"
 def find_building_layers(gdb_path: Path) -> list[str]:
     """List layers containing building data."""
     all_layers = fiona.listlayers(str(gdb_path))
-    keywords = ["bygning", "building", "BygningPunkt", "Bygning"]
-    matches = [layer for layer in all_layers if any(kw.lower() in layer.lower() for kw in keywords)]
-    return matches
+    keywords = ["bygning", "building"]
+    return [
+        layer
+        for layer in all_layers
+        if any(kw in layer.lower() for kw in keywords) and "posisjon" in layer.lower()
+    ]
 
 
 def _bbox_to_utm33(bbox: BBox) -> tuple[float, float, float, float]:

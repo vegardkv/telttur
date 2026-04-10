@@ -15,9 +15,11 @@ CRS_WGS84 = "EPSG:4326"
 def find_lake_layers(gdb_path: Path) -> list[str]:
     """List layers in a .gdb that likely contain lake/water data."""
     all_layers = fiona.listlayers(str(gdb_path))
-    water_keywords = ["innsj", "vann", "water", "arealdekke", "Innsj", "Vann"]
+    water_keywords = ["innsj", "vann", "water", "arealdekke"]
     matches = [
-        layer for layer in all_layers if any(kw.lower() in layer.lower() for kw in water_keywords)
+        layer
+        for layer in all_layers
+        if any(kw in layer.lower() for kw in water_keywords) and "omrade" in layer.lower()
     ]
     if not matches:
         print(f"  Available layers in {gdb_path.name}: {all_layers}")

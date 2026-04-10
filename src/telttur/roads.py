@@ -26,9 +26,11 @@ ROAD_CATEGORIES: dict[str, dict] = {
 def find_road_layers(gdb_path: Path) -> list[str]:
     """List layers in a .gdb that likely contain road data."""
     all_layers = fiona.listlayers(str(gdb_path))
-    road_keywords = ["veg", "samferds", "road", "Veg", "Samferds"]
+    road_keywords = ["veg", "samferds", "road"]
     matches = [
-        layer for layer in all_layers if any(kw.lower() in layer.lower() for kw in road_keywords)
+        layer
+        for layer in all_layers
+        if any(kw in layer.lower() for kw in road_keywords) and "senterlinje" in layer.lower()
     ]
     if not matches:
         print(f"  Available layers in {gdb_path.name}: {all_layers}")
