@@ -1,0 +1,32 @@
+# Telttur configuration
+# Bounding box in WGS84 (lat/lon)
+bbox:
+  north: 61.2
+  south: 60.8
+  east: 10.0
+  west: 9.4
+
+# Buffer distance around roads in meters
+buffer_distance_m: 2000
+
+# Geometry simplification tolerance in meters (0 = no simplification)
+# Increase for larger areas to keep HTML file size manageable
+simplify_tolerance_m: 50
+
+# Data directory (relative to project root)
+data_dir: data
+
+# Output directory (relative to project root)
+output_dir: output
+
+# Output filename
+output_filename: map.html
+
+# Land cover display mode: "wms" (tile overlay) or "vector" (N50 polygons)
+landcover_mode: wms
+
+# Lake classification: enable building density analysis
+lake_classification:
+  enabled: false
+  # Buffer distance around lake shore for counting buildings (meters)
+  building_buffer_m: 500

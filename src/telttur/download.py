@@ -1,0 +1,210 @@
+"""Download N50 Kartdata from Geonorge download API."""
+
+import zipfile
+from pathlib import Path
+
+import requests
+from tqdm import tqdm
+
+from telttur.config import BBox
+
+N50_METADATA_UUID = "ea192681-d039-42ec-b1bc-f3ce04c189ac"
+GEONORGE_API_BASE = "https://nedlasting.geonorge.no/api"
+TARGET_FORMAT = "FGDB"
+TARGET_PROJECTION = "25833"  # EUREF89 UTM sone 33
+
+# Norwegian fylke bounding boxes (approximate, WGS84)
+# Used to determine which fylke(r) overlap a user's bbox
+FYLKE_BOUNDS: dict[str, tuple[str, tuple[float, float, float, float]]] = {
+    # code: (name, (south, west, north, east))
+    "03": ("Oslo", (59.8, 10.6, 59.97, 10.85)),
+    "11": ("Rogaland", (58.0, 5.5, 59.6, 7.2)),
+    "15": ("Møre og Romsdal", (61.9, 5.0, 63.5, 8.8)),
+    "18": ("Nordland", (64.5, 11.0, 69.4, 16.1)),
+    "31": ("Østfold", (58.8, 10.5, 59.8, 12.1)),
+    "32": ("Akershus", (59.5, 10.3, 60.5, 12.1)),
+    "33": ("Buskerud", (59.4, 7.7, 60.7, 10.5)),
+    "34": ("Innlandet", (60.1, 7.5, 62.8, 12.6)),
+    "39": ("Vestfold", (58.9, 9.4, 59.6, 10.6)),
+    "40": ("Telemark", (58.6, 7.3, 60.1, 9.9)),
+    "42": ("Agder", (57.9, 5.5, 59.3, 8.6)),
+    "46": ("Vestland", (59.5, 4.5, 62.0, 7.8)),
+    "50": ("Trøndelag", (62.5, 8.5, 65.3, 14.8)),
+    "55": ("Troms", (68.3, 15.4, 70.1, 20.6)),
+    "56": ("Finnmark", (69.0, 22.0, 71.2, 31.1)),
+}
+
+
+def _bbox_overlaps(bbox: BBox, bounds: tuple[float, float, float, float]) -> bool:
+    """Check if user bbox overlaps with a fylke bounding box."""
+    s, w, n, e = bounds
+    return not (bbox.south > n or bbox.north < s or bbox.west > e or bbox.east < w)
+
+
+def find_overlapping_fylker(bbox: BBox) -> list[tuple[str, str]]:
+    """Return list of (code, name) for fylker that overlap the bbox."""
+    results = []
+    for code, (name, bounds) in FYLKE_BOUNDS.items():
+        if _bbox_overlaps(bbox, bounds):
+            results.append((code, name))
+    return results
+
+
+def get_available_areas(metadata_uuid: str = N50_METADATA_UUID) -> list[dict]:
+    """Fetch available download areas from Geonorge API."""
+    url = f"{GEONORGE_API_BASE}/codelists/area/{metadata_uuid}"
+    resp = requests.get(url, timeout=30)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def _find_area_entry(areas: list[dict], fylke_code: str) -> dict | None:
+    """Find the area entry matching a fylke code."""
+    for area in areas:
+        if area.get("type") == "fylke" and area.get("code") == fylke_code:
+            return area
+    return None
+
+
+def _format_available(area: dict, fmt: str, proj: str) -> bool:
+    """Check if a given format+projection combination is available for an area."""
+    for f in area.get("formats", []):
+        if f.get("name") == fmt:
+            for p in f.get("projections", []):
+                if p.get("code") == proj:
+                    return True
+    return False
+
+
+def place_order(
+    fylke_code: str,
+    fylke_name: str,
+    metadata_uuid: str = N50_METADATA_UUID,
+    fmt: str = TARGET_FORMAT,
+    projection: str = TARGET_PROJECTION,
+) -> dict:
+    """Place a download order via Geonorge API. Returns order receipt."""
+    url = f"{GEONORGE_API_BASE}/order"
+    order_payload = {
+        "email": "",
+        "orderLines": [
+            {
+                "metadataUuid": metadata_uuid,
+                "areas": [
+                    {
+                        "code": fylke_code,
+                        "type": "fylke",
+                        "name": fylke_name,
+                    }
+                ],
+                "projections": [
+                    {
+                        "code": projection,
+                        "name": "EUREF89 UTM sone 33, 2d",
+                        "codespace": f"http://www.opengis.net/def/crs/EPSG/0/{projection}",
+                    }
+                ],
+                "formats": [{"name": fmt}],
+            }
+        ],
+    }
+    resp = requests.post(url, json=order_payload, timeout=60)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def download_file(download_url: str, dest_path: Path) -> None:
+    """Download a file with progress bar."""
+    resp = requests.get(download_url, stream=True, timeout=300)
+    resp.raise_for_status()
+    total = int(resp.headers.get("content-length", 0))
+    dest_path.parent.mkdir(parents=True, exist_ok=True)
+    with (
+        open(dest_path, "wb") as f,
+        tqdm(total=total, unit="B", unit_scale=True, desc=dest_path.name) as pbar,
+    ):
+        for chunk in resp.iter_content(chunk_size=8192):
+            f.write(chunk)
+            pbar.update(len(chunk))
+
+
+def extract_fgdb(zip_path: Path, dest_dir: Path) -> Path:
+    """Extract a zip containing an FGDB and return the .gdb directory path."""
+    with zipfile.ZipFile(zip_path) as zf:
+        zf.extractall(dest_dir)
+    # Find the .gdb directory inside
+    for item in dest_dir.rglob("*.gdb"):
+        if item.is_dir():
+            return item
+    msg = f"No .gdb directory found in {zip_path}"
+    raise FileNotFoundError(msg)
+
+
+def download_n50(bbox: BBox, data_dir: Path) -> list[Path]:
+    """Download N50 FGDB files for all fylker overlapping the bbox.
+
+    Returns list of paths to extracted .gdb directories.
+    """
+    n50_dir = data_dir / "n50"
+    n50_dir.mkdir(parents=True, exist_ok=True)
+
+    fylker = find_overlapping_fylker(bbox)
+    if not fylker:
+        print("Warning: No fylker found overlapping the given bounding box.")
+        return []
+
+    print(f"Bounding box overlaps {len(fylker)} fylke(r): {', '.join(n for _, n in fylker)}")
+
+    # Fetch available areas from API
+    areas = get_available_areas()
+
+    gdb_paths: list[Path] = []
+    for fylke_code, fylke_name in fylker:
+        # Check if already downloaded
+        existing = list(n50_dir.glob(f"*{fylke_code}*{fylke_name}*.gdb"))
+        if existing:
+            print(f"  Already downloaded: {existing[0].name}")
+            gdb_paths.append(existing[0])
+            continue
+
+        # Check if format is available
+        area_entry = _find_area_entry(areas, fylke_code)
+        if area_entry is None:
+            print(f"  Warning: Fylke {fylke_name} ({fylke_code}) not found in Geonorge areas")
+            continue
+        if not _format_available(area_entry, TARGET_FORMAT, TARGET_PROJECTION):
+            print(f"  Warning: {TARGET_FORMAT}/{TARGET_PROJECTION} not available for {fylke_name}")
+            continue
+
+        print(f"  Ordering N50 for {fylke_name} ({fylke_code})...")
+        receipt = place_order(fylke_code, fylke_name)
+
+        for file_info in receipt.get("files", []):
+            if file_info.get("status") != "ReadyForDownload":
+                print(f"    File not ready: {file_info.get('name', 'unknown')}")
+                continue
+
+            download_url = file_info["downloadUrl"]
+            filename = file_info.get("name", f"n50_{fylke_code}.zip")
+            zip_path = n50_dir / filename
+
+            if not zip_path.exists():
+                print(f"    Downloading {filename}...")
+                download_file(download_url, zip_path)
+            else:
+                print(f"    Already have {filename}")
+
+            # Extract
+            extract_dir = n50_dir / f"{fylke_code}_{fylke_name}"
+            if not extract_dir.exists():
+                print("    Extracting...")
+                gdb_path = extract_fgdb(zip_path, extract_dir)
+                gdb_paths.append(gdb_path)
+            else:
+                # Find existing gdb
+                for gdb in extract_dir.rglob("*.gdb"):
+                    if gdb.is_dir():
+                        gdb_paths.append(gdb)
+                        break
+
+    return gdb_paths
