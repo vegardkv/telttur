@@ -27,6 +27,6 @@ landcover_mode: wms
 
 # Lake classification: enable building density analysis
 lake_classification:
-  enabled: false
+  enabled: true
   # Buffer distance around lake shore for counting buildings (meters)
   building_buffer_m: 500

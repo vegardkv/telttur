@@ -77,20 +77,28 @@ def _lake_popup(feature: dict) -> folium.Popup | None:
         status = "Yes" if props["reachable"] else "No"
         parts.append(f"Reachable from road: {status}")
     if "density_class" in props:
-        parts.append(f"Building density: {props['density_class']}")
+        label = {"low": "Low (good for camping)", "medium": "Medium", "high": "High (busy)"}.get(
+            props["density_class"], props["density_class"]
+        )
+        parts.append(f"Cabin density: {label}")
     if "building_count" in props:
-        parts.append(f"Nearby buildings: {props['building_count']}")
+        parts.append(f"Cabins/homes nearby: {props['building_count']}")
     if parts:
         return folium.Popup("<br>".join(parts), max_width=300)
     return None
 
 
-def _add_legend(m: folium.Map, road_categories: list[dict], has_lakes: bool) -> None:
+def _add_legend(
+    m: folium.Map,
+    road_categories: list[dict],
+    has_lakes: bool,
+    has_density: bool = False,
+) -> None:
     """Add a simple HTML legend to the map."""
     legend_html = """
     <div style="position: fixed; bottom: 30px; left: 30px; z-index: 1000;
          background-color: white; padding: 10px; border: 2px solid grey;
-         border-radius: 5px; font-size: 12px; max-width: 200px;">
+         border-radius: 5px; font-size: 12px; max-width: 220px;">
     <b>Legend</b><br>
     <b>Road buffer:</b><br>
     """
@@ -103,16 +111,33 @@ def _add_legend(m: folium.Map, road_categories: list[dict], has_lakes: bool) -> 
 
     if has_lakes:
         legend_html += "<b>Lakes:</b><br>"
-        legend_html += (
-            '<i style="background:#2166ac;width:12px;height:12px;'
-            'display:inline-block;margin-right:4px;opacity:0.6;"></i>'
-            "Reachable<br>"
-        )
-        legend_html += (
-            '<i style="background:#67a9cf;width:12px;height:12px;'
-            'display:inline-block;margin-right:4px;opacity:0.6;"></i>'
-            "Not reachable<br>"
-        )
+        if has_density:
+            legend_html += (
+                '<i style="background:#2166ac;width:12px;height:12px;'
+                'display:inline-block;margin-right:4px;opacity:0.6;"></i>'
+                "Few cabins nearby (&le;5)<br>"
+            )
+            legend_html += (
+                '<i style="background:#fdb863;width:12px;height:12px;'
+                'display:inline-block;margin-right:4px;opacity:0.6;"></i>'
+                "Some cabins (6&ndash;20)<br>"
+            )
+            legend_html += (
+                '<i style="background:#b2182b;width:12px;height:12px;'
+                'display:inline-block;margin-right:4px;opacity:0.6;"></i>'
+                "Many cabins (&gt;20)<br>"
+            )
+        else:
+            legend_html += (
+                '<i style="background:#2166ac;width:12px;height:12px;'
+                'display:inline-block;margin-right:4px;opacity:0.6;"></i>'
+                "Reachable<br>"
+            )
+            legend_html += (
+                '<i style="background:#67a9cf;width:12px;height:12px;'
+                'display:inline-block;margin-right:4px;opacity:0.6;"></i>'
+                "Not reachable<br>"
+            )
 
     legend_html += "</div>"
     root = m.get_root()
@@ -210,7 +235,8 @@ def generate_map(
     if not road_buffers.empty and "color" in road_buffers.columns:
         for _, row in road_buffers.iterrows():
             road_cats.append({"color": row["color"], "label": row.get("label", "Road")})
-    _add_legend(m, road_cats, not lakes.empty)
+    has_density = not lakes.empty and "density_class" in lakes.columns
+    _add_legend(m, road_cats, not lakes.empty, has_density=has_density)
 
     return m
 
