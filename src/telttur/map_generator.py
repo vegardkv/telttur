@@ -193,7 +193,7 @@ def generate_map(
             opacity=wms_config["opacity"],
         ).add_to(m)
     elif landcover is not None and not landcover.empty:
-        lc_geojson = json.loads(landcover.to_json())
+        lc_geojson = json.loads(_prepare_for_json(landcover).to_json())
         folium.GeoJson(
             lc_geojson,
             name="Land cover (N50)",
