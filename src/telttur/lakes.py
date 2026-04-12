@@ -44,6 +44,7 @@ def extract_lakes(
 ) -> gpd.GeoDataFrame:
     """Extract lake polygons from N50 FGDB files, clipped to bbox."""
     frames: list[gpd.GeoDataFrame] = []
+    utm_bounds = _bbox_to_utm33(bbox)
 
     for gdb_path in gdb_paths:
         lake_layers = find_lake_layers(gdb_path)
@@ -53,7 +54,7 @@ def extract_lakes(
 
         for layer_name in lake_layers:
             print(f"  Reading {layer_name} from {gdb_path.name}...")
-            gdf = gpd.read_file(str(gdb_path), layer=layer_name)
+            gdf = gpd.read_file(str(gdb_path), layer=layer_name, bbox=utm_bounds)
 
             if gdf.crs is None:
                 gdf = gdf.set_crs(CRS_UTM33)
@@ -83,8 +84,7 @@ def extract_lakes(
     lakes = gpd.pd.concat(frames, ignore_index=True)
     lakes = gpd.GeoDataFrame(lakes, crs=CRS_UTM33)
 
-    # Clip to bbox
-    utm_bounds = _bbox_to_utm33(bbox)
+    # Clip to bbox (exact clip after bbox pre-filter)
     clip_box = box(*utm_bounds)
     lakes = lakes.clip(clip_box)
 

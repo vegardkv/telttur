@@ -1,14 +1,46 @@
 """CLI entry point for telttur map generation."""
 
+import math
+import time
+
 import click
 
-from telttur.config import load_config
+from telttur.config import BBox, load_config
 from telttur.download import download_n50
 from telttur.lake_classification import process_lake_classification
 from telttur.lakes import process_lakes
 from telttur.landcover import process_landcover
 from telttur.map_generator import generate_map, save_map
 from telttur.roads import process_roads
+
+
+def _adaptive_simplify_tolerance(bbox: BBox, configured: float) -> float:
+    """Return an effective simplify tolerance based on bbox area.
+
+    Thresholds (km²):
+      <  2 000 km² — use configured value as-is
+      2 000–15 000 km² — at least 100 m
+      > 15 000 km² — at least 200 m
+    """
+    lat_km = (bbox.north - bbox.south) * 111.0
+    mid_lat_rad = math.radians((bbox.north + bbox.south) / 2)
+    lon_km = (bbox.east - bbox.west) * 111.0 * math.cos(mid_lat_rad)
+    area_km2 = lat_km * lon_km
+
+    if area_km2 > 15_000:
+        minimum = 200.0
+    elif area_km2 > 2_000:
+        minimum = 100.0
+    else:
+        minimum = configured
+
+    effective = max(configured, minimum)
+    if effective != configured:
+        print(
+            f"Adaptive simplification: bbox area ~{area_km2:.0f} km², "
+            f"raising tolerance from {configured}m to {effective}m"
+        )
+    return effective
 
 
 @click.group()
@@ -28,6 +60,7 @@ def cli() -> None:
 def generate(config_path: str, skip_download: bool) -> None:
     """Generate the camping suitability map."""
     config = load_config(config_path)
+    pipeline_start = time.time()
 
     print(
         f"Bounding box: N={config.bbox.north} S={config.bbox.south} "
@@ -36,7 +69,10 @@ def generate(config_path: str, skip_download: bool) -> None:
     print(f"Buffer distance: {config.buffer_distance_m}m")
     print(f"Land cover mode: {config.landcover_mode}")
 
+    effective_simplify = _adaptive_simplify_tolerance(config.bbox, config.simplify_tolerance_m)
+
     # Step 1: Download data
+    t0 = time.time()
     if skip_download:
         # Find existing .gdb files
         n50_dir = config.n50_path
@@ -53,42 +89,52 @@ def generate(config_path: str, skip_download: bool) -> None:
             raise click.ClickException(
                 "No data downloaded. Check your bounding box or network connection."
             )
+    print(f"  [download/locate: {time.time() - t0:.1f}s]")
 
     # Step 2: Process roads
+    t0 = time.time()
     road_buffers = process_roads(
         gdb_paths,
         config.bbox,
         config.buffer_distance_m,
-        config.simplify_tolerance_m,
+        effective_simplify,
     )
+    print(f"  [roads: {time.time() - t0:.1f}s]")
 
     # Step 3: Process lakes
+    t0 = time.time()
     lakes = process_lakes(
         gdb_paths,
         config.bbox,
-        config.simplify_tolerance_m,
+        effective_simplify,
         road_buffers=road_buffers,
     )
+    print(f"  [lakes: {time.time() - t0:.1f}s]")
 
     # Step 4: Lake classification (optional)
     if config.lake_classification.enabled and not lakes.empty:
+        t0 = time.time()
         lakes = process_lake_classification(
             gdb_paths,
             config.bbox,
             lakes,
             config.lake_classification.building_buffer_m,
         )
+        print(f"  [lake classification: {time.time() - t0:.1f}s]")
 
     # Step 5: Land cover (vector mode only; WMS is added directly in map generator)
     landcover = None
     if config.landcover_mode == "vector":
+        t0 = time.time()
         landcover = process_landcover(
             gdb_paths,
             config.bbox,
-            config.simplify_tolerance_m,
+            effective_simplify,
         )
+        print(f"  [landcover: {time.time() - t0:.1f}s]")
 
     # Step 6: Generate map
+    t0 = time.time()
     print("Generating map...")
     m = generate_map(
         config,
@@ -98,7 +144,9 @@ def generate(config_path: str, skip_download: bool) -> None:
         landcover_mode=config.landcover_mode,
     )
     output_path = save_map(m, config)
+    print(f"  [map render+save: {time.time() - t0:.1f}s]")
     print(f"Map saved to: {output_path}")
+    print(f"Total time: {time.time() - pipeline_start:.1f}s")
 
 
 @cli.command()

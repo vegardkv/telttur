@@ -63,6 +63,7 @@ def extract_roads(
 ) -> gpd.GeoDataFrame:
     """Extract road centerlines from N50 FGDB files, clipped to bbox."""
     frames: list[gpd.GeoDataFrame] = []
+    utm_bounds = _bbox_to_utm33(bbox)
 
     for gdb_path in gdb_paths:
         road_layers = find_road_layers(gdb_path)
@@ -72,7 +73,7 @@ def extract_roads(
 
         for layer_name in road_layers:
             print(f"  Reading {layer_name} from {gdb_path.name}...")
-            gdf = gpd.read_file(str(gdb_path), layer=layer_name)
+            gdf = gpd.read_file(str(gdb_path), layer=layer_name, bbox=utm_bounds)
 
             if gdf.crs is None:
                 gdf = gdf.set_crs(CRS_UTM33)
@@ -87,8 +88,7 @@ def extract_roads(
     roads = gpd.pd.concat(frames, ignore_index=True)
     roads = gpd.GeoDataFrame(roads, crs=CRS_UTM33)
 
-    # Clip to bbox
-    utm_bounds = _bbox_to_utm33(bbox)
+    # Clip to bbox (exact clip after bbox pre-filter)
     clip_box = box(*utm_bounds)
     roads = roads.clip(clip_box)
 

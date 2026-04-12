@@ -247,4 +247,13 @@ def save_map(m: folium.Map, config: Config) -> str:
     output_dir.mkdir(parents=True, exist_ok=True)
     output_file = output_dir / config.output_filename
     m.save(str(output_file))
+
+    size_mb = output_file.stat().st_size / (1024 * 1024)
+    print(f"  Output file size: {size_mb:.1f} MB")
+    if size_mb > 50:
+        print(
+            f"  WARNING: Output file is {size_mb:.1f} MB (>50 MB). "
+            "Consider increasing simplify_tolerance_m or switching landcover_mode to 'wms'."
+        )
+
     return str(output_file)

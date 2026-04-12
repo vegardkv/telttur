@@ -1,0 +1,19 @@
+# Full Innlandet fylke test - performance test
+bbox:
+  north: 62.8
+  south: 60.1
+  east: 12.6
+  west: 7.5
+
+buffer_distance_m: 2000
+simplify_tolerance_m: 50
+
+data_dir: data
+output_dir: output
+output_filename: map_innlandet.html
+
+landcover_mode: wms
+
+lake_classification:
+  enabled: true
+  building_buffer_m: 500

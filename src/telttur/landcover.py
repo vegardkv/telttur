@@ -70,6 +70,7 @@ def extract_landcover(
 ) -> gpd.GeoDataFrame:
     """Extract land cover polygons from N50, clipped to bbox."""
     frames: list[gpd.GeoDataFrame] = []
+    utm_bounds = _bbox_to_utm33(bbox)
 
     for gdb_path in gdb_paths:
         lc_layers = find_landcover_layers(gdb_path)
@@ -79,7 +80,7 @@ def extract_landcover(
 
         for layer_name in lc_layers:
             print(f"  Reading {layer_name} from {gdb_path.name}...")
-            gdf = gpd.read_file(str(gdb_path), layer=layer_name)
+            gdf = gpd.read_file(str(gdb_path), layer=layer_name, bbox=utm_bounds)
 
             if gdf.crs is None:
                 gdf = gdf.set_crs(CRS_UTM33)
@@ -109,8 +110,7 @@ def extract_landcover(
     landcover = gpd.pd.concat(frames, ignore_index=True)
     landcover = gpd.GeoDataFrame(landcover, crs=CRS_UTM33)
 
-    # Clip to bbox
-    utm_bounds = _bbox_to_utm33(bbox)
+    # Clip to bbox (exact clip after bbox pre-filter)
     clip_box = box(*utm_bounds)
     landcover = landcover.clip(clip_box)
 

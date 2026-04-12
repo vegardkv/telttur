@@ -55,6 +55,7 @@ def extract_buildings(
     for estimating cabin/habitation density around lakes.
     """
     frames: list[gpd.GeoDataFrame] = []
+    utm_bounds = _bbox_to_utm33(bbox)
 
     for gdb_path in gdb_paths:
         building_layers = find_building_layers(gdb_path)
@@ -63,7 +64,7 @@ def extract_buildings(
 
         for layer_name in building_layers:
             print(f"  Reading {layer_name} from {gdb_path.name}...")
-            gdf = gpd.read_file(str(gdb_path), layer=layer_name)
+            gdf = gpd.read_file(str(gdb_path), layer=layer_name, bbox=utm_bounds)
 
             if gdf.crs is None:
                 gdf = gdf.set_crs(CRS_UTM33)
@@ -91,8 +92,7 @@ def extract_buildings(
     buildings = gpd.pd.concat(frames, ignore_index=True)
     buildings = gpd.GeoDataFrame(buildings, crs=CRS_UTM33)
 
-    # Clip to bbox
-    utm_bounds = _bbox_to_utm33(bbox)
+    # Clip to exact bbox (bbox= pre-filters by bounding box only)
     clip_box = box(*utm_bounds)
     buildings = buildings.clip(clip_box)
 
@@ -114,16 +114,24 @@ def classify_lakes_by_density(
     lakes = lakes.copy()
 
     # Work in UTM for metric buffering
-    lakes_utm = lakes.to_crs(CRS_UTM33)
-    buildings_utm = buildings.to_crs(CRS_UTM33) if buildings.crs != CRS_UTM33 else buildings
+    lakes_utm = lakes.to_crs(CRS_UTM33).copy()
+    buildings_utm = buildings.to_crs(CRS_UTM33) if buildings.crs != CRS_UTM33 else buildings.copy()
 
-    counts = []
-    for _, lake in lakes_utm.iterrows():
-        lake_buffer = lake.geometry.buffer(buffer_m)
-        nearby = buildings_utm[buildings_utm.geometry.within(lake_buffer)]
-        counts.append(len(nearby))
+    # Vectorized spatial join: buffer all lake polygons once, then sjoin
+    lakes_utm["_buffered"] = lakes_utm.geometry.buffer(buffer_m)
+    lake_buffers = lakes_utm[["_buffered"]].set_geometry("_buffered").rename_geometry("geometry")
+    lake_buffers.index = lakes_utm.index
 
-    lakes["building_count"] = counts
+    joined = gpd.sjoin(
+        lake_buffers,
+        buildings_utm[["geometry"]],
+        how="left",
+        predicate="contains",
+    )
+    counts = joined.groupby(joined.index).size()
+    # sjoin drops rows with no match for inner; left join gives NaN for index_right
+    building_count = joined.groupby(joined.index)["index_right"].count()
+    lakes["building_count"] = lakes.index.map(building_count).fillna(0).astype(int)
 
     # Classify by residential/cabin density within buffer.
     # Thresholds tuned on Innlandet (N50) data: most lakes are remote (54% have
@@ -139,7 +147,7 @@ def classify_lakes_by_density(
         else:
             return ("high", "#b2182b")  # Red - busy cabin area
 
-    classified = [_classify(c) for c in counts]
+    classified = [_classify(int(c)) for c in lakes["building_count"]]
     lakes["density_class"] = [c[0] for c in classified]
     lakes["density_color"] = [c[1] for c in classified]
 
