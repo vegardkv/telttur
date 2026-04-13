@@ -1,0 +1,12 @@
+Misc issues that can be expanded into tasks:
+- Road buffer depending on road type:
+  - Map road type to buffer distance
+  - Turn off buffer distance for certain road types
+  - Sensible defaults (e.g. Sti/turvei should be turned off)
+  - Need to encode road types somewhere, e.g. Literal or enum? This should help document usage
+  - Show road lines as well? (mostly for debugging)
+  - Lower transparency on buffer polygon
+- AR5 not working?
+- OSM blocking access?
+- Lake analysis: density instead of count?
+- Alternative bounds specifications: specify fylke directly (e.g. "Oslo", case-insensitive)
