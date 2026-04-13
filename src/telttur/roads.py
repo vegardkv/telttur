@@ -24,8 +24,9 @@ ROAD_CATEGORIES: dict[str, dict] = {
     # typeveg values (for roads without vegkategori)
     "enkelBilveg": {"label": "Bilveg", "color": "#bababa"},
     "traktorveg": {"label": "Traktorveg", "color": "#4575b4"},
-    "gangOgSykkelveg": {"label": "Gang- og sykkelvei", "color": "#74add1"},
-    "sti": {"label": "Sti / turvei", "color": "#e0f3f8"},
+    # Non-motorised routes: skip road buffer by default (buffer_m=0)
+    "gangOgSykkelveg": {"label": "Gang- og sykkelvei", "color": "#74add1", "buffer_m": 0},
+    "sti": {"label": "Sti / turvei", "color": "#e0f3f8", "buffer_m": 0},
 }
 
 # typeveg values that represent water routes — skip buffering on land
@@ -147,7 +148,11 @@ def buffer_roads(
         cat_key = str(cat_value).strip() if cat_value and str(cat_value) != "nan" else "other"
         style = ROAD_CATEGORIES.get(cat_key, {"label": cat_key, "color": "#999999"})
 
-        buffered = group.geometry.buffer(buffer_distance_m)
+        cat_buffer = style.get("buffer_m", buffer_distance_m)
+        if cat_buffer == 0:
+            continue  # road type explicitly excluded from buffering
+
+        buffered = group.geometry.buffer(cat_buffer)
 
         if simplify_tolerance_m > 0:
             buffered = buffered.simplify(simplify_tolerance_m)

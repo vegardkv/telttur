@@ -24,6 +24,9 @@ def _prepare_for_json(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
             continue
         if pd.api.types.is_datetime64_any_dtype(gdf[col]):
             gdf[col] = gdf[col].astype(str)
+        elif gdf[col].dtype == object and not gdf[col].empty:
+            if any(isinstance(v, pd.Timestamp) for v in gdf[col].dropna()):
+                gdf[col] = gdf[col].astype(str)
     return gdf
 
 
@@ -33,7 +36,7 @@ def _style_road_buffer(feature: dict) -> dict:
         "fillColor": props.get("color", "#999999"),
         "color": props.get("color", "#999999"),
         "weight": 1,
-        "fillOpacity": 0.25,
+        "fillOpacity": 0.35,
     }
 
 
