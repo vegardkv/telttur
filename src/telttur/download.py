@@ -13,26 +13,61 @@ GEONORGE_API_BASE = "https://nedlasting.geonorge.no/api"
 TARGET_FORMAT = "FGDB"
 TARGET_PROJECTION = "25833"  # EUREF89 UTM sone 33
 
-# Norwegian fylke bounding boxes (approximate, WGS84)
+# Norwegian fylke bounding boxes (WGS84 / EPSG:4258, sourced from Kartverket kommuneinfo API)
 # Used to determine which fylke(r) overlap a user's bbox
+# Generated from: https://ws.geonorge.no/kommuneinfo/v1/fylker/{code}
 FYLKE_BOUNDS: dict[str, tuple[str, tuple[float, float, float, float]]] = {
     # code: (name, (south, west, north, east))
-    "03": ("Oslo", (59.8, 10.6, 59.97, 10.85)),
-    "11": ("Rogaland", (58.0, 5.5, 59.6, 7.2)),
-    "15": ("Møre og Romsdal", (61.9, 5.0, 63.5, 8.8)),
-    "18": ("Nordland", (64.5, 11.0, 69.4, 16.1)),
-    "31": ("Østfold", (58.8, 10.5, 59.8, 12.1)),
-    "32": ("Akershus", (59.5, 10.3, 60.5, 12.1)),
-    "33": ("Buskerud", (59.4, 7.7, 60.7, 10.5)),
-    "34": ("Innlandet", (60.1, 7.5, 62.8, 12.6)),
-    "39": ("Vestfold", (58.9, 9.4, 59.6, 10.6)),
-    "40": ("Telemark", (58.6, 7.3, 60.1, 9.9)),
-    "42": ("Agder", (57.9, 5.5, 59.3, 8.6)),
-    "46": ("Vestland", (59.5, 4.5, 62.0, 7.8)),
-    "50": ("Trøndelag", (62.5, 8.5, 65.3, 14.8)),
-    "55": ("Troms", (68.3, 15.4, 70.1, 20.6)),
-    "56": ("Finnmark", (69.0, 22.0, 71.2, 31.1)),
+    "03": ("Oslo", (59.8093, 10.4892, 60.1351, 10.9514)),
+    "11": ("Rogaland", (58.0279, 4.4543, 59.8446, 7.2147)),
+    "15": ("Møre og Romsdal", (61.9233, 4.8166, 63.7682, 9.3648)),
+    "18": ("Nordland", (64.9395, 10.5781, 69.5967, 18.1514)),
+    "31": ("Østfold", (58.7610, 10.5367, 59.7703, 11.8298)),
+    "32": ("Akershus", (59.4573, 10.1943, 60.6051, 11.9460)),
+    "33": ("Buskerud", (59.4079, 7.4388, 61.0917, 10.6015)),
+    "34": ("Innlandet", (59.8408, 7.3425, 62.6969, 12.8708)),
+    "39": ("Vestfold", (58.7205, 9.7553, 59.6740, 10.6750)),
+    "40": ("Telemark", (58.6033, 7.0963, 60.1883, 9.9698)),
+    "42": ("Agder", (57.7590, 6.1497, 59.6727, 9.6689)),
+    "46": ("Vestland", (59.4754, 4.0875, 62.3824, 8.3221)),
+    "50": ("Trøndelag", (62.2557, 7.6481, 65.4702, 14.3260)),
+    "55": ("Troms", (68.3560, 15.5925, 70.7036, 22.8945)),
+    "56": ("Finnmark", (68.5546, 20.4797, 71.3849, 31.7616)),
 }
+
+KOMMUNEINFO_API = "https://ws.geonorge.no/kommuneinfo/v1/fylker"
+_fylke_bounds_cache: dict[str, dict[str, tuple[str, tuple[float, float, float, float]]]] = {}
+
+
+def get_fylke_bounds(use_cache: bool = True) -> dict[str, tuple[str, tuple[float, float, float, float]]]:
+    """Return fylke bounding boxes, fetching from Kartverket API if not cached.
+
+    Falls back to the hardcoded FYLKE_BOUNDS if the API is unavailable.
+    Result format: {code: (name, (south, west, north, east))}
+    """
+    if use_cache and "data" in _fylke_bounds_cache:
+        return _fylke_bounds_cache["data"]
+
+    try:
+        resp = requests.get(KOMMUNEINFO_API, timeout=10)
+        resp.raise_for_status()
+        fylker = resp.json()
+        bounds: dict[str, tuple[str, tuple[float, float, float, float]]] = {}
+        for f in fylker:
+            nr = f["fylkesnummer"]
+            name = f["fylkesnavn"]
+            detail_resp = requests.get(f"{KOMMUNEINFO_API}/{nr}", timeout=10)
+            detail_resp.raise_for_status()
+            detail = detail_resp.json()
+            coords = detail["avgrensningsboks"]["coordinates"][0]
+            lons = [c[0] for c in coords]
+            lats = [c[1] for c in coords]
+            bounds[nr] = (name, (min(lats), min(lons), max(lats), max(lons)))
+        _fylke_bounds_cache["data"] = bounds
+        return bounds
+    except (requests.exceptions.RequestException, KeyError, ValueError) as exc:
+        print(f"Warning: Could not fetch fylke bounds from API ({exc}), using hardcoded fallback.")
+        return FYLKE_BOUNDS
 
 
 def _bbox_overlaps(bbox: BBox, bounds: tuple[float, float, float, float]) -> bool:
@@ -44,7 +79,7 @@ def _bbox_overlaps(bbox: BBox, bounds: tuple[float, float, float, float]) -> boo
 def find_overlapping_fylker(bbox: BBox) -> list[tuple[str, str]]:
     """Return list of (code, name) for fylker that overlap the bbox."""
     results = []
-    for code, (name, bounds) in FYLKE_BOUNDS.items():
+    for code, (name, bounds) in get_fylke_bounds().items():
         if _bbox_overlaps(bbox, bounds):
             results.append((code, name))
     return results
