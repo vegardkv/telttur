@@ -8,6 +8,7 @@ import pandas as pd
 
 from telttur.config import Config
 from telttur.landcover import get_wms_config
+from telttur.scoring import LEVEL_COLORS, LEVEL_NAMES, TentabilityLevel
 
 # Kartverket topographic map WMTS
 KARTVERKET_WMTS_URL = (
@@ -30,32 +31,24 @@ def _prepare_for_json(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return gdf
 
 
-def _style_road_buffer(feature: dict) -> dict:
+def _style_road_line(feature: dict) -> dict:
     props = feature.get("properties", {})
     return {
-        "fillColor": props.get("color", "#999999"),
         "color": props.get("color", "#999999"),
-        "weight": 1,
-        "fillOpacity": 0.35,
+        "weight": 2,
+        "opacity": 0.8,
     }
 
 
 def _style_lake(feature: dict) -> dict:
     props = feature.get("properties", {})
-    reachable = props.get("reachable", False)
-    # If density classification is available, use that color
-    if "density_color" in props:
-        fill_color = props["density_color"]
-    elif reachable:
-        fill_color = "#2166ac"  # Blue for reachable
-    else:
-        fill_color = "#67a9cf"  # Lighter blue for unreachable
-
+    # Use tentability colour when available, otherwise neutral blue
+    fill_color = props.get("tentability_color", "#67a9cf")
     return {
         "fillColor": fill_color,
-        "color": "#08519c",
-        "weight": 1,
-        "fillOpacity": 0.6,
+        "color": "#333333",
+        "weight": 0.8,
+        "fillOpacity": 0.65,
     }
 
 
@@ -69,41 +62,48 @@ def _style_landcover(feature: dict) -> dict:
     }
 
 
-def _lake_popup(feature: dict) -> folium.Popup | None:
-    props = feature.get("properties", {})
-    parts = []
-    if "navn" in props and props["navn"]:
-        parts.append(f"<b>{props['navn']}</b>")
-    elif "NAVN" in props and props["NAVN"]:
-        parts.append(f"<b>{props['NAVN']}</b>")
-    if "reachable" in props:
-        status = "Yes" if props["reachable"] else "No"
-        parts.append(f"Reachable from road: {status}")
-    if "density_class" in props:
-        label = {"low": "Low (good for camping)", "medium": "Medium", "high": "High (busy)"}.get(
-            props["density_class"], props["density_class"]
-        )
-        parts.append(f"Cabin density: {label}")
-    if "building_count" in props:
-        parts.append(f"Cabins/homes nearby: {props['building_count']}")
-    if parts:
-        return folium.Popup("<br>".join(parts), max_width=300)
-    return None
+
+def _lake_popup_fields(lakes: gpd.GeoDataFrame) -> tuple[list[str], list[str]]:
+    """Return (fields, aliases) for a GeoJsonPopup showing the most useful lake columns."""
+    fields: list[str] = []
+    aliases: list[str] = []
+
+    # Lake name
+    for name_col, label in (("navn", "Name"), ("NAVN", "Name")):
+        if name_col in lakes.columns:
+            fields.append(name_col)
+            aliases.append(label)
+            break
+
+    # Tentability columns (present only when scoring is enabled)
+    tentability_cols = [
+        ("tentability_level", "Tentability"),
+        ("cabin_density_level", "Cabin density"),
+        ("accessibility_level", "Accessibility"),
+        ("building_count", "Cabins/homes within buffer"),
+        ("road_distance_m", "Distance to road (m)"),
+    ]
+    for col, alias in tentability_cols:
+        if col in lakes.columns:
+            fields.append(col)
+            aliases.append(alias)
+
+    return fields, aliases
 
 
 def _add_legend(
     m: folium.Map,
     road_categories: list[dict],
     has_lakes: bool,
-    has_density: bool = False,
+    has_tentability: bool = False,
 ) -> None:
-    """Add a simple HTML legend to the map."""
+    """Add a HTML legend to the map."""
     legend_html = """
     <div style="position: fixed; bottom: 30px; left: 30px; z-index: 1000;
          background-color: white; padding: 10px; border: 2px solid grey;
          border-radius: 5px; font-size: 12px; max-width: 220px;">
     <b>Legend</b><br>
-    <b>Road buffer:</b><br>
+    <b>Roads:</b><br>
     """
     for cat in road_categories:
         legend_html += (
@@ -113,33 +113,21 @@ def _add_legend(
         )
 
     if has_lakes:
-        legend_html += "<b>Lakes:</b><br>"
-        if has_density:
-            legend_html += (
-                '<i style="background:#2166ac;width:12px;height:12px;'
-                'display:inline-block;margin-right:4px;opacity:0.6;"></i>'
-                "Few cabins nearby (&le;5)<br>"
-            )
-            legend_html += (
-                '<i style="background:#fdb863;width:12px;height:12px;'
-                'display:inline-block;margin-right:4px;opacity:0.6;"></i>'
-                "Some cabins (6&ndash;20)<br>"
-            )
-            legend_html += (
-                '<i style="background:#b2182b;width:12px;height:12px;'
-                'display:inline-block;margin-right:4px;opacity:0.6;"></i>'
-                "Many cabins (&gt;20)<br>"
-            )
+        legend_html += "<b>Lakes &mdash; tentability:</b><br>"
+        if has_tentability:
+            for level in reversed(TentabilityLevel):  # Excellent first
+                color = LEVEL_COLORS[int(level)]
+                name = LEVEL_NAMES[int(level)]
+                legend_html += (
+                    f'<i style="background:{color};width:12px;height:12px;'
+                    f'display:inline-block;margin-right:4px;opacity:0.7;"></i>'
+                    f"{name}<br>"
+                )
         else:
-            legend_html += (
-                '<i style="background:#2166ac;width:12px;height:12px;'
-                'display:inline-block;margin-right:4px;opacity:0.6;"></i>'
-                "Reachable<br>"
-            )
             legend_html += (
                 '<i style="background:#67a9cf;width:12px;height:12px;'
                 'display:inline-block;margin-right:4px;opacity:0.6;"></i>'
-                "Not reachable<br>"
+                "(scoring disabled)<br>"
             )
 
     legend_html += "</div>"
@@ -149,7 +137,7 @@ def _add_legend(
 
 def generate_map(
     config: Config,
-    road_buffers: gpd.GeoDataFrame,
+    roads: gpd.GeoDataFrame,
     lakes: gpd.GeoDataFrame,
     landcover: gpd.GeoDataFrame | None = None,
     landcover_mode: str = "wms",
@@ -204,13 +192,13 @@ def generate_map(
             show=False,
         ).add_to(m)
 
-    # Road buffers layer
-    if not road_buffers.empty:
-        road_geojson = json.loads(_prepare_for_json(road_buffers).to_json())
+    # Roads layer (centerlines)
+    if not roads.empty:
+        road_geojson = json.loads(_prepare_for_json(roads).to_json())
         folium.GeoJson(
             road_geojson,
-            name=f"Road buffer ({config.buffer_distance_m:.0f}m)",
-            style_function=_style_road_buffer,
+            name="Roads",
+            style_function=_style_road_line,
         ).add_to(m)
 
     # Lakes layer
@@ -222,12 +210,14 @@ def generate_map(
             name="Lakes",
             style_function=_style_lake,
         )
-        # Add popups for lakes
-        folium.GeoJsonPopup(
-            fields=[c for c in lakes_clean.columns if c != "geometry"],
-            aliases=[c for c in lakes_clean.columns if c != "geometry"],
-            localize=True,
-        ).add_to(lake_layer)
+        # Build popup showing only the informative columns
+        popup_fields, popup_aliases = _lake_popup_fields(lakes_clean)
+        if popup_fields:
+            folium.GeoJsonPopup(
+                fields=popup_fields,
+                aliases=popup_aliases,
+                localize=True,
+            ).add_to(lake_layer)
         lake_layer.add_to(m)
 
     # Layer control
@@ -235,11 +225,15 @@ def generate_map(
 
     # Legend
     road_cats = []
-    if not road_buffers.empty and "color" in road_buffers.columns:
-        for _, row in road_buffers.iterrows():
-            road_cats.append({"color": row["color"], "label": row.get("label", "Road")})
-    has_density = not lakes.empty and "density_class" in lakes.columns
-    _add_legend(m, road_cats, not lakes.empty, has_density=has_density)
+    if not roads.empty and "color" in roads.columns:
+        seen: set[str] = set()
+        for _, row in roads.iterrows():
+            cat = row.get("category", "")
+            if cat not in seen:
+                seen.add(cat)
+                road_cats.append({"color": row["color"], "label": row.get("label", "Road")})
+    has_tentability = not lakes.empty and "tentability_score" in lakes.columns
+    _add_legend(m, road_cats, not lakes.empty, has_tentability=has_tentability)
 
     return m
 

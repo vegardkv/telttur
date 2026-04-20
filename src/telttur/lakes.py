@@ -94,44 +94,13 @@ def extract_lakes(
     return lakes.to_crs(CRS_WGS84)
 
 
-def classify_lake_reachability(
-    lakes: gpd.GeoDataFrame,
-    road_buffers: gpd.GeoDataFrame,
-) -> gpd.GeoDataFrame:
-    """Add a 'reachable' column: True if the lake intersects any road buffer."""
-    if lakes.empty or road_buffers.empty:
-        lakes = lakes.copy()
-        lakes["reachable"] = False
-        return lakes
-
-    # Ensure same CRS
-    if lakes.crs != road_buffers.crs:
-        road_buffers = road_buffers.to_crs(lakes.crs)
-
-    # Union all road buffers into one geometry
-    all_buffers = road_buffers.union_all()
-
-    lakes = lakes.copy()
-    lakes["reachable"] = lakes.geometry.intersects(all_buffers)
-
-    return lakes
-
-
 def process_lakes(
     gdb_paths: list[Path],
     bbox: BBox,
     simplify_tolerance_m: float = 0,
-    road_buffers: gpd.GeoDataFrame | None = None,
 ) -> gpd.GeoDataFrame:
-    """Full pipeline: extract lakes, optionally classify reachability."""
+    """Full pipeline: extract lake polygons from N50 FGDB files."""
     print("Extracting lakes...")
     lakes = extract_lakes(gdb_paths, bbox, simplify_tolerance_m)
     print(f"  Found {len(lakes)} lake features")
-
-    if road_buffers is not None and not road_buffers.empty:
-        print("Classifying lake reachability...")
-        lakes = classify_lake_reachability(lakes, road_buffers)
-        reachable_count = lakes["reachable"].sum()
-        print(f"  {reachable_count}/{len(lakes)} lakes are reachable from roads")
-
     return lakes

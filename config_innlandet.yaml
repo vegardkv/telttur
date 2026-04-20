@@ -14,6 +14,6 @@ output_filename: map_innlandet.html
 
 landcover_mode: wms
 
-lake_classification:
+scoring:
   enabled: true
   building_buffer_m: 500

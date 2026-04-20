@@ -172,19 +172,70 @@ def buffer_roads(
     return result_gdf.to_crs(CRS_WGS84)
 
 
+def _style_roads(roads: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Assign category/label/color to road centerlines for map display.
+
+    Returns a GeoDataFrame with columns: category, label, color, geometry (lines).
+    """
+    if roads.empty:
+        return gpd.GeoDataFrame(
+            columns=["category", "label", "color", "geometry"],
+            crs=CRS_WGS84,
+        )
+
+    roads = roads.copy()
+
+    # Filter out railways (Bane)
+    if "objtype" in roads.columns:
+        roads = roads[roads["objtype"] != "Bane"]
+
+    # Filter out ferry routes
+    if "typeveg" in roads.columns:
+        roads = roads[~roads["typeveg"].isin(_FERRY_TYPEVEG)]
+
+    if roads.empty:
+        return gpd.GeoDataFrame(
+            columns=["category", "label", "color", "geometry"],
+            crs=CRS_WGS84,
+        )
+
+    # Assign a unified category: vegkategori where set, otherwise typeveg
+    if "vegkategori" in roads.columns and "typeveg" in roads.columns:
+        roads["_category"] = roads["vegkategori"].where(
+            roads["vegkategori"].notna(), roads["typeveg"]
+        )
+    elif "vegkategori" in roads.columns:
+        roads["_category"] = roads["vegkategori"].fillna("other")
+    elif "typeveg" in roads.columns:
+        roads["_category"] = roads["typeveg"].fillna("other")
+    else:
+        roads["_category"] = "other"
+
+    roads["category"] = roads["_category"].apply(
+        lambda v: str(v).strip() if v and str(v) != "nan" else "other"
+    )
+    roads["label"] = roads["category"].apply(
+        lambda k: ROAD_CATEGORIES.get(k, {"label": k, "color": "#999999"})["label"]
+    )
+    roads["color"] = roads["category"].apply(
+        lambda k: ROAD_CATEGORIES.get(k, {"label": k, "color": "#999999"})["color"]
+    )
+
+    result = roads[["category", "label", "color", "geometry"]].copy()
+    return result.to_crs(CRS_WGS84)
+
+
 def process_roads(
     gdb_paths: list[Path],
     bbox: BBox,
-    buffer_distance_m: float,
-    simplify_tolerance_m: float = 0,
 ) -> gpd.GeoDataFrame:
-    """Full pipeline: extract roads, buffer, return in WGS84."""
+    """Full pipeline: extract and style road centerlines for map display."""
     print("Extracting roads...")
     roads = extract_roads(gdb_paths, bbox)
     print(f"  Found {len(roads)} road features")
 
-    print(f"Buffering roads ({buffer_distance_m}m)...")
-    buffered = buffer_roads(roads, buffer_distance_m, simplify_tolerance_m)
-    print(f"  Created {len(buffered)} road buffer polygon(s)")
+    print("Styling roads for display...")
+    styled_lines = _style_roads(roads)
+    print(f"  Styled {len(styled_lines)} road features")
 
-    return buffered
+    return styled_lines

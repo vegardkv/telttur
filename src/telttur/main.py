@@ -7,11 +7,11 @@ import click
 
 from telttur.config import BBox, load_config
 from telttur.download import download_n50
-from telttur.lake_classification import process_lake_classification
 from telttur.lakes import process_lakes
 from telttur.landcover import process_landcover
 from telttur.map_generator import generate_map, save_map
 from telttur.roads import process_roads
+from telttur.scoring import process_scoring
 
 
 def _adaptive_simplify_tolerance(bbox: BBox, configured: float) -> float:
@@ -93,11 +93,9 @@ def generate(config_path: str, skip_download: bool) -> None:
 
     # Step 2: Process roads
     t0 = time.time()
-    road_buffers = process_roads(
+    road_lines = process_roads(
         gdb_paths,
         config.bbox,
-        config.buffer_distance_m,
-        effective_simplify,
     )
     print(f"  [roads: {time.time() - t0:.1f}s]")
 
@@ -107,20 +105,20 @@ def generate(config_path: str, skip_download: bool) -> None:
         gdb_paths,
         config.bbox,
         effective_simplify,
-        road_buffers=road_buffers,
     )
     print(f"  [lakes: {time.time() - t0:.1f}s]")
 
-    # Step 4: Lake classification (optional)
-    if config.lake_classification.enabled and not lakes.empty:
+    # Step 4: Tentability scoring (optional)
+    if config.scoring.enabled and not lakes.empty:
         t0 = time.time()
-        lakes = process_lake_classification(
+        lakes = process_scoring(
             gdb_paths,
             config.bbox,
             lakes,
-            config.lake_classification.building_buffer_m,
+            road_lines,
+            config.scoring,
         )
-        print(f"  [lake classification: {time.time() - t0:.1f}s]")
+        print(f"  [scoring: {time.time() - t0:.1f}s]")
 
     # Step 5: Land cover (vector mode only; WMS is added directly in map generator)
     landcover = None
@@ -138,7 +136,7 @@ def generate(config_path: str, skip_download: bool) -> None:
     print("Generating map...")
     m = generate_map(
         config,
-        road_buffers,
+        road_lines,
         lakes,
         landcover=landcover,
         landcover_mode=config.landcover_mode,

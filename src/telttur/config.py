@@ -11,9 +11,42 @@ class BBox(BaseModel):
     west: float
 
 
-class LakeClassification(BaseModel):
+class CabinDensityThresholds(BaseModel):
+    """Building count thresholds for cabin density scoring (upper bound per level).
+
+    A lake receives a level if its building_count is <= the threshold for that level.
+    Lakes exceeding the 'poor' threshold are scored Terrible.
+
+    Defaults are tuned on Innlandet N50 data (~79 % of lakes have ≤5 buildings
+    within 500 m of the shore).
+    """
+
+    excellent: int = 0   # exactly 0 buildings → Excellent
+    good: int = 3        # 1–3  → Good
+    fair: int = 10       # 4–10 → Fair
+    poor: int = 25       # 11–25 → Poor; >25 → Terrible
+
+
+class AccessibilityThresholds(BaseModel):
+    """Distance thresholds (metres) for accessibility scoring (upper bound per level).
+
+    A lake receives a level if its road_distance_m is <= the threshold for that level.
+    Lakes farther than the 'poor' threshold are scored Terrible.
+    """
+
+    excellent: float = 500.0    # < 500 m  → Excellent
+    good: float = 1000.0        # < 1 km   → Good
+    fair: float = 2000.0        # < 2 km   → Fair
+    poor: float = 5000.0        # < 5 km   → Poor; ≥ 5 km → Terrible
+
+
+class ScoringConfig(BaseModel):
+    """Configuration for lake tentability scoring."""
+
     enabled: bool = False
     building_buffer_m: float = 500.0
+    cabin_density_thresholds: CabinDensityThresholds = CabinDensityThresholds()
+    accessibility_thresholds: AccessibilityThresholds = AccessibilityThresholds()
 
 
 class Config(BaseModel):
@@ -25,7 +58,7 @@ class Config(BaseModel):
     output_dir: str = "output"
     output_filename: str = "map.html"
     landcover_mode: str = "wms"
-    lake_classification: LakeClassification = LakeClassification()
+    scoring: ScoringConfig = ScoringConfig()
 
     @model_validator(mode="before")
     @classmethod
