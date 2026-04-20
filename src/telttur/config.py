@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 
 class BBox(BaseModel):
@@ -44,7 +44,7 @@ class ScoringConfig(BaseModel):
     """Configuration for lake tentability scoring."""
 
     enabled: bool = False
-    building_buffer_m: float = 500.0
+    building_buffer_m: float = 100.0
     cabin_density_thresholds: CabinDensityThresholds = CabinDensityThresholds()
     accessibility_thresholds: AccessibilityThresholds = AccessibilityThresholds()
 
@@ -59,6 +59,9 @@ class Config(BaseModel):
     output_filename: str = "map.html"
     landcover_mode: str = "wms"
     scoring: ScoringConfig = ScoringConfig()
+    excluded_road_types: list[str] = Field(
+        default_factory=lambda: ["P", "sti", "gangOgSykkelveg", "traktorveg"]
+    )
 
     @model_validator(mode="before")
     @classmethod

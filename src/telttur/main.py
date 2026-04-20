@@ -117,6 +117,7 @@ def generate(config_path: str, skip_download: bool) -> None:
             lakes,
             road_lines,
             config.scoring,
+            excluded_road_types=config.excluded_road_types,
         )
         print(f"  [scoring: {time.time() - t0:.1f}s]")
 

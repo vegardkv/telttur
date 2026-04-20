@@ -5,15 +5,9 @@ bbox:
   east: 12.6
   west: 7.5
 
-buffer_distance_m: 2000
-simplify_tolerance_m: 50
-
-data_dir: data
-output_dir: output
+# Output filename
 output_filename: map_innlandet.html
 
-landcover_mode: wms
-
+# Tentability scoring: composite lake suitability score
 scoring:
   enabled: true
-  building_buffer_m: 500

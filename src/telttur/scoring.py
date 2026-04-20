@@ -182,11 +182,13 @@ def score_accessibility(
     lakes: gpd.GeoDataFrame,
     road_lines: gpd.GeoDataFrame,
     thresholds: AccessibilityThresholds,
+    excluded_road_types: list[str] | None = None,
 ) -> gpd.GeoDataFrame:
     """Score each lake by distance to the nearest drivable road.
 
-    Non-motorised routes (gangOgSykkelveg, sti) are excluded because they
-    cannot be reached by car.
+    Road types listed in *excluded_road_types* are excluded because they
+    cannot be reached by car.  Defaults to the module-level ``_NON_MOTORIZED``
+    set when not provided.
 
     Added columns:
       road_distance_m      — metres to nearest drivable road (rounded to 1 dp)
@@ -195,8 +197,9 @@ def score_accessibility(
     """
     lakes = lakes.copy()
 
+    excluded = set(excluded_road_types) if excluded_road_types is not None else _NON_MOTORIZED
     drivable = (
-        road_lines[~road_lines["category"].isin(_NON_MOTORIZED)]
+        road_lines[~road_lines["category"].isin(excluded)]
         if "category" in road_lines.columns
         else road_lines
     )
@@ -278,6 +281,7 @@ def process_scoring(
     lakes: gpd.GeoDataFrame,
     road_lines: gpd.GeoDataFrame,
     config: ScoringConfig,
+    excluded_road_types: list[str] | None = None,
 ) -> gpd.GeoDataFrame:
     """Full scoring pipeline: score all dimensions then compute composite tentability.
 
@@ -306,7 +310,9 @@ def process_scoring(
 
     # --- Accessibility ---
     print("Scoring accessibility (distance to nearest drivable road)...")
-    lakes = score_accessibility(lakes, road_lines, config.accessibility_thresholds)
+    lakes = score_accessibility(
+        lakes, road_lines, config.accessibility_thresholds, excluded_road_types
+    )
     _print_distribution("Accessibility", lakes, "accessibility_score")
 
     # --- Composite ---

@@ -24,9 +24,9 @@ ROAD_CATEGORIES: dict[str, dict] = {
     # typeveg values (for roads without vegkategori)
     "enkelBilveg": {"label": "Bilveg", "color": "#bababa"},
     "traktorveg": {"label": "Traktorveg", "color": "#4575b4"},
-    # Non-motorised routes: skip road buffer by default (buffer_m=0)
-    "gangOgSykkelveg": {"label": "Gang- og sykkelvei", "color": "#74add1", "buffer_m": 0},
-    "sti": {"label": "Sti / turvei", "color": "#e0f3f8", "buffer_m": 0},
+    # Non-motorised routes: excluded from buffering by default via config
+    "gangOgSykkelveg": {"label": "Gang- og sykkelvei", "color": "#74add1"},
+    "sti": {"label": "Sti / turvei", "color": "#e0f3f8"},
 }
 
 # typeveg values that represent water routes — skip buffering on land
@@ -103,6 +103,7 @@ def buffer_roads(
     roads: gpd.GeoDataFrame,
     buffer_distance_m: float,
     simplify_tolerance_m: float = 0,
+    excluded_road_types: list[str] | None = None,
 ) -> gpd.GeoDataFrame:
     """Buffer road centerlines and dissolve by category.
 
@@ -149,8 +150,8 @@ def buffer_roads(
         style = ROAD_CATEGORIES.get(cat_key, {"label": cat_key, "color": "#999999"})
 
         cat_buffer = style.get("buffer_m", buffer_distance_m)
-        if cat_buffer == 0:
-            continue  # road type explicitly excluded from buffering
+        if cat_key in (excluded_road_types or []):
+            continue  # road type excluded from buffering
 
         buffered = group.geometry.buffer(cat_buffer)
 

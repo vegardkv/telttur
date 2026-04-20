@@ -1,28 +1,12 @@
 # Telttur configuration
-# Bounding box in WGS84 (lat/lon)
 fylke: Akershus
 
 # Buffer distance around roads in meters
 buffer_distance_m: 1000
 
-# Geometry simplification tolerance in meters (0 = no simplification)
-# Increase for larger areas to keep HTML file size manageable
-simplify_tolerance_m: 50
-
-# Data directory (relative to project root)
-data_dir: data
-
-# Output directory (relative to project root)
-output_dir: output
-
 # Output filename
 output_filename: map_akershus.html
-
-# Land cover display mode: "wms" (tile overlay) or "vector" (N50 polygons)
-landcover_mode: wms
 
 # Tentability scoring: composite lake suitability score
 scoring:
   enabled: true
-  # Buffer distance around lake shore for counting buildings (metres)
-  building_buffer_m: 500

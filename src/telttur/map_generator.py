@@ -14,6 +14,9 @@ from telttur.scoring import LEVEL_COLORS, LEVEL_NAMES, TentabilityLevel
 KARTVERKET_WMTS_URL = (
     "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png"
 )
+KARTVERKET_WMTS_GRAY_URL = (
+    "https://cache.kartverket.no/v1/wmts/1.0.0/topograatone/default/webmercator/{z}/{y}/{x}.png"
+)
 KARTVERKET_ATTR = '&copy; <a href="https://www.kartverket.no/">Kartverket</a>'
 
 
@@ -153,11 +156,29 @@ def generate_map(
         tiles=None,
     )
 
+    # Base layer: blank "None" option — lets users deselect all base tiles
+    folium.TileLayer(
+        tiles="",
+        attr=" ",
+        name="None",
+        overlay=False,
+        control=True,
+    ).add_to(m)
+
     # Base layer: Kartverket topographic
     folium.TileLayer(
         tiles=KARTVERKET_WMTS_URL,
         attr=KARTVERKET_ATTR,
         name="Kartverket Topografisk",
+        overlay=False,
+        control=True,
+    ).add_to(m)
+
+    # Base layer: Kartverket topographic gray
+    folium.TileLayer(
+        tiles=KARTVERKET_WMTS_GRAY_URL,
+        attr=KARTVERKET_ATTR,
+        name="Kartverket Topografisk Grå",
         overlay=False,
         control=True,
     ).add_to(m)
