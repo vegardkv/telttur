@@ -54,6 +54,7 @@ class Config(BaseModel):
     fylke: str | None = None
     buffer_distance_m: float = 2000.0
     simplify_tolerance_m: float = 50.0
+    min_lake_area_m2: float = 0.0
     data_dir: str = "data"
     output_dir: str = "output"
     output_filename: str = "map.html"

@@ -91,6 +91,8 @@ def extract_lakes(
     if simplify_tolerance_m > 0:
         lakes["geometry"] = lakes.geometry.simplify(simplify_tolerance_m)
 
+    lakes["area_m2"] = lakes.geometry.area
+
     return lakes.to_crs(CRS_WGS84)
 
 
@@ -98,9 +100,14 @@ def process_lakes(
     gdb_paths: list[Path],
     bbox: BBox,
     simplify_tolerance_m: float = 0,
+    min_lake_area_m2: float = 0.0,
 ) -> gpd.GeoDataFrame:
     """Full pipeline: extract lake polygons from N50 FGDB files."""
     print("Extracting lakes...")
     lakes = extract_lakes(gdb_paths, bbox, simplify_tolerance_m)
     print(f"  Found {len(lakes)} lake features")
+    if min_lake_area_m2 > 0:
+        before = len(lakes)
+        lakes = lakes[lakes["area_m2"] >= min_lake_area_m2].reset_index(drop=True)
+        print(f"  Removed {before - len(lakes)} lakes below {min_lake_area_m2:.0f} m² ({len(lakes)} remaining)")
     return lakes

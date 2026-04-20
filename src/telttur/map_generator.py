@@ -78,6 +78,11 @@ def _lake_popup_fields(lakes: gpd.GeoDataFrame) -> tuple[list[str], list[str]]:
             aliases.append(label)
             break
 
+    # Lake area
+    if "area_display" in lakes.columns:
+        fields.append("area_display")
+        aliases.append("Area")
+
     # Tentability columns (present only when scoring is enabled)
     tentability_cols = [
         ("tentability_level", "Tentability"),
@@ -225,6 +230,15 @@ def generate_map(
     # Lakes layer
     if not lakes.empty:
         lakes_clean = _prepare_for_json(lakes)
+        if "area_m2" in lakes_clean.columns:
+            def _format_area(m2: float) -> str:
+                if m2 >= 1_000_000:
+                    return f"{m2 / 1_000_000:.2f} km²"
+                elif m2 >= 10_000:
+                    return f"{m2 / 10_000:.1f} ha"
+                else:
+                    return f"{m2:.0f} m²"
+            lakes_clean["area_display"] = lakes_clean["area_m2"].apply(_format_area)
         lake_geojson = json.loads(lakes_clean.to_json())
         lake_layer = folium.GeoJson(
             lake_geojson,

@@ -105,6 +105,7 @@ def generate(config_path: str, skip_download: bool) -> None:
         gdb_paths,
         config.bbox,
         effective_simplify,
+        min_lake_area_m2=config.min_lake_area_m2,
     )
     print(f"  [lakes: {time.time() - t0:.1f}s]")
 
