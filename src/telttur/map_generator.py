@@ -220,7 +220,7 @@ def generate_map(
         ).add_to(m)
 
     # Roads layer (centerlines)
-    if not roads.empty:
+    if config.show_roads and not roads.empty:
         road_geojson = json.loads(_prepare_for_json(roads).to_json())
         folium.GeoJson(
             road_geojson,
@@ -262,7 +262,7 @@ def generate_map(
 
     # Legend
     road_cats = []
-    if not roads.empty and "color" in roads.columns:
+    if config.show_roads and not roads.empty and "color" in roads.columns:
         seen: set[str] = set()
         for _, row in roads.iterrows():
             cat = row.get("category", "")

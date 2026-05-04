@@ -6,6 +6,10 @@ output_filename: map_akershus.html
 
 min_lake_area_m2: 1000  # exclude lakes smaller than 0.1 ha
 
+min_lake_tenting_quality: Fair
+
+show_roads: false
+
 # Tentability scoring: composite lake suitability score
 scoring:
   enabled: true

@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Literal
 
 import yaml
 from pydantic import BaseModel, Field, model_validator
@@ -64,6 +65,8 @@ class Config(BaseModel):
     excluded_road_types: list[str] = Field(
         default_factory=lambda: ["P", "sti", "gangOgSykkelveg", "traktorveg"]
     )
+    show_roads: bool = True
+    min_lake_tenting_quality: Literal["Terrible", "Poor", "Fair", "Good", "Excellent"] | None = None
 
     @model_validator(mode="before")
     @classmethod

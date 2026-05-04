@@ -122,6 +122,22 @@ def generate(config_path: str, skip_download: bool) -> None:
         )
         print(f"  [scoring: {time.time() - t0:.1f}s]")
 
+    # Filter lakes by minimum tenting level
+    if (
+        config.min_lake_tenting_quality is not None
+        and not lakes.empty
+        and "tentability_level" in lakes.columns
+    ):
+        before = len(lakes)
+        from telttur.scoring import LEVEL_NAMES
+        _level_by_name = {v: k for k, v in LEVEL_NAMES.items()}
+        min_score = _level_by_name[config.min_lake_tenting_quality]
+        lakes = lakes[lakes["tentability_score"] >= min_score].reset_index(drop=True)
+        print(
+            f"  [lake filter: kept {len(lakes)}/{before} lakes"
+            f" with tenting level >= {config.min_lake_tenting_quality}]"
+        )
+
     # Step 5: Land cover (vector mode only; WMS is added directly in map generator)
     landcover = None
     if config.landcover_mode == "vector":
