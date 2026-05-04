@@ -12,19 +12,20 @@ class BBox(BaseModel):
 
 
 class CabinDensityThresholds(BaseModel):
-    """Building count thresholds for cabin density scoring (upper bound per level).
+    """Density thresholds for cabin density scoring (upper bound per level).
 
-    A lake receives a level if its building_count is <= the threshold for that level.
-    Lakes exceeding the 'poor' threshold are scored Terrible.
+    The density metric is ``building_count / sqrt(area_m2)``, which normalises
+    for lake size so that a large remote lake with a handful of cabins does not
+    score the same as a small urban pond with the same number of buildings.
 
-    Defaults are tuned on Innlandet N50 data (~79 % of lakes have ≤5 buildings
-    within 500 m of the shore).
+    A lake receives a level if its building_density is <= the threshold for that
+    level.  Lakes exceeding the 'poor' threshold are scored Terrible.
     """
 
-    excellent: int = 0   # exactly 0 buildings → Excellent
-    good: int = 3        # 1–3  → Good
-    fair: int = 10       # 4–10 → Fair
-    poor: int = 25       # 11–25 → Poor; >25 → Terrible
+    excellent: float = 0.0    # pristine: no buildings at all
+    good: float = 0.01        # e.g. ≤3 buildings around a 90 000 m² lake
+    fair: float = 0.05        # e.g. ≤5 buildings around a 10 000 m² lake
+    poor: float = 0.15        # above this → Terrible
 
 
 class AccessibilityThresholds(BaseModel):
@@ -44,7 +45,7 @@ class ScoringConfig(BaseModel):
     """Configuration for lake tentability scoring."""
 
     enabled: bool = False
-    building_buffer_m: float = 100.0
+    building_buffer_m: float = 200.0
     cabin_density_thresholds: CabinDensityThresholds = CabinDensityThresholds()
     accessibility_thresholds: AccessibilityThresholds = AccessibilityThresholds()
 
@@ -53,7 +54,7 @@ class Config(BaseModel):
     bbox: BBox | None = None
     fylke: str | None = None
     buffer_distance_m: float = 2000.0
-    simplify_tolerance_m: float = 50.0
+    simplify_tolerance_m: float = 25.0
     min_lake_area_m2: float = 0.0
     data_dir: str = "data"
     output_dir: str = "output"

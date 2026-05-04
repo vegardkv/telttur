@@ -1,11 +1,10 @@
 # Telttur configuration
 fylke: Akershus
 
-# Buffer distance around roads in meters
-buffer_distance_m: 1000
-
 # Output filename
 output_filename: map_akershus.html
+
+min_lake_area_m2: 1000  # exclude lakes smaller than 0.1 ha
 
 # Tentability scoring: composite lake suitability score
 scoring:

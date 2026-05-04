@@ -138,13 +138,24 @@ def score_cabin_density(
     buffer_m: float,
     thresholds: CabinDensityThresholds,
 ) -> gpd.GeoDataFrame:
-    """Score each lake by the number of cabins/buildings within *buffer_m* of its shore.
+    """Score each lake by cabin/building density near its shore.
+
+    Density is defined as ``building_count / sqrt(area_m2)``, which normalises
+    for lake size so that a large remote lake with a handful of cabins is not
+    penalised as harshly as a small lake surrounded by the same number of
+    buildings.  ``sqrt(area_m2)`` is used as a proxy for shoreline length.
+
+    The ``area_m2`` column must already be present on *lakes* (added by
+    ``process_lakes``).
 
     Added columns:
       building_count       — number of buildings within the buffer
+      building_density     — building_count / sqrt(area_m2), rounded to 4 dp
       cabin_density_score  — TentabilityLevel integer (1 = Terrible … 5 = Excellent)
       cabin_density_level  — human-readable level name
     """
+    import math
+
     lakes = lakes.copy()
     lakes_utm = lakes.to_crs(CRS_UTM33).copy()
     buildings_utm = (
@@ -162,18 +173,28 @@ def score_cabin_density(
     building_count = joined.groupby(joined.index)["index_right"].count()
     lakes["building_count"] = lakes.index.map(building_count).fillna(0).astype(int)
 
-    def _score(count: int) -> int:
-        if count <= thresholds.excellent:
+    # Normalise by sqrt(area_m2) — use area_m2 when available, fall back to
+    # computing area in UTM to avoid zero-division.
+    if "area_m2" in lakes.columns:
+        area_m2 = lakes["area_m2"]
+    else:
+        area_m2 = lakes.to_crs(CRS_UTM33).geometry.area
+
+    sqrt_area = area_m2.apply(lambda a: math.sqrt(max(a, 1.0)))
+    lakes["building_density"] = (lakes["building_count"] / sqrt_area).round(4)
+
+    def _score(density: float) -> int:
+        if density <= thresholds.excellent:
             return int(TentabilityLevel.EXCELLENT)
-        elif count <= thresholds.good:
+        elif density <= thresholds.good:
             return int(TentabilityLevel.GOOD)
-        elif count <= thresholds.fair:
+        elif density <= thresholds.fair:
             return int(TentabilityLevel.FAIR)
-        elif count <= thresholds.poor:
+        elif density <= thresholds.poor:
             return int(TentabilityLevel.POOR)
         return int(TentabilityLevel.TERRIBLE)
 
-    lakes["cabin_density_score"] = lakes["building_count"].apply(_score)
+    lakes["cabin_density_score"] = lakes["building_density"].apply(_score)
     lakes["cabin_density_level"] = lakes["cabin_density_score"].map(LEVEL_NAMES)
     return lakes
 

@@ -88,7 +88,8 @@ def _lake_popup_fields(lakes: gpd.GeoDataFrame) -> tuple[list[str], list[str]]:
         ("tentability_level", "Tentability"),
         ("cabin_density_level", "Cabin density"),
         ("accessibility_level", "Accessibility"),
-        ("building_count", "Cabins/homes within buffer"),
+        ("building_count", "Buildings within buffer"),
+        ("building_density", "Building density (per √m²)"),
         ("road_distance_m", "Distance to road (m)"),
     ]
     for col, alias in tentability_cols:
@@ -179,19 +180,19 @@ def generate_map(
         control=True,
     ).add_to(m)
 
-    # Base layer: Kartverket topographic gray
-    folium.TileLayer(
-        tiles=KARTVERKET_WMTS_GRAY_URL,
-        attr=KARTVERKET_ATTR,
-        name="Kartverket Topografisk Grå",
-        overlay=False,
-        control=True,
-    ).add_to(m)
-
     # Also add OSM as fallback
     folium.TileLayer(
         tiles="OpenStreetMap",
         name="OpenStreetMap",
+        overlay=False,
+        control=True,
+    ).add_to(m)
+
+    # Base layer: Kartverket topographic gray (added last = default)
+    folium.TileLayer(
+        tiles=KARTVERKET_WMTS_GRAY_URL,
+        attr=KARTVERKET_ATTR,
+        name="Kartverket Topografisk Grå",
         overlay=False,
         control=True,
     ).add_to(m)
@@ -225,6 +226,7 @@ def generate_map(
             road_geojson,
             name="Roads",
             style_function=_style_road_line,
+            show=False,
         ).add_to(m)
 
     # Lakes layer
