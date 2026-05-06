@@ -66,6 +66,7 @@ class Config(BaseModel):
         default_factory=lambda: ["P", "sti", "gangOgSykkelveg", "traktorveg"]
     )
     show_roads: bool = True
+    lake_display_mode: Literal["polygon", "marker"] = "polygon"
     min_lake_tenting_quality: Literal["Terrible", "Poor", "Fair", "Good", "Excellent"] | None = None
 
     @model_validator(mode="before")

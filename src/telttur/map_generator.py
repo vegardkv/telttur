@@ -66,6 +66,41 @@ def _style_landcover(feature: dict) -> dict:
 
 
 
+def _add_lake_markers(m: folium.Map, lakes_clean: gpd.GeoDataFrame) -> None:
+    """Add lakes as circle markers (one per lake centroid) to the map."""
+    fields, aliases = _lake_popup_fields(lakes_clean)
+    layer = folium.FeatureGroup(name="Lakes")
+    default_color = "#67a9cf"
+    for _, row in lakes_clean.iterrows():
+        geom = row.geometry
+        if geom is None or geom.is_empty:
+            continue
+        centroid = geom.centroid
+        color = row.get("tentability_color", default_color) or default_color
+        popup: folium.Popup | None = None
+        if fields:
+            html = "<table style='font-size:12px;border-collapse:collapse'>"
+            for field, alias in zip(fields, aliases, strict=True):
+                val = row.get(field, "")
+                html += (
+                    f"<tr><th style='text-align:left;padding:2px 6px 2px 0'>{alias}</th>"
+                    f"<td style='padding:2px 0'>{val}</td></tr>"
+                )
+            html += "</table>"
+            popup = folium.Popup(html, max_width=300)
+        folium.CircleMarker(
+            location=[centroid.y, centroid.x],
+            radius=8,
+            color="#333333",
+            weight=0.8,
+            fill=True,
+            fill_color=color,
+            fill_opacity=0.65,
+            popup=popup,
+        ).add_to(layer)
+    layer.add_to(m)
+
+
 def _lake_popup_fields(lakes: gpd.GeoDataFrame) -> tuple[list[str], list[str]]:
     """Return (fields, aliases) for a GeoJsonPopup showing the most useful lake columns."""
     fields: list[str] = []
@@ -241,21 +276,25 @@ def generate_map(
                 else:
                     return f"{m2:.0f} m²"
             lakes_clean["area_display"] = lakes_clean["area_m2"].apply(_format_area)
-        lake_geojson = json.loads(lakes_clean.to_json())
-        lake_layer = folium.GeoJson(
-            lake_geojson,
-            name="Lakes",
-            style_function=_style_lake,
-        )
-        # Build popup showing only the informative columns
-        popup_fields, popup_aliases = _lake_popup_fields(lakes_clean)
-        if popup_fields:
-            folium.GeoJsonPopup(
-                fields=popup_fields,
-                aliases=popup_aliases,
-                localize=True,
-            ).add_to(lake_layer)
-        lake_layer.add_to(m)
+
+        if config.lake_display_mode == "marker":
+            _add_lake_markers(m, lakes_clean)
+        else:
+            lake_geojson = json.loads(lakes_clean.to_json())
+            lake_layer = folium.GeoJson(
+                lake_geojson,
+                name="Lakes",
+                style_function=_style_lake,
+            )
+            # Build popup showing only the informative columns
+            popup_fields, popup_aliases = _lake_popup_fields(lakes_clean)
+            if popup_fields:
+                folium.GeoJsonPopup(
+                    fields=popup_fields,
+                    aliases=popup_aliases,
+                    localize=True,
+                ).add_to(lake_layer)
+            lake_layer.add_to(m)
 
     # Layer control
     folium.LayerControl(collapsed=False).add_to(m)
