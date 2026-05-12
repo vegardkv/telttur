@@ -14,7 +14,7 @@ import geopandas as gpd
 import requests
 from shapely.geometry import box
 
-from telttur.config import Ar5LandUseConfig, BBox
+from telttur.config import Ar5DataSource, Ar5LandUseConfig, BBox
 from telttur.scoring.common import (
     CRS_UTM33,
     LEVEL_NAMES,
@@ -159,13 +159,37 @@ def _extract_n50_land_use_zones(
 def fetch_ar5_land_use_polygons(
     gdb_paths: list[Path],
     bbox: BBox,
+    config: Ar5LandUseConfig,
     wfs_timeout_s: float = 30.0,
 ) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """Return ``(industrial, residential)`` polygon GeoDataFrames in UTM33.
 
-    Tries the NIBIO AR5 WFS first; on failure falls back to N50 arealdekke.
+    The data source is controlled by ``config.source``:
+      - ``auto``: try the NIBIO AR5 WFS first; fall back to N50 on failure.
+      - ``wfs``:  always use the NIBIO AR5 WFS (raises on failure).
+      - ``n50``:  always use the local N50 arealdekke data.
+
     Both returned frames contain only a ``geometry`` column and may be empty.
     """
+    if config.source == Ar5DataSource.N50:
+        print("  Using N50 arealdekke for AR5 land use (source=n50)...")
+        industrial, residential = _extract_n50_land_use_zones(gdb_paths, bbox)
+        print(
+            f"  N50: {len(industrial)} industrial, {len(residential)} residential polygons"
+        )
+        return industrial, residential
+
+    if config.source == Ar5DataSource.WFS:
+        print("  Fetching AR5 land use from NIBIO WFS (source=wfs)...")
+        ar5 = _fetch_ar5_wfs(bbox, timeout_s=wfs_timeout_s)
+        industrial = ar5[ar5["artype"].isin(_AR5_INDUSTRIAL_ARTYPES)][["geometry"]].copy()
+        residential = ar5[ar5["artype"].isin(_AR5_RESIDENTIAL_ARTYPES)][["geometry"]].copy()
+        print(
+            f"  AR5 WFS: {len(industrial)} industrial, {len(residential)} residential polygons"
+        )
+        return industrial, residential
+
+    # Ar5DataSource.AUTO: try WFS, fall back to N50
     print("  Attempting AR5 WFS fetch from NIBIO...")
     try:
         ar5 = _fetch_ar5_wfs(bbox, timeout_s=wfs_timeout_s)

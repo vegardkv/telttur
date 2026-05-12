@@ -111,7 +111,7 @@ def process_scoring(
     if config.ar5_land_use.enabled:
         print("Scoring AR5 land use proximity (industrial / residential zones)...")
         industrial_polygons, residential_polygons = ar5_land_use.fetch_ar5_land_use_polygons(
-            gdb_paths, bbox
+            gdb_paths, bbox, config.ar5_land_use
         )
         lakes = ar5_land_use.score_ar5_land_use(
             lakes, industrial_polygons, residential_polygons, config.ar5_land_use

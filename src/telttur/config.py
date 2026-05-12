@@ -1,3 +1,4 @@
+from enum import Enum
 from pathlib import Path
 from typing import Literal
 
@@ -63,10 +64,19 @@ class AccessibilityConfig(BaseModel):
     thresholds: AccessibilityThresholds = Field(default_factory=AccessibilityThresholds)
 
 
+class Ar5DataSource(str, Enum):
+    """Data source to use for AR5 land use polygons."""
+
+    AUTO = "auto"  # try WFS first, fall back to N50 on failure
+    WFS = "wfs"   # always use the NIBIO AR5 WFS (raise on failure)
+    N50 = "n50"   # always use the local N50 arealdekke data
+
+
 class Ar5LandUseConfig(BaseModel):
     """Configuration for AR5 land use proximity scoring dimension."""
 
     enabled: bool = True
+    source: Ar5DataSource = Ar5DataSource.AUTO
     industrial_buffer_m: float = 2000.0
     residential_buffer_m: float = 1000.0
 
