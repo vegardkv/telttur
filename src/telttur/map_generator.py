@@ -123,9 +123,12 @@ def _lake_popup_fields(lakes: gpd.GeoDataFrame) -> tuple[list[str], list[str]]:
         ("tentability_level", "Tentability"),
         ("cabin_density_level", "Cabin density"),
         ("accessibility_level", "Accessibility"),
+        ("ar5_land_use_level", "AR5 land use"),
         ("building_count", "Buildings within buffer"),
         ("building_density", "Building density (per √m²)"),
         ("road_distance_m", "Distance to road (m)"),
+        ("industrial_distance_m", "Distance to industrial zone (m)"),
+        ("residential_distance_m", "Distance to residential zone (m)"),
     ]
     for col, alias in tentability_cols:
         if col in lakes.columns:
