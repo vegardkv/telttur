@@ -18,17 +18,16 @@ Currently, all scoring parameters are set in `config.yaml` and baked into the HT
 
 2. **If feasible with Folium**:
    - Inject a control panel (HTML/CSS/JS) into the map via `MacroElement`
-   - Add sliders for key parameters (e.g., cabin density weight, accessibility weight, distance thresholds)
-   - Store lake scoring data as a JSON object in the HTML
-   - Write JS to recompute composite scores and update marker colors on slider change
-   - Make the list of exposed parameters configurable:
+   - Add sliders for key parameters. Each scoring dimension in `src/telttur/scoring/` has its own enable/disable flag and thresholds — these are natural candidates for controls:
      ```yaml
      map:
        interactive_controls:
-         - cabin_density_weight
-         - accessibility_weight
+         - scoring.cabin_density.enabled
+         - scoring.accessibility.thresholds.poor
          - min_lake_area_m2
      ```
+   - Store lake scoring data as a JSON object in the HTML (per-dimension score columns are already present on each lake feature)
+   - Write JS to recompute composite scores (min of enabled dimensions) and update marker colors on slider/toggle change
 
 3. **If not feasible with Folium**, document alternative approaches for a future task:
    - **Leaflet + vanilla JS**: Generate the map directly with Leaflet instead of Folium, embed scoring data as JSON, add slider controls with full JS interactivity

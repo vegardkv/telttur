@@ -8,7 +8,7 @@ import pandas as pd
 
 from telttur.config import Config
 from telttur.landcover import get_wms_config
-from telttur.scoring import LEVEL_COLORS, LEVEL_NAMES, TentabilityLevel
+from telttur.scoring import LEVEL_COLORS, LEVEL_NAMES, TentabilityLevel, get_scoring_popup_fields
 
 # Kartverket topographic map WMTS
 KARTVERKET_WMTS_URL = (
@@ -118,22 +118,15 @@ def _lake_popup_fields(lakes: gpd.GeoDataFrame) -> tuple[list[str], list[str]]:
         fields.append("area_display")
         aliases.append("Area")
 
-    # Tentability columns (present only when scoring is enabled)
-    tentability_cols = [
-        ("tentability_level", "Tentability"),
-        ("cabin_density_level", "Cabin density"),
-        ("accessibility_level", "Accessibility"),
-        ("ar5_land_use_level", "AR5 land use"),
-        ("building_count", "Buildings within buffer"),
-        ("building_density", "Building density (per √m²)"),
-        ("road_distance_m", "Distance to road (m)"),
-        ("industrial_distance_m", "Distance to industrial zone (m)"),
-        ("residential_distance_m", "Distance to residential zone (m)"),
-    ]
-    for col, alias in tentability_cols:
-        if col in lakes.columns:
-            fields.append(col)
-            aliases.append(alias)
+    # Composite tentability (present when scoring is enabled)
+    if "tentability_level" in lakes.columns:
+        fields.append("tentability_level")
+        aliases.append("Tentability")
+
+    # Per-dimension scoring fields — auto-collected from each dimension module
+    for col, alias in get_scoring_popup_fields(lakes):
+        fields.append(col)
+        aliases.append(alias)
 
     return fields, aliases
 

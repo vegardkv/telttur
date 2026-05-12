@@ -43,17 +43,27 @@ Fishing quality is inherently hard to quantify from geographic data alone. This 
 
 3. **Implement data fetching** — download or query the selected data source(s).
 
-4. **Create `score_fishing()` in `scoring.py`**:
+4. **Create `src/telttur/scoring/fishing.py`** following the dimension module convention:
    - Define scoring logic based on the available data
    - If using geographic proxies: combine altitude, lake size, and connectivity
    - If using registry data: presence of fish species / stocking = higher score
    - Normalize to the existing 5-point tentability scale
+   - Export `SCORE_COLUMN = "fishing_score"` and `POPUP_FIELDS` listing the columns this dimension adds
 
-5. **Integrate with `compute_tentability()`**:
-   - Add as a new dimension (configurable, default enabled)
-   - Update lake popups with fishing score details
+5. **Add `FishingConfig` to `src/telttur/config.py`**:
+   ```python
+   class FishingConfig(BaseModel):
+       enabled: bool = True
+       # Source-specific fields TBD after research
+   ```
+   Add `fishing: FishingConfig = Field(default_factory=FishingConfig)` to `ScoringConfig`.
 
-6. **Add config options**:
+6. **Register the dimension in `src/telttur/scoring/__init__.py`**:
+   - Import the new module: `from telttur.scoring import fishing`
+   - Add `fishing` to `_DIMENSION_MODULES` (for popup auto-collection)
+   - Add an `if config.fishing.enabled:` block in `process_scoring()`
+
+7. **Add config options** (YAML):
    ```yaml
    scoring:
      fishing:

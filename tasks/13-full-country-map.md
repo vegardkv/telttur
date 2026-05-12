@@ -17,6 +17,7 @@ The current pipeline processes one or a few fylker at a time and produces HTML f
    - Run the pipeline for each fylke to extract lake centroids, areas, and basic metadata
    - Store as a lightweight format (CSV or GeoJSON with point geometries only)
    - Strip unnecessary metadata — keep only: name, area, tentability score, coordinates
+   - Tentability score is the composite min across all enabled dimensions (see `src/telttur/scoring/__init__.py`)
 
 2. **Evaluate file-size reduction strategies**:
    - **Marker clustering**: Use `folium.plugins.MarkerCluster` or Leaflet.markercluster to group nearby lakes at low zoom levels

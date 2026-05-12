@@ -28,14 +28,40 @@ Convenience matters — a pristine lake 6 hours away may be less appealing than 
          poor_km: 150        # > 150 km = terrible
    ```
 
-3. **Implement MVP: straight-line distance**:
-   - Create `score_driving_distance()` in `scoring.py`
+3. **Implement MVP: straight-line distance** in `src/telttur/scoring/driving_distance.py`:
+   - Follow the dimension module convention: export `SCORE_COLUMN = "driving_distance_score"` and `POPUP_FIELDS`
    - Compute haversine distance from home to each lake centroid
    - Map distance to the 5-point tentability scale using the configured thresholds
+   - Add `home_lat` / `home_lng` as parameters (passed from top-level `Config.home`)
 
-4. **Integrate with `compute_tentability()`**:
-   - Add as a new dimension in the composite score
-   - Update lake popups with distance info (e.g., "32 km from home")
+4. **Add `DrivingDistanceConfig` to `src/telttur/config.py`**:
+   ```python
+   class DrivingDistanceThresholds(BaseModel):
+       excellent_km: float = 30.0
+       good_km: float = 60.0
+       fair_km: float = 100.0
+       poor_km: float = 150.0
+
+   class DrivingDistanceConfig(BaseModel):
+       enabled: bool = False  # opt-in: requires home location
+       thresholds: DrivingDistanceThresholds = Field(default_factory=DrivingDistanceThresholds)
+   ```
+   Add `driving_distance: DrivingDistanceConfig` to `ScoringConfig`.
+   Add `home` to the top-level `Config`:
+   ```python
+   class HomeLocation(BaseModel):
+       lat: float
+       lng: float
+   ```
+
+5. **Register the dimension in `src/telttur/scoring/__init__.py`**:
+   - Import the module: `from telttur.scoring import driving_distance`
+   - Add `driving_distance` to `_DIMENSION_MODULES`
+   - Add an `if config.driving_distance.enabled:` block in `process_scoring()`, passing `config.home` coordinates
+
+6. **Integrate into composite score**:
+   - New dimension auto-included in `compute_tentability()` once its score column is appended
+   - Lake popups auto-populated via `POPUP_FIELDS` (distance shown as "X km from home")
 
 5. **Verify** on the map that lakes near the configured home location score higher.
 

@@ -48,13 +48,23 @@ class MapConfig(BaseModel):
     include_osm_layer: bool = False
 
 
-class Ar5LandUseConfig(BaseModel):
-    """Configuration for AR5 land use proximity scoring.
+class CabinDensityConfig(BaseModel):
+    """Configuration for cabin density scoring dimension."""
 
-    Lakes within *industrial_buffer_m* of industrial/commercial zones or within
-    *residential_buffer_m* of significant residential areas (tettbebyggelse) are
-    penalised.  Set *enabled* to False to skip this scoring dimension entirely.
-    """
+    enabled: bool = True
+    buffer_m: float = 200.0
+    thresholds: CabinDensityThresholds = Field(default_factory=CabinDensityThresholds)
+
+
+class AccessibilityConfig(BaseModel):
+    """Configuration for accessibility scoring dimension."""
+
+    enabled: bool = True
+    thresholds: AccessibilityThresholds = Field(default_factory=AccessibilityThresholds)
+
+
+class Ar5LandUseConfig(BaseModel):
+    """Configuration for AR5 land use proximity scoring dimension."""
 
     enabled: bool = True
     industrial_buffer_m: float = 2000.0
@@ -65,9 +75,8 @@ class ScoringConfig(BaseModel):
     """Configuration for lake tentability scoring."""
 
     enabled: bool = False
-    building_buffer_m: float = 200.0
-    cabin_density_thresholds: CabinDensityThresholds = CabinDensityThresholds()
-    accessibility_thresholds: AccessibilityThresholds = AccessibilityThresholds()
+    cabin_density: CabinDensityConfig = Field(default_factory=CabinDensityConfig)
+    accessibility: AccessibilityConfig = Field(default_factory=AccessibilityConfig)
     ar5_land_use: Ar5LandUseConfig = Field(default_factory=Ar5LandUseConfig)
 
 
