@@ -215,13 +215,14 @@ def generate_map(
         control=True,
     ).add_to(m)
 
-    # Also add OSM as fallback
-    folium.TileLayer(
-        tiles="OpenStreetMap",
-        name="OpenStreetMap",
-        overlay=False,
-        control=True,
-    ).add_to(m)
+    # Also add OSM as fallback (opt-in via config)
+    if config.map.include_osm_layer:
+        folium.TileLayer(
+            tiles="OpenStreetMap",
+            name="OpenStreetMap",
+            overlay=False,
+            control=True,
+        ).add_to(m)
 
     # Base layer: Kartverket topographic gray (added last = default)
     folium.TileLayer(

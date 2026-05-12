@@ -42,6 +42,12 @@ class AccessibilityThresholds(BaseModel):
     poor: float = 5000.0        # < 5 km   → Poor; ≥ 5 km → Terrible
 
 
+class MapConfig(BaseModel):
+    """Configuration for map rendering options."""
+
+    include_osm_layer: bool = False
+
+
 class ScoringConfig(BaseModel):
     """Configuration for lake tentability scoring."""
 
@@ -61,6 +67,7 @@ class Config(BaseModel):
     output_dir: str = "output"
     output_filename: str = "map.html"
     landcover_mode: str = "wms"
+    map: MapConfig = MapConfig()
     scoring: ScoringConfig = ScoringConfig()
     excluded_road_types: list[str] = Field(
         default_factory=lambda: ["P", "sti", "gangOgSykkelveg", "traktorveg"]
