@@ -1,8 +1,10 @@
 """Generate interactive HTML map using Folium."""
 
 import json
+from typing import Literal
 
 import folium
+import folium.plugins
 import geopandas as gpd
 import pandas as pd
 
@@ -67,10 +69,17 @@ def _style_landcover(feature: dict) -> dict:
 
 
 
-def _add_lake_markers(m: folium.Map, lakes_clean: gpd.GeoDataFrame) -> None:
+def _add_lake_markers(
+    m: folium.Map, lakes_clean: gpd.GeoDataFrame, use_cluster: bool = False
+) -> None:
     """Add lakes as circle markers (one per lake centroid) to the map."""
     fields, aliases = _lake_popup_fields(lakes_clean)
-    layer = folium.FeatureGroup(name="Lakes")
+    if use_cluster:
+        layer: folium.FeatureGroup | folium.plugins.MarkerCluster = folium.plugins.MarkerCluster(
+            name="Lakes"
+        )
+    else:
+        layer = folium.FeatureGroup(name="Lakes")
     default_color = "#67a9cf"
     for _, row in lakes_clean.iterrows():
         geom = row.geometry
@@ -181,7 +190,7 @@ def generate_map(
     roads: gpd.GeoDataFrame,
     lakes: gpd.GeoDataFrame,
     landcover: gpd.GeoDataFrame | None = None,
-    landcover_mode: str = "wms",
+    landcover_mode: Literal["wms", "vector", "disabled"] = "wms",
 ) -> folium.Map:
     """Generate a Folium map with all layers."""
     # Center on bbox
@@ -276,7 +285,7 @@ def generate_map(
             lakes_clean["area_display"] = lakes_clean["area_m2"].apply(_format_area)
 
         if config.lake_display_mode == "marker":
-            _add_lake_markers(m, lakes_clean)
+            _add_lake_markers(m, lakes_clean, use_cluster=config.map.use_marker_cluster)
         else:
             lake_geojson = json.loads(lakes_clean.to_json())
             lake_layer = folium.GeoJson(

@@ -90,6 +90,7 @@ class MapConfig(BaseModel):
     """Configuration for map rendering options."""
 
     include_osm_layer: bool = False
+    use_marker_cluster: bool = False
     interactive_controls: InteractiveControlsConfig = Field(
         default_factory=InteractiveControlsConfig
     )
@@ -153,7 +154,7 @@ class Config(BaseModel):
     data_dir: str = "data"
     output_dir: str = "output"
     output_filename: str = "map.html"
-    landcover_mode: str = "wms"
+    landcover_mode: Literal["wms", "vector", "disabled"] = "wms"
     map: MapConfig = MapConfig()
     scoring: ScoringConfig = ScoringConfig()
     excluded_road_types: list[str] = Field(
@@ -214,6 +215,8 @@ _FYLKE_BBOX: dict[str, BBox] = {
     "trøndelag":        BBox(north=65.4702, south=62.2557, east=14.3260, west=7.6481),
     "troms":            BBox(north=70.7036, south=68.3560, east=22.8945, west=15.5925),
     "finnmark":         BBox(north=71.3849, south=68.5546, east=31.7616, west=20.4797),
+    # Whole country
+    "norway":           BBox(north=71.5, south=57.7, east=31.8, west=4.0),
 }
 
 

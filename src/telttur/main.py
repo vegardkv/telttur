@@ -91,13 +91,21 @@ def generate(config_path: str, skip_download: bool) -> None:
             )
     print(f"  [download/locate: {time.time() - t0:.1f}s]")
 
-    # Step 2: Process roads
+    # Step 2: Process roads (skip when not rendered and not needed for scoring)
     t0 = time.time()
-    road_lines = process_roads(
-        gdb_paths,
-        config.bbox,
+    needs_roads = config.show_roads or (
+        config.scoring.enabled and config.scoring.accessibility.enabled
     )
-    print(f"  [roads: {time.time() - t0:.1f}s]")
+    if needs_roads:
+        road_lines = process_roads(
+            gdb_paths,
+            config.bbox,
+        )
+        print(f"  [roads: {time.time() - t0:.1f}s]")
+    else:
+        import geopandas as gpd
+        road_lines = gpd.GeoDataFrame()
+        print("  [roads: skipped (not displayed and accessibility scoring disabled)]")
 
     # Step 3: Process lakes
     t0 = time.time()
