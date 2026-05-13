@@ -8,6 +8,7 @@ import pandas as pd
 
 from telttur.config import Config
 from telttur.landcover import get_wms_config
+from telttur.maputils.interactivity import add_interactive_controls
 from telttur.scoring import LEVEL_COLORS, LEVEL_NAMES, TentabilityLevel, get_scoring_popup_fields
 
 # Kartverket topographic map WMTS
@@ -307,6 +308,7 @@ def generate_map(
                 road_cats.append({"color": row["color"], "label": row.get("label", "Road")})
     has_tentability = not lakes.empty and "tentability_score" in lakes.columns
     _add_legend(m, road_cats, not lakes.empty, has_tentability=has_tentability)
+    add_interactive_controls(m, config, lakes)
 
     return m
 

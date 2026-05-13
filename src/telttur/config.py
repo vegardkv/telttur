@@ -43,10 +43,55 @@ class AccessibilityThresholds(BaseModel):
     poor: float = 5000.0        # < 5 km   → Poor; ≥ 5 km → Terrible
 
 
+class InteractiveDimensionToggles(BaseModel):
+    """Which scoring dimension checkboxes to expose in the interactive panel."""
+
+    cabin_density: bool = True
+    accessibility: bool = True
+    ar5_land_use: bool = True
+
+
+class InteractiveAccessibilityThresholds(BaseModel):
+    """Which accessibility distance threshold sliders to expose."""
+
+    excellent: bool = False
+    good: bool = False
+    fair: bool = False
+    poor: bool = False
+
+
+class InteractiveCabinDensityThresholds(BaseModel):
+    """Which cabin density threshold sliders to expose."""
+
+    excellent: bool = False
+    good: bool = False
+    fair: bool = False
+    poor: bool = False
+
+
+class InteractiveControlsConfig(BaseModel):
+    """Configuration for the interactive scoring controls panel embedded in the map."""
+
+    enabled: bool = True
+    dimension_toggles: InteractiveDimensionToggles = Field(
+        default_factory=InteractiveDimensionToggles
+    )
+    min_lake_area: bool = True
+    accessibility_thresholds: InteractiveAccessibilityThresholds = Field(
+        default_factory=InteractiveAccessibilityThresholds
+    )
+    cabin_density_thresholds: InteractiveCabinDensityThresholds = Field(
+        default_factory=InteractiveCabinDensityThresholds
+    )
+
+
 class MapConfig(BaseModel):
     """Configuration for map rendering options."""
 
     include_osm_layer: bool = False
+    interactive_controls: InteractiveControlsConfig = Field(
+        default_factory=InteractiveControlsConfig
+    )
 
 
 class CabinDensityConfig(BaseModel):
