@@ -8,16 +8,6 @@ bbox:
 
 min_lake_area_m2: 1000  # exclude lakes smaller than 0.1 ha
 
-# Map rendering options
-map:
-  interactive_controls:
-    enabled: true
-    dimension_toggles:
-      cabin_density: true
-      accessibility: true
-      ar5_land_use: true
-    min_lake_area: true
-
 # Tentability scoring: composite lake suitability score
 scoring:
   enabled: true

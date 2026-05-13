@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 
 import geopandas as gpd
 
-from telttur.scoring import accessibility, ar5_land_use, cabin_density
+from telttur.scoring import accessibility, ar5_land_use, cabin_density, fishing
 from telttur.scoring.common import (
     LEVEL_COLORS,
     LEVEL_NAMES,
@@ -43,7 +43,7 @@ __all__ = [
 ]
 
 # All dimension modules in display order (used for popup field collection)
-_DIMENSION_MODULES = [cabin_density, accessibility, ar5_land_use]
+_DIMENSION_MODULES = [cabin_density, accessibility, ar5_land_use, fishing]
 
 
 def get_scoring_popup_fields(lakes: gpd.GeoDataFrame) -> list[PopupField]:
@@ -120,6 +120,21 @@ def process_scoring(
         dimension_score_columns.append(ar5_land_use.SCORE_COLUMN)
     else:
         print("AR5 land use scoring disabled — skipping")
+
+    # --- Fishing suitability ---
+    if config.fishing.enabled:
+        print("Downloading NINA freshwater fish observations...")
+        try:
+            fish_obs = fishing.fetch_nina_fish_observations()
+            print(f"  Loaded {len(fish_obs)} fish occurrence records")
+            print(f"Scoring fishing suitability ({config.fishing.buffer_m} m buffer)...")
+            lakes = fishing.score_fishing(lakes, fish_obs, config.fishing)
+            _print_distribution("Fishing", lakes, fishing.SCORE_COLUMN)
+            dimension_score_columns.append(fishing.SCORE_COLUMN)
+        except RuntimeError as exc:
+            print(f"  WARNING: Fishing scoring skipped — {exc}")
+    else:
+        print("Fishing scoring disabled — skipping")
 
     # --- Composite ---
     print("Computing composite tentability score (worst dimension wins)...")

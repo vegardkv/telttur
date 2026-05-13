@@ -49,6 +49,7 @@ class InteractiveDimensionToggles(BaseModel):
     cabin_density: bool = True
     accessibility: bool = True
     ar5_land_use: bool = True
+    fishing: bool = True
 
 
 class InteractiveAccessibilityThresholds(BaseModel):
@@ -126,6 +127,13 @@ class Ar5LandUseConfig(BaseModel):
     residential_buffer_m: float = 1000.0
 
 
+class FishingConfig(BaseModel):
+    """Configuration for fishing suitability scoring dimension."""
+
+    enabled: bool = True
+    buffer_m: float = 500.0
+
+
 class ScoringConfig(BaseModel):
     """Configuration for lake tentability scoring."""
 
@@ -133,6 +141,7 @@ class ScoringConfig(BaseModel):
     cabin_density: CabinDensityConfig = Field(default_factory=CabinDensityConfig)
     accessibility: AccessibilityConfig = Field(default_factory=AccessibilityConfig)
     ar5_land_use: Ar5LandUseConfig = Field(default_factory=Ar5LandUseConfig)
+    fishing: FishingConfig = Field(default_factory=FishingConfig)
 
 
 class Config(BaseModel):

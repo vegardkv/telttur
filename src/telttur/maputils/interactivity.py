@@ -176,6 +176,7 @@ def _build_lake_data_block(
             "cabin_density_score": _int("cabin_density_score"),
             "accessibility_score": _int("accessibility_score"),
             "ar5_land_use_score": _int("ar5_land_use_score"),
+            "fishing_score": _int("fishing_score"),
             "road_distance_m": _float("road_distance_m"),
             "building_density": _float("building_density"),
         }
@@ -235,9 +236,10 @@ def _build_panel_html(
 
     # Dimension toggle checkboxes \u2014 each entry reads directly from the models.
     _dim_defs = [
-        (dt.cabin_density,  scoring.cabin_density.enabled,  "telttur-cabin",  "Cabin density"),
-        (dt.accessibility,  scoring.accessibility.enabled,  "telttur-access", "Accessibility"),
-        (dt.ar5_land_use,   scoring.ar5_land_use.enabled,   "telttur-ar5",    "Land use (AR5)"),
+        (dt.cabin_density,  scoring.cabin_density.enabled,  "telttur-cabin",    "Cabin density"),
+        (dt.accessibility,  scoring.accessibility.enabled,  "telttur-access",   "Accessibility"),
+        (dt.ar5_land_use,   scoring.ar5_land_use.enabled,   "telttur-ar5",      "Land use (AR5)"),
+        (dt.fishing,        scoring.fishing.enabled,        "telttur-fishing",  "Fishing"),
     ]
     visible_dims = [(init, el_id, label) for show, init, el_id, label in _dim_defs if show]
     if visible_dims:
@@ -292,6 +294,7 @@ def _build_js(
     cabin_init = str(scoring.cabin_density.enabled).lower()
     access_init = str(scoring.accessibility.enabled).lower()
     ar5_init = str(scoring.ar5_land_use.enabled).lower()
+    fishing_init = str(scoring.fishing.enabled).lower()
 
     js_cabin_score = (
         "scoreCabin(props.building_density != null ? props.building_density : 0)"
@@ -312,6 +315,10 @@ def _build_js(
     js_ar5_enabled = (
         f"el('telttur-ar5') ? el('telttur-ar5').checked : {ar5_init}"
         if dt.ar5_land_use else ar5_init
+    )
+    js_fishing_enabled = (
+        f"el('telttur-fishing') ? el('telttur-fishing').checked : {fishing_init}"
+        if dt.fishing else fishing_init
     )
     js_min_area = (
         f"el('telttur-min-area') ? parseFloat(el('telttur-min-area').value) : {min_area_init}"
@@ -368,10 +375,11 @@ def _build_js(
     var lakesLayer = findLakesLayer();
     if (!lakesLayer) return;
 
-    var minArea  = {js_min_area};
-    var cabinOn  = {js_cabin_enabled};
-    var accessOn = {js_access_enabled};
-    var ar5On    = {js_ar5_enabled};
+    var minArea    = {js_min_area};
+    var cabinOn   = {js_cabin_enabled};
+    var accessOn  = {js_access_enabled};
+    var ar5On     = {js_ar5_enabled};
+    var fishingOn = {js_fishing_enabled};
 
     lakesLayer.eachLayer(function(layer) {{
       var props = (layer.feature && layer.feature.properties) || null;
@@ -401,6 +409,10 @@ def _build_js(
       if (ar5On) {{
         var rs = props.ar5_land_use_score;
         if (rs != null) scores.push(parseInt(rs));
+      }}
+      if (fishingOn) {{
+        var fs = props.fishing_score;
+        if (fs != null) scores.push(parseInt(fs));
       }}
 
       var score = scores.length > 0 ? Math.min.apply(null, scores) : 0;
