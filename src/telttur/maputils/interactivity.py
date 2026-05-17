@@ -15,6 +15,7 @@ from telttur.config import (
     InteractiveDimensionToggles,
     ScoringConfig,
 )
+from telttur.lakes import LakeCols
 
 
 @dataclass
@@ -63,7 +64,7 @@ def add_interactive_controls(
         return
     if not config.scoring.enabled:
         return
-    if lakes.empty or "tentability_score" not in lakes.columns:
+    if lakes.empty or LakeCols.TENTABILITY_SCORE not in lakes.columns:
         return
 
     scoring = config.scoring
@@ -87,9 +88,9 @@ def add_interactive_controls(
         is_int=False,
     )
     # Only render threshold sliders when raw data columns are present.
-    if "road_distance_m" not in lakes.columns:
+    if LakeCols.ROAD_DISTANCE_M not in lakes.columns:
         access_sliders = []
-    if "building_density" not in lakes.columns:
+    if LakeCols.BUILDING_DENSITY not in lakes.columns:
         cabin_sliders = []
 
     lake_data_block = _build_lake_data_block(
@@ -186,13 +187,13 @@ def _build_lake_data_block(
                 return default
 
         lake_lookup[key] = {
-            "area_m2": _float("area_m2"),
-            "cabin_density_score": _int("cabin_density_score"),
-            "accessibility_score": _int("accessibility_score"),
-            "ar5_land_use_score": _int("ar5_land_use_score"),
-            "fishing_score": _int("fishing_score"),
-            "road_distance_m": _float("road_distance_m"),
-            "building_density": _float("building_density"),
+            LakeCols.AREA_M2: _float(LakeCols.AREA_M2),
+            LakeCols.CABIN_DENSITY_SCORE: _int(LakeCols.CABIN_DENSITY_SCORE),
+            LakeCols.ACCESSIBILITY_SCORE: _int(LakeCols.ACCESSIBILITY_SCORE),
+            LakeCols.AR5_LAND_USE_SCORE: _int(LakeCols.AR5_LAND_USE_SCORE),
+            LakeCols.FISHING_SCORE: _int(LakeCols.FISHING_SCORE),
+            LakeCols.ROAD_DISTANCE_M: _float(LakeCols.ROAD_DISTANCE_M),
+            LakeCols.BUILDING_DENSITY: _float(LakeCols.BUILDING_DENSITY),
         }
 
     return f"var TELTTUR_LAKE_DATA = {json.dumps(lake_lookup)};\n"

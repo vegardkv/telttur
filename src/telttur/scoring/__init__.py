@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 
 import geopandas as gpd
 
+from telttur.lakes import LakeCols
 from telttur.scoring import accessibility, ar5_land_use, cabin_density, fishing
 from telttur.scoring.common import (
     LEVEL_COLORS,
@@ -85,9 +86,9 @@ def process_scoring(
         if buildings.empty:
             print("  No buildings found — skipping cabin density dimension")
             lakes = lakes.copy()
-            lakes["building_count"] = 0
+            lakes[LakeCols.BUILDING_COUNT] = 0
             lakes[cabin_density.SCORE_COLUMN] = int(TentabilityLevel.EXCELLENT)
-            lakes["cabin_density_level"] = LEVEL_NAMES[TentabilityLevel.EXCELLENT]
+            lakes[LakeCols.CABIN_DENSITY_LEVEL] = LEVEL_NAMES[TentabilityLevel.EXCELLENT]
         else:
             print(f"Scoring cabin density ({config.cabin_density.buffer_m} m buffer)...")
             lakes = cabin_density.score_cabin_density(lakes, buildings, config.cabin_density)
@@ -139,6 +140,6 @@ def process_scoring(
     # --- Composite ---
     print("Computing composite tentability score (worst dimension wins)...")
     lakes = compute_tentability(lakes, dimension_score_columns)
-    _print_distribution("Tentability", lakes, "tentability_score")
+    _print_distribution("Tentability", lakes, LakeCols.TENTABILITY_SCORE)
 
     return lakes

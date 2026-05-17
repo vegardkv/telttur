@@ -44,6 +44,7 @@ import requests
 from shapely.geometry import Point
 
 from telttur.config import FishingConfig
+from telttur.lakes import LakeCols
 from telttur.scoring.common import (
     CRS_UTM33,
     CRS_WGS84,
@@ -52,12 +53,12 @@ from telttur.scoring.common import (
     TentabilityLevel,
 )
 
-SCORE_COLUMN = "fishing_score"
+SCORE_COLUMN = LakeCols.FISHING_SCORE
 
 POPUP_FIELDS: list[PopupField] = [
-    ("fishing_level", "Fishing suitability"),
-    ("fish_species_count", "Fish species observed (nearby)"),
-    ("fish_prized_count", "Prized game fish species"),
+    (LakeCols.FISHING_LEVEL, "Fishing suitability"),
+    (LakeCols.FISH_SPECIES_COUNT, "Fish species observed (nearby)"),
+    (LakeCols.FISH_PRIZED_COUNT, "Prized game fish species"),
 ]
 
 _NINA_URL = "https://ipt.nina.no/archive.do?r=vanninfofisk"
@@ -181,29 +182,29 @@ def score_fishing(
         species_per_lake = (
             fish_in_buffer.groupby("lake_idx")["scientific_name"]
             .nunique()
-            .rename("fish_species_count")
+            .rename(LakeCols.FISH_SPECIES_COUNT)
         )
         prized_per_lake = (
             fish_in_buffer[fish_in_buffer["is_prized"]]
             .groupby("lake_idx")["scientific_name"]
             .nunique()
-            .rename("fish_prized_count")
+            .rename(LakeCols.FISH_PRIZED_COUNT)
         )
         agg = pd.concat([species_per_lake, prized_per_lake], axis=1).fillna(0).astype(int)
     else:
         agg = pd.DataFrame(
-            columns=["fish_species_count", "fish_prized_count"],
+            columns=[LakeCols.FISH_SPECIES_COUNT, LakeCols.FISH_PRIZED_COUNT],
             dtype=int,
         )
 
-    lakes["fish_species_count"] = (
-        agg["fish_species_count"].reindex(lakes.index).fillna(0).astype(int)
+    lakes[LakeCols.FISH_SPECIES_COUNT] = (
+        agg[LakeCols.FISH_SPECIES_COUNT].reindex(lakes.index).fillna(0).astype(int)
     )
-    lakes["fish_prized_count"] = agg["fish_prized_count"].reindex(lakes.index).fillna(0).astype(int)
+    lakes[LakeCols.FISH_PRIZED_COUNT] = agg[LakeCols.FISH_PRIZED_COUNT].reindex(lakes.index).fillna(0).astype(int)
     lakes[SCORE_COLUMN] = [
         _compute_score(s, p)
-        for s, p in zip(lakes["fish_species_count"], lakes["fish_prized_count"])
+        for s, p in zip(lakes[LakeCols.FISH_SPECIES_COUNT], lakes[LakeCols.FISH_PRIZED_COUNT])
     ]
-    lakes["fishing_level"] = lakes[SCORE_COLUMN].map(LEVEL_NAMES)
+    lakes[LakeCols.FISHING_LEVEL] = lakes[SCORE_COLUMN].map(LEVEL_NAMES)
 
     return lakes

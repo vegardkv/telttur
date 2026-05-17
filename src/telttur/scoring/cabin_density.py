@@ -13,6 +13,7 @@ import geopandas as gpd
 from shapely.geometry import box
 
 from telttur.config import BBox, CabinDensityConfig
+from telttur.lakes import LakeCols
 from telttur.scoring.common import (
     CRS_UTM33,
     LEVEL_NAMES,
@@ -21,12 +22,12 @@ from telttur.scoring.common import (
     _bbox_to_utm33,
 )
 
-SCORE_COLUMN = "cabin_density_score"
+SCORE_COLUMN = LakeCols.CABIN_DENSITY_SCORE
 
 POPUP_FIELDS: list[PopupField] = [
-    ("cabin_density_level", "Cabin density"),
-    ("building_count", "Buildings within buffer"),
-    ("building_density", "Building density (per √m²)"),
+    (LakeCols.CABIN_DENSITY_LEVEL, "Cabin density"),
+    (LakeCols.BUILDING_COUNT, "Buildings within buffer"),
+    (LakeCols.BUILDING_DENSITY, "Building density (per √m²)"),
 ]
 
 # Norwegian building type codes (bygningstype) that indicate habitation:
@@ -113,17 +114,17 @@ def score_cabin_density(
 
     joined = gpd.sjoin(lake_buffers, buildings_utm[["geometry"]], how="left", predicate="contains")
     building_count = joined.groupby(joined.index)["index_right"].count()
-    lakes["building_count"] = lakes.index.map(building_count).fillna(0).astype(int)
+    lakes[LakeCols.BUILDING_COUNT] = lakes.index.map(building_count).fillna(0).astype(int)
 
     # Normalise by sqrt(area_m2) — use area_m2 when available, fall back to
     # computing area in UTM to avoid zero-division.
-    if "area_m2" in lakes.columns:
-        area_m2 = lakes["area_m2"]
+    if LakeCols.AREA_M2 in lakes.columns:
+        area_m2 = lakes[LakeCols.AREA_M2]
     else:
         area_m2 = lakes.to_crs(CRS_UTM33).geometry.area
 
     sqrt_area = area_m2.apply(lambda a: math.sqrt(max(a, 1.0)))
-    lakes["building_density"] = (lakes["building_count"] / sqrt_area).round(4)
+    lakes[LakeCols.BUILDING_DENSITY] = (lakes[LakeCols.BUILDING_COUNT] / sqrt_area).round(4)
 
     thresholds = config.thresholds
 
@@ -138,6 +139,6 @@ def score_cabin_density(
             return int(TentabilityLevel.POOR)
         return int(TentabilityLevel.TERRIBLE)
 
-    lakes[SCORE_COLUMN] = lakes["building_density"].apply(_score)
-    lakes["cabin_density_level"] = lakes[SCORE_COLUMN].map(LEVEL_NAMES)
+    lakes[SCORE_COLUMN] = lakes[LakeCols.BUILDING_DENSITY].apply(_score)
+    lakes[LakeCols.CABIN_DENSITY_LEVEL] = lakes[SCORE_COLUMN].map(LEVEL_NAMES)
     return lakes

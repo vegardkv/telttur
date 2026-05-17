@@ -9,6 +9,7 @@ import geopandas as gpd
 import pandas as pd
 
 from telttur.config import Config
+from telttur.lakes import LakeCols
 from telttur.landcover import get_wms_config
 from telttur.maputils.interactivity import add_interactive_controls
 from telttur.scoring import LEVEL_COLORS, LEVEL_NAMES, TentabilityLevel, get_scoring_popup_fields
@@ -49,7 +50,7 @@ def _style_road_line(feature: dict) -> dict:
 def _style_lake(feature: dict) -> dict:
     props = feature.get("properties", {})
     # Use tentability colour when available, otherwise neutral blue
-    fill_color = props.get("tentability_color", "#67a9cf")
+    fill_color = props.get(LakeCols.TENTABILITY_COLOR, "#67a9cf")
     return {
         "fillColor": fill_color,
         "color": "#333333",
@@ -85,7 +86,7 @@ def _add_lake_markers(
         if geom is None or geom.is_empty:
             continue
         centroid = geom.centroid
-        color = row.get("tentability_color", default_color) or default_color
+        color = row.get(LakeCols.TENTABILITY_COLOR, default_color) or default_color
         popup: folium.Popup | None = None
         if fields:
             html = "<table style='font-size:12px;border-collapse:collapse'>"
@@ -123,13 +124,13 @@ def _lake_popup_fields(lakes: gpd.GeoDataFrame) -> tuple[list[str], list[str]]:
             break
 
     # Lake area
-    if "area_display" in lakes.columns:
-        fields.append("area_display")
+    if LakeCols.AREA_DISPLAY in lakes.columns:
+        fields.append(LakeCols.AREA_DISPLAY)
         aliases.append("Area")
 
     # Composite tentability (present when scoring is enabled)
-    if "tentability_level" in lakes.columns:
-        fields.append("tentability_level")
+    if LakeCols.TENTABILITY_LEVEL in lakes.columns:
+        fields.append(LakeCols.TENTABILITY_LEVEL)
         aliases.append("Tentability")
 
     # Per-dimension scoring fields — auto-collected from each dimension module
@@ -273,7 +274,7 @@ def generate_map(
     # Lakes layer
     if not lakes.empty:
         lakes_clean = _prepare_for_json(lakes)
-        if "area_m2" in lakes_clean.columns:
+        if LakeCols.AREA_M2 in lakes_clean.columns:
 
             def _format_area(m2: float) -> str:
                 if m2 >= 1_000_000:
@@ -283,7 +284,7 @@ def generate_map(
                 else:
                     return f"{m2:.0f} m²"
 
-            lakes_clean["area_display"] = lakes_clean["area_m2"].apply(_format_area)
+            lakes_clean[LakeCols.AREA_DISPLAY] = lakes_clean[LakeCols.AREA_M2].apply(_format_area)
 
         if config.lake_display_mode == "marker":
             _add_lake_markers(m, lakes_clean, use_cluster=config.map.use_marker_cluster)
@@ -316,7 +317,7 @@ def generate_map(
             if cat not in seen:
                 seen.add(cat)
                 road_cats.append({"color": row["color"], "label": row.get("label", "Road")})
-    has_tentability = not lakes.empty and "tentability_score" in lakes.columns
+    has_tentability = not lakes.empty and LakeCols.TENTABILITY_SCORE in lakes.columns
     _add_legend(m, road_cats, not lakes.empty, has_tentability=has_tentability)
     add_interactive_controls(m, config, lakes)
 

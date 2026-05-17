@@ -7,7 +7,7 @@ import click
 
 from telttur.config import BBox, load_config
 from telttur.download import download_n50
-from telttur.lakes import process_lakes
+from telttur.lakes import LakeCols, process_lakes
 from telttur.landcover import process_landcover
 from telttur.map_generator import generate_map, save_map
 from telttur.roads import process_roads
@@ -135,14 +135,14 @@ def generate(config_path: str, skip_download: bool) -> None:
     if (
         config.min_lake_tenting_quality is not None
         and not lakes.empty
-        and "tentability_level" in lakes.columns
+        and LakeCols.TENTABILITY_LEVEL in lakes.columns
     ):
         before = len(lakes)
         from telttur.scoring import LEVEL_NAMES
 
         _level_by_name = {v: k for k, v in LEVEL_NAMES.items()}
         min_score = _level_by_name[config.min_lake_tenting_quality]
-        lakes = lakes[lakes["tentability_score"] >= min_score].reset_index(drop=True)
+        lakes = lakes[lakes[LakeCols.TENTABILITY_SCORE] >= min_score].reset_index(drop=True)
         print(
             f"  [lake filter: kept {len(lakes)}/{before} lakes"
             f" with tenting level >= {config.min_lake_tenting_quality}]"

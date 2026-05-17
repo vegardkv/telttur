@@ -8,6 +8,7 @@ import geopandas as gpd
 from shapely.geometry import box
 
 from telttur.config import BBox
+from telttur.lakes import LakeCols
 
 CRS_UTM33 = "EPSG:25833"
 CRS_WGS84 = "EPSG:4326"
@@ -64,11 +65,11 @@ def compute_tentability(
     """
     lakes = lakes.copy()
     present = [c for c in dimension_columns if c in lakes.columns]
-    lakes["tentability_score"] = (
+    lakes[LakeCols.TENTABILITY_SCORE] = (
         lakes[present].min(axis=1).astype(int) if present else int(TentabilityLevel.FAIR)
     )
-    lakes["tentability_level"] = lakes["tentability_score"].map(LEVEL_NAMES)
-    lakes["tentability_color"] = lakes["tentability_score"].map(LEVEL_COLORS)
+    lakes[LakeCols.TENTABILITY_LEVEL] = lakes[LakeCols.TENTABILITY_SCORE].map(LEVEL_NAMES)
+    lakes[LakeCols.TENTABILITY_COLOR] = lakes[LakeCols.TENTABILITY_SCORE].map(LEVEL_COLORS)
     return lakes
 
 

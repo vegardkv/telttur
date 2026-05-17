@@ -8,6 +8,7 @@ from __future__ import annotations
 import geopandas as gpd
 
 from telttur.config import AccessibilityConfig
+from telttur.lakes import LakeCols
 from telttur.scoring.common import (
     CRS_UTM33,
     LEVEL_NAMES,
@@ -15,11 +16,11 @@ from telttur.scoring.common import (
     TentabilityLevel,
 )
 
-SCORE_COLUMN = "accessibility_score"
+SCORE_COLUMN = LakeCols.ACCESSIBILITY_SCORE
 
 POPUP_FIELDS: list[PopupField] = [
-    ("accessibility_level", "Accessibility"),
-    ("road_distance_m", "Distance to road (m)"),
+    (LakeCols.ACCESSIBILITY_LEVEL, "Accessibility"),
+    (LakeCols.ROAD_DISTANCE_M, "Distance to road (m)"),
 ]
 
 # Non-motorised road categories — excluded from accessibility scoring because
@@ -54,9 +55,9 @@ def score_accessibility(
     )
 
     if drivable.empty:
-        lakes["road_distance_m"] = float("inf")
+        lakes[LakeCols.ROAD_DISTANCE_M] = float("inf")
         lakes[SCORE_COLUMN] = int(TentabilityLevel.TERRIBLE)
-        lakes["accessibility_level"] = LEVEL_NAMES[TentabilityLevel.TERRIBLE]
+        lakes[LakeCols.ACCESSIBILITY_LEVEL] = LEVEL_NAMES[TentabilityLevel.TERRIBLE]
         return lakes
 
     lakes_utm = lakes.to_crs(CRS_UTM33)
@@ -68,10 +69,10 @@ def score_accessibility(
         lakes_utm[["geometry"]],
         roads_utm,
         how="left",
-        distance_col="road_distance_m",
+        distance_col=LakeCols.ROAD_DISTANCE_M,
     )
-    distances = joined.groupby(joined.index)["road_distance_m"].min()
-    lakes["road_distance_m"] = lakes.index.map(distances).fillna(float("inf")).round(1)
+    distances = joined.groupby(joined.index)[LakeCols.ROAD_DISTANCE_M].min()
+    lakes[LakeCols.ROAD_DISTANCE_M] = lakes.index.map(distances).fillna(float("inf")).round(1)
 
     thresholds = config.thresholds
 
@@ -86,6 +87,6 @@ def score_accessibility(
             return int(TentabilityLevel.POOR)
         return int(TentabilityLevel.TERRIBLE)
 
-    lakes[SCORE_COLUMN] = lakes["road_distance_m"].apply(_score)
-    lakes["accessibility_level"] = lakes[SCORE_COLUMN].map(LEVEL_NAMES)
+    lakes[SCORE_COLUMN] = lakes[LakeCols.ROAD_DISTANCE_M].apply(_score)
+    lakes[LakeCols.ACCESSIBILITY_LEVEL] = lakes[SCORE_COLUMN].map(LEVEL_NAMES)
     return lakes

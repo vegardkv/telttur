@@ -15,6 +15,7 @@ import requests
 from shapely.geometry import box
 
 from telttur.config import Ar5DataSource, Ar5LandUseConfig, BBox
+from telttur.lakes import LakeCols
 from telttur.scoring.common import (
     CRS_UTM33,
     LEVEL_NAMES,
@@ -23,12 +24,12 @@ from telttur.scoring.common import (
     _bbox_to_utm33,
 )
 
-SCORE_COLUMN = "ar5_land_use_score"
+SCORE_COLUMN = LakeCols.AR5_LAND_USE_SCORE
 
 POPUP_FIELDS: list[PopupField] = [
-    ("ar5_land_use_level", "AR5 land use"),
-    ("industrial_distance_m", "Distance to industrial zone (m)"),
-    ("residential_distance_m", "Distance to residential zone (m)"),
+    (LakeCols.AR5_LAND_USE_LEVEL, "AR5 land use"),
+    (LakeCols.INDUSTRIAL_DISTANCE_M, "Distance to industrial zone (m)"),
+    (LakeCols.RESIDENTIAL_DISTANCE_M, "Distance to residential zone (m)"),
 ]
 
 # NIBIO AR5 WFS endpoint — same server as the WMS, supports SERVICE=WFS
@@ -251,8 +252,8 @@ def score_ar5_land_use(
     ind_dist = _distances_to(industrial_polygons)
     res_dist = _distances_to(residential_polygons)
 
-    lakes["industrial_distance_m"] = lakes.index.map(ind_dist).fillna(float("inf")).round(1)
-    lakes["residential_distance_m"] = lakes.index.map(res_dist).fillna(float("inf")).round(1)
+    lakes[LakeCols.INDUSTRIAL_DISTANCE_M] = lakes.index.map(ind_dist).fillna(float("inf")).round(1)
+    lakes[LakeCols.RESIDENTIAL_DISTANCE_M] = lakes.index.map(res_dist).fillna(float("inf")).round(1)
 
     def _score_proximity(dist_m: float, buffer_m: float) -> int:
         if dist_m >= buffer_m:
@@ -265,12 +266,12 @@ def score_ar5_land_use(
             return int(TentabilityLevel.POOR)
         return int(TentabilityLevel.TERRIBLE)
 
-    ind_scores = lakes["industrial_distance_m"].apply(
+    ind_scores = lakes[LakeCols.INDUSTRIAL_DISTANCE_M].apply(
         lambda d: _score_proximity(d, config.industrial_buffer_m)
     )
-    res_scores = lakes["residential_distance_m"].apply(
+    res_scores = lakes[LakeCols.RESIDENTIAL_DISTANCE_M].apply(
         lambda d: _score_proximity(d, config.residential_buffer_m)
     )
     lakes[SCORE_COLUMN] = gpd.pd.concat([ind_scores, res_scores], axis=1).min(axis=1).astype(int)
-    lakes["ar5_land_use_level"] = lakes[SCORE_COLUMN].map(LEVEL_NAMES)
+    lakes[LakeCols.AR5_LAND_USE_LEVEL] = lakes[SCORE_COLUMN].map(LEVEL_NAMES)
     return lakes
