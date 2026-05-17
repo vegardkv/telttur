@@ -3,6 +3,7 @@ name = "telttur"
 version = "0.1.0"
 description = "Generate interactive camping suitability maps for Norway"
 readme = "README.md"
+license = "MIT"
 authors = [
     { name = "vegardkv", email = "vkvernelv@gmail.com" }
 ]
