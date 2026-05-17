@@ -37,7 +37,6 @@ from __future__ import annotations
 
 import io
 import zipfile
-from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
@@ -67,14 +66,14 @@ _NINA_URL = "https://ipt.nina.no/archive.do?r=vanninfofisk"
 # of species most valued by Norwegian recreational anglers.
 _PRIZED_GENERA: frozenset[str] = frozenset(
     {
-        "Salmo",         # trout, salmon
-        "Salvelinus",    # char (røye)
-        "Thymallus",     # grayling (harr)
-        "Esox",          # pike (gjedde)
-        "Perca",         # perch (abbor)
-        "Sander",        # pikeperch / zander (gjeddeabbor)
-        "Coregonus",     # whitefish (sik, lagesild)
-        "Hucho",         # huchen (not common, but prized)
+        "Salmo",  # trout, salmon
+        "Salvelinus",  # char (røye)
+        "Thymallus",  # grayling (harr)
+        "Esox",  # pike (gjedde)
+        "Perca",  # perch (abbor)
+        "Sander",  # pikeperch / zander (gjeddeabbor)
+        "Coregonus",  # whitefish (sik, lagesild)
+        "Hucho",  # huchen (not common, but prized)
     }
 )
 
@@ -103,7 +102,12 @@ def fetch_nina_fish_observations(timeout_s: float = 60.0) -> gpd.GeoDataFrame:
     try:
         with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
             with zf.open("occurrence.txt") as f:
-                df = pd.read_csv(f, sep="\t", usecols=["scientificName", "decimalLatitude", "decimalLongitude"], dtype=str)
+                df = pd.read_csv(
+                    f,
+                    sep="\t",
+                    usecols=["scientificName", "decimalLatitude", "decimalLongitude"],
+                    dtype=str,
+                )
     except Exception as exc:
         raise RuntimeError(f"Failed to parse NINA fish archive: {exc}") from exc
 
@@ -192,7 +196,9 @@ def score_fishing(
             dtype=int,
         )
 
-    lakes["fish_species_count"] = agg["fish_species_count"].reindex(lakes.index).fillna(0).astype(int)
+    lakes["fish_species_count"] = (
+        agg["fish_species_count"].reindex(lakes.index).fillna(0).astype(int)
+    )
     lakes["fish_prized_count"] = agg["fish_prized_count"].reindex(lakes.index).fillna(0).astype(int)
     lakes[SCORE_COLUMN] = [
         _compute_score(s, p)

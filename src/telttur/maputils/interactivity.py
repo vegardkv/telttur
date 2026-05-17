@@ -21,27 +21,27 @@ from telttur.config import (
 class _ThresholdSlider:
     """One threshold slider to render in the control panel."""
 
-    level: str          # e.g. "excellent"
-    value: float        # current threshold value from config
-    lo: float           # slider min
-    hi: float           # slider max
-    step: float         # slider step
-    prefix: str         # HTML id prefix ("at" or "ct")
-    is_int: bool        # whether to display as integer
+    level: str  # e.g. "excellent"
+    value: float  # current threshold value from config
+    lo: float  # slider min
+    hi: float  # slider max
+    step: float  # slider step
+    prefix: str  # HTML id prefix ("at" or "ct")
+    is_int: bool  # whether to display as integer
 
 
 # Slider ranges per level for accessibility (metres) and cabin density.
 _ACCESS_SLIDER_RANGES: dict[str, tuple[float, float, float]] = {
     "excellent": (0, 2000, 50),
-    "good":      (0, 5000, 100),
-    "fair":      (0, 10000, 200),
-    "poor":      (0, 20000, 500),
+    "good": (0, 5000, 100),
+    "fair": (0, 10000, 200),
+    "poor": (0, 20000, 500),
 }
 _CABIN_SLIDER_RANGES: dict[str, tuple[float, float, float]] = {
     "excellent": (0.0, 0.05, 0.001),
-    "good":      (0.0, 0.1, 0.002),
-    "fair":      (0.0, 0.2, 0.005),
-    "poor":      (0.0, 0.5, 0.01),
+    "good": (0.0, 0.1, 0.002),
+    "fair": (0.0, 0.2, 0.005),
+    "poor": (0.0, 0.5, 0.01),
 }
 
 _LEVELS = ("excellent", "good", "fair", "poor")
@@ -73,12 +73,18 @@ def add_interactive_controls(
 
     # Collect threshold sliders, driven by the toggle BaseModel fields.
     access_sliders = _collect_threshold_sliders(
-        controls.accessibility_thresholds.model_dump(), at.model_dump(),
-        _ACCESS_SLIDER_RANGES, prefix="at", is_int=True,
+        controls.accessibility_thresholds.model_dump(),
+        at.model_dump(),
+        _ACCESS_SLIDER_RANGES,
+        prefix="at",
+        is_int=True,
     )
     cabin_sliders = _collect_threshold_sliders(
-        controls.cabin_density_thresholds.model_dump(), ct.model_dump(),
-        _CABIN_SLIDER_RANGES, prefix="ct", is_int=False,
+        controls.cabin_density_thresholds.model_dump(),
+        ct.model_dump(),
+        _CABIN_SLIDER_RANGES,
+        prefix="ct",
+        is_int=False,
     )
     # Only render threshold sliders when raw data columns are present.
     if "road_distance_m" not in lakes.columns:
@@ -87,7 +93,8 @@ def add_interactive_controls(
         cabin_sliders = []
 
     lake_data_block = _build_lake_data_block(
-        lakes, config.lake_display_mode == "marker",
+        lakes,
+        config.lake_display_mode == "marker",
     )
 
     panel_html = _build_panel_html(
@@ -134,16 +141,23 @@ def _collect_threshold_sliders(
         if not toggles.get(lvl, False):
             continue
         lo, hi, step = ranges.get(lvl, (0, 10000, 100))
-        sliders.append(_ThresholdSlider(
-            level=lvl, value=values[lvl],
-            lo=lo, hi=hi, step=step,
-            prefix=prefix, is_int=is_int,
-        ))
+        sliders.append(
+            _ThresholdSlider(
+                level=lvl,
+                value=values[lvl],
+                lo=lo,
+                hi=hi,
+                step=step,
+                prefix=prefix,
+                is_int=is_int,
+            )
+        )
     return sliders
 
 
 def _build_lake_data_block(
-    lakes: gpd.GeoDataFrame, is_marker_mode: bool,
+    lakes: gpd.GeoDataFrame,
+    is_marker_mode: bool,
 ) -> str:
     """Return a JS variable declaration with per-lake data keyed by 'lat,lng'."""
     if not is_marker_mode:
@@ -198,7 +212,7 @@ def _slider_html(s: _ThresholdSlider) -> str:
         val_str = f"{s.value:.3f}"
     unit = "m" if s.is_int else ""
     return (
-        f'<label>{s.level.capitalize()} \u2264 '
+        f"<label>{s.level.capitalize()} \u2264 "
         f'<span id="{val_id}" style="font-weight:bold">{v_display}</span>{unit}</label><br>'
         f'<input type="range" id="{el_id}" min="{s.lo}" max="{s.hi}" '
         f'step="{s.step}" value="{val_str}" style="width:100%;margin:2px 0 6px"'
@@ -222,24 +236,22 @@ def _build_panel_html(
         "background:white;padding:10px 14px;border:2px solid #666;"
         "border-radius:6px;font-size:13px;min-width:190px;max-width:250px;"
         'box-shadow:2px 2px 8px rgba(0,0,0,.25);font-family:sans-serif;">',
-
         '<div style="display:flex;justify-content:space-between;align-items:center;'
         'margin-bottom:6px;">'
         '<b style="font-size:14px">\u2699 Scoring</b>'
-        '<button onclick="var b=document.getElementById(\'telttur-body\'),'
+        "<button onclick=\"var b=document.getElementById('telttur-body'),"
         "s=b.style;s.display=s.display==='none'?'block':'none'"
         '" style="background:none;border:none;cursor:pointer;font-size:13px;padding:0"'
         ">\u25bc</button></div>",
-
         '<div id="telttur-body">',
     ]
 
     # Dimension toggle checkboxes \u2014 each entry reads directly from the models.
     _dim_defs = [
-        (dt.cabin_density,  scoring.cabin_density.enabled,  "telttur-cabin",    "Cabin density"),
-        (dt.accessibility,  scoring.accessibility.enabled,  "telttur-access",   "Accessibility"),
-        (dt.ar5_land_use,   scoring.ar5_land_use.enabled,   "telttur-ar5",      "Land use (AR5)"),
-        (dt.fishing,        scoring.fishing.enabled,        "telttur-fishing",  "Fishing"),
+        (dt.cabin_density, scoring.cabin_density.enabled, "telttur-cabin", "Cabin density"),
+        (dt.accessibility, scoring.accessibility.enabled, "telttur-access", "Accessibility"),
+        (dt.ar5_land_use, scoring.ar5_land_use.enabled, "telttur-ar5", "Land use (AR5)"),
+        (dt.fishing, scoring.fishing.enabled, "telttur-fishing", "Fishing"),
     ]
     visible_dims = [(init, el_id, label) for show, init, el_id, label in _dim_defs if show]
     if visible_dims:
@@ -254,11 +266,11 @@ def _build_panel_html(
 
     if show_min_area:
         parts.append(
-            '<b>Min lake area:</b> '
+            "<b>Min lake area:</b> "
             f'<span id="telttur-min-area-val" style="font-weight:bold">{min_area_init}</span> m\u00b2<br>'
             f'<input type="range" id="telttur-min-area" min="0" max="100000" '
             f'step="500" value="{min_area_init}" style="width:100%;margin:3px 0 8px"'
-            ' oninput="document.getElementById(\'telttur-min-area-val\').textContent='
+            " oninput=\"document.getElementById('telttur-min-area-val').textContent="
             'this.value;teltturUpdate()">'
         )
 
@@ -298,31 +310,38 @@ def _build_js(
 
     js_cabin_score = (
         "scoreCabin(props.building_density != null ? props.building_density : 0)"
-        if has_cabin_thresh else "props.cabin_density_score"
+        if has_cabin_thresh
+        else "props.cabin_density_score"
     )
     js_access_score = (
         "scoreAccess(props.road_distance_m != null ? props.road_distance_m : 0)"
-        if has_access_thresh else "props.accessibility_score"
+        if has_access_thresh
+        else "props.accessibility_score"
     )
     js_cabin_enabled = (
         f"el('telttur-cabin') ? el('telttur-cabin').checked : {cabin_init}"
-        if dt.cabin_density else cabin_init
+        if dt.cabin_density
+        else cabin_init
     )
     js_access_enabled = (
         f"el('telttur-access') ? el('telttur-access').checked : {access_init}"
-        if dt.accessibility else access_init
+        if dt.accessibility
+        else access_init
     )
     js_ar5_enabled = (
         f"el('telttur-ar5') ? el('telttur-ar5').checked : {ar5_init}"
-        if dt.ar5_land_use else ar5_init
+        if dt.ar5_land_use
+        else ar5_init
     )
     js_fishing_enabled = (
         f"el('telttur-fishing') ? el('telttur-fishing').checked : {fishing_init}"
-        if dt.fishing else fishing_init
+        if dt.fishing
+        else fishing_init
     )
     js_min_area = (
         f"el('telttur-min-area') ? parseFloat(el('telttur-min-area').value) : {min_area_init}"
-        if show_min_area else str(min_area_init)
+        if show_min_area
+        else str(min_area_init)
     )
 
     return f"""<script>

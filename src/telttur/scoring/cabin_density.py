@@ -15,7 +15,6 @@ from shapely.geometry import box
 from telttur.config import BBox, CabinDensityConfig
 from telttur.scoring.common import (
     CRS_UTM33,
-    CRS_WGS84,
     LEVEL_NAMES,
     PopupField,
     TentabilityLevel,
@@ -105,15 +104,11 @@ def score_cabin_density(
     """
     lakes = lakes.copy()
     lakes_utm = lakes.to_crs(CRS_UTM33).copy()
-    buildings_utm = (
-        buildings if str(buildings.crs) == CRS_UTM33 else buildings.to_crs(CRS_UTM33)
-    )
+    buildings_utm = buildings if str(buildings.crs) == CRS_UTM33 else buildings.to_crs(CRS_UTM33)
 
     # Buffer all lake polygons at once, then count buildings inside each buffer
     lakes_utm["_buf"] = lakes_utm.geometry.buffer(config.buffer_m)
-    lake_buffers = (
-        lakes_utm[["_buf"]].set_geometry("_buf").rename_geometry("geometry")
-    )
+    lake_buffers = lakes_utm[["_buf"]].set_geometry("_buf").rename_geometry("geometry")
     lake_buffers.index = lakes_utm.index
 
     joined = gpd.sjoin(lake_buffers, buildings_utm[["geometry"]], how="left", predicate="contains")

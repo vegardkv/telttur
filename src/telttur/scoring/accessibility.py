@@ -71,9 +71,7 @@ def score_accessibility(
         distance_col="road_distance_m",
     )
     distances = joined.groupby(joined.index)["road_distance_m"].min()
-    lakes["road_distance_m"] = (
-        lakes.index.map(distances).fillna(float("inf")).round(1)
-    )
+    lakes["road_distance_m"] = lakes.index.map(distances).fillna(float("inf")).round(1)
 
     thresholds = config.thresholds
 

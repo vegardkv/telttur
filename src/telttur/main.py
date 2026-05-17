@@ -104,6 +104,7 @@ def generate(config_path: str, skip_download: bool) -> None:
         print(f"  [roads: {time.time() - t0:.1f}s]")
     else:
         import geopandas as gpd
+
         road_lines = gpd.GeoDataFrame()
         print("  [roads: skipped (not displayed and accessibility scoring disabled)]")
 
@@ -138,6 +139,7 @@ def generate(config_path: str, skip_download: bool) -> None:
     ):
         before = len(lakes)
         from telttur.scoring import LEVEL_NAMES
+
         _level_by_name = {v: k for k, v in LEVEL_NAMES.items()}
         min_score = _level_by_name[config.min_lake_tenting_quality]
         lakes = lakes[lakes["tentability_score"] >= min_score].reset_index(drop=True)

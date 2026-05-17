@@ -39,7 +39,9 @@ KOMMUNEINFO_API = "https://ws.geonorge.no/kommuneinfo/v1/fylker"
 _fylke_bounds_cache: dict[str, dict[str, tuple[str, tuple[float, float, float, float]]]] = {}
 
 
-def get_fylke_bounds(use_cache: bool = True) -> dict[str, tuple[str, tuple[float, float, float, float]]]:
+def get_fylke_bounds(
+    use_cache: bool = True,
+) -> dict[str, tuple[str, tuple[float, float, float, float]]]:
     """Return fylke bounding boxes, fetching from Kartverket API if not cached.
 
     Falls back to the hardcoded FYLKE_BOUNDS if the API is unavailable.

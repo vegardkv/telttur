@@ -38,7 +38,10 @@ line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM", "PTH", "PLR0913"]
+select = ["E", "F", "I", "UP", "B", "SIM", "PTH", "PLR0913", "PLR2004"]
 
 [tool.ty.rules]
 unresolved-attribute = "warn"
+
+[tool.ruff.lint.pylint]
+allow-magic-value-types = []

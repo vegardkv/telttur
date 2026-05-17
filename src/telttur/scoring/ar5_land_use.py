@@ -116,7 +116,8 @@ def _extract_n50_land_use_zones(
     for gdb_path in gdb_paths:
         all_layers = fiona.listlayers(str(gdb_path))
         area_layers = [
-            ln for ln in all_layers
+            ln
+            for ln in all_layers
             if any(kw in ln.lower() for kw in ("arealdekke", "arealbruk", "markslag"))
             and "omrade" in ln.lower()
         ]
@@ -133,9 +134,9 @@ def _extract_n50_land_use_zones(
     if not frames:
         return empty, empty
 
-    combined = gpd.GeoDataFrame(
-        gpd.pd.concat(frames, ignore_index=True), crs=CRS_UTM33
-    ).clip(clip_box)
+    combined = gpd.GeoDataFrame(gpd.pd.concat(frames, ignore_index=True), crs=CRS_UTM33).clip(
+        clip_box
+    )
 
     type_col: str | None = None
     for candidate in ("objtype", "OBJTYPE", "objType"):
@@ -147,12 +148,12 @@ def _extract_n50_land_use_zones(
         return empty, empty
 
     lower_types = combined[type_col].str.lower().fillna("")
-    industrial = combined[
-        lower_types.str.contains("|".join(_N50_INDUSTRIAL_TYPES), regex=True)
-    ][["geometry"]].copy()
-    residential = combined[
-        lower_types.str.contains("|".join(_N50_RESIDENTIAL_TYPES), regex=True)
-    ][["geometry"]].copy()
+    industrial = combined[lower_types.str.contains("|".join(_N50_INDUSTRIAL_TYPES), regex=True)][
+        ["geometry"]
+    ].copy()
+    residential = combined[lower_types.str.contains("|".join(_N50_RESIDENTIAL_TYPES), regex=True)][
+        ["geometry"]
+    ].copy()
     return industrial, residential
 
 
@@ -174,9 +175,7 @@ def fetch_ar5_land_use_polygons(
     if config.source == Ar5DataSource.N50:
         print("  Using N50 arealdekke for AR5 land use (source=n50)...")
         industrial, residential = _extract_n50_land_use_zones(gdb_paths, bbox)
-        print(
-            f"  N50: {len(industrial)} industrial, {len(residential)} residential polygons"
-        )
+        print(f"  N50: {len(industrial)} industrial, {len(residential)} residential polygons")
         return industrial, residential
 
     if config.source == Ar5DataSource.WFS:
@@ -184,9 +183,7 @@ def fetch_ar5_land_use_polygons(
         ar5 = _fetch_ar5_wfs(bbox, timeout_s=wfs_timeout_s)
         industrial = ar5[ar5["artype"].isin(_AR5_INDUSTRIAL_ARTYPES)][["geometry"]].copy()
         residential = ar5[ar5["artype"].isin(_AR5_RESIDENTIAL_ARTYPES)][["geometry"]].copy()
-        print(
-            f"  AR5 WFS: {len(industrial)} industrial, {len(residential)} residential polygons"
-        )
+        print(f"  AR5 WFS: {len(industrial)} industrial, {len(residential)} residential polygons")
         return industrial, residential
 
     # Ar5DataSource.AUTO: try WFS, fall back to N50
@@ -195,17 +192,13 @@ def fetch_ar5_land_use_polygons(
         ar5 = _fetch_ar5_wfs(bbox, timeout_s=wfs_timeout_s)
         industrial = ar5[ar5["artype"].isin(_AR5_INDUSTRIAL_ARTYPES)][["geometry"]].copy()
         residential = ar5[ar5["artype"].isin(_AR5_RESIDENTIAL_ARTYPES)][["geometry"]].copy()
-        print(
-            f"  AR5 WFS: {len(industrial)} industrial, {len(residential)} residential polygons"
-        )
+        print(f"  AR5 WFS: {len(industrial)} industrial, {len(residential)} residential polygons")
         return industrial, residential
     except RuntimeError as exc:
         print(f"  AR5 WFS unavailable ({exc}); falling back to N50 arealdekke")
 
     industrial, residential = _extract_n50_land_use_zones(gdb_paths, bbox)
-    print(
-        f"  N50 fallback: {len(industrial)} industrial, {len(residential)} residential polygons"
-    )
+    print(f"  N50 fallback: {len(industrial)} industrial, {len(residential)} residential polygons")
     return industrial, residential
 
 
@@ -243,7 +236,8 @@ def score_ar5_land_use(
         if polygons.empty:
             return gpd.pd.Series(float("inf"), index=lakes.index)
         polys_utm = (
-            polygons if polygons.crs is not None and polygons.crs.to_epsg() == 25833
+            polygons
+            if polygons.crs is not None and polygons.crs.to_epsg() == 25833
             else polygons.to_crs(CRS_UTM33)
         )
         joined = gpd.sjoin_nearest(
@@ -257,12 +251,8 @@ def score_ar5_land_use(
     ind_dist = _distances_to(industrial_polygons)
     res_dist = _distances_to(residential_polygons)
 
-    lakes["industrial_distance_m"] = (
-        lakes.index.map(ind_dist).fillna(float("inf")).round(1)
-    )
-    lakes["residential_distance_m"] = (
-        lakes.index.map(res_dist).fillna(float("inf")).round(1)
-    )
+    lakes["industrial_distance_m"] = lakes.index.map(ind_dist).fillna(float("inf")).round(1)
+    lakes["residential_distance_m"] = lakes.index.map(res_dist).fillna(float("inf")).round(1)
 
     def _score_proximity(dist_m: float, buffer_m: float) -> int:
         if dist_m >= buffer_m:
@@ -281,8 +271,6 @@ def score_ar5_land_use(
     res_scores = lakes["residential_distance_m"].apply(
         lambda d: _score_proximity(d, config.residential_buffer_m)
     )
-    lakes[SCORE_COLUMN] = gpd.pd.concat(
-        [ind_scores, res_scores], axis=1
-    ).min(axis=1).astype(int)
+    lakes[SCORE_COLUMN] = gpd.pd.concat([ind_scores, res_scores], axis=1).min(axis=1).astype(int)
     lakes["ar5_land_use_level"] = lakes[SCORE_COLUMN].map(LEVEL_NAMES)
     return lakes

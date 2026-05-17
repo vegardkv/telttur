@@ -109,5 +109,7 @@ def process_lakes(
     if min_lake_area_m2 > 0:
         before = len(lakes)
         lakes = lakes[lakes["area_m2"] >= min_lake_area_m2].reset_index(drop=True)
-        print(f"  Removed {before - len(lakes)} lakes below {min_lake_area_m2:.0f} m² ({len(lakes)} remaining)")
+        print(
+            f"  Removed {before - len(lakes)} lakes below {min_lake_area_m2:.0f} m² ({len(lakes)} remaining)"
+        )
     return lakes

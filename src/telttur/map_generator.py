@@ -68,7 +68,6 @@ def _style_landcover(feature: dict) -> dict:
     }
 
 
-
 def _add_lake_markers(
     m: folium.Map, lakes_clean: gpd.GeoDataFrame, use_cluster: bool = False
 ) -> None:
@@ -275,6 +274,7 @@ def generate_map(
     if not lakes.empty:
         lakes_clean = _prepare_for_json(lakes)
         if "area_m2" in lakes_clean.columns:
+
             def _format_area(m2: float) -> str:
                 if m2 >= 1_000_000:
                     return f"{m2 / 1_000_000:.2f} km²"
@@ -282,6 +282,7 @@ def generate_map(
                     return f"{m2 / 10_000:.1f} ha"
                 else:
                     return f"{m2:.0f} m²"
+
             lakes_clean["area_display"] = lakes_clean["area_m2"].apply(_format_area)
 
         if config.lake_display_mode == "marker":
