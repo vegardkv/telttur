@@ -24,8 +24,14 @@ Build a **static map** that does not rely on a back-end server. All relevant dat
 ## Development Workflow
 
 - **Package management:** `uv`
-- **Linting & formatting:** `ruff`
+- **Linting & formatting:** `ruff check` and `ruff format`
 - **Type checking:** `ty`
+
+> **Important:** All Python and tool invocations must go through `uv`. Use `uv run <command>` instead of calling `python`, `ruff`, `ty`, or any other project tool directly. Examples:
+> - `uv run telttur` — run the CLI
+> - `uv run python script.py` — run a Python script
+> - `uv run ruff check .` — lint
+> - `uv run ty check` — type check
 
 ### Tasks
 
