@@ -85,7 +85,7 @@ def _add_lake_markers(
         geom = row.geometry
         if geom is None or geom.is_empty:
             continue
-        centroid = geom.centroid
+        rep_point = geom.representative_point()
         color = row.get(LakeCols.TENTABILITY_COLOR, default_color) or default_color
         popup: folium.Popup | None = None
         if fields:
@@ -99,7 +99,7 @@ def _add_lake_markers(
             html += "</table>"
             popup = folium.Popup(html, max_width=300)
         folium.CircleMarker(
-            location=[centroid.y, centroid.x],
+            location=[rep_point.y, rep_point.x],
             radius=8,
             color="#333333",
             weight=0.8,

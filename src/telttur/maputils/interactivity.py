@@ -155,8 +155,8 @@ def _build_lake_data_block(
         geom = row.geometry
         if geom is None or geom.is_empty:
             continue
-        centroid = geom.centroid
-        key = f"{round(centroid.y, 6):.6f},{round(centroid.x, 6):.6f}"
+        rep_point = geom.representative_point()
+        key = f"{round(rep_point.y, 6):.6f},{round(rep_point.x, 6):.6f}"
 
         def _float(col: str, default: float = 0.0) -> float:
             v = row.get(col)
