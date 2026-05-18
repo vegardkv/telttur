@@ -232,61 +232,58 @@ def load_config(path: str | Path) -> Config:
 
 Profile = Literal["local", "regional", "national"]
 
-_PROFILE_OVERRIDES: dict[str, dict[str, object]] = {
-    "local": {
-        "fylke": "oslo",
-        "min_lake_area_m2": 1000.0,
-        "lake_display_mode": "polygon",
-        "landcover_mode": "wms",
-        "show_roads": True,
-        "map": {
-            "use_marker_cluster": False,
-            "interactive_controls": {"enabled": True},
-        },
-        "scoring": {
-            "accessibility": {"enabled": True},
-            "ar5_land_use": {"enabled": True},
-        },
-    },
-    "regional": {
-        "fylke": "akershus",
-        "min_lake_area_m2": 1000.0,
-        "lake_display_mode": "marker",
-        "landcover_mode": "wms",
-        "show_roads": False,
-        "min_lake_tenting_quality": "Fair",
-        "map": {
-            "use_marker_cluster": False,
-            "interactive_controls": {"enabled": True},
-        },
-        "scoring": {
-            "accessibility": {"enabled": True},
-            "ar5_land_use": {"enabled": True},
-        },
-    },
-    "national": {
-        "fylke": "norway",
-        "min_lake_area_m2": 50000.0,
-        "lake_display_mode": "marker",
-        "landcover_mode": "disabled",
-        "show_roads": False,
-        "min_lake_tenting_quality": "Fair",
-        "map": {
-            "use_marker_cluster": True,
-            "interactive_controls": {"enabled": False},
-        },
-        "scoring": {
-            "accessibility": {"enabled": False},
-            "ar5_land_use": {"enabled": False},
-        },
-    },
-}
-
-
 def build_profile_config(profile: Profile) -> Config:
     """Build a Config from a named profile with sensible scale-based defaults."""
-    overrides = _PROFILE_OVERRIDES[profile]
-    return Config(**overrides)  # type: ignore[arg-type]
+    if profile == "local":
+        return Config(
+            fylke="oslo",
+            min_lake_area_m2=1000.0,
+            lake_display_mode="polygon",
+            landcover_mode="wms",
+            show_roads=True,
+            map=MapConfig(
+                use_marker_cluster=False,
+                interactive_controls=InteractiveControlsConfig(enabled=True),
+            ),
+            scoring=ScoringConfig(
+                accessibility=AccessibilityConfig(enabled=True),
+                ar5_land_use=Ar5LandUseConfig(enabled=True),
+            ),
+        )
+    elif profile == "regional":
+        return Config(
+            fylke="akershus",
+            min_lake_area_m2=1000.0,
+            lake_display_mode="marker",
+            landcover_mode="wms",
+            show_roads=False,
+            min_lake_tenting_quality="Fair",
+            map=MapConfig(
+                use_marker_cluster=False,
+                interactive_controls=InteractiveControlsConfig(enabled=True),
+            ),
+            scoring=ScoringConfig(
+                accessibility=AccessibilityConfig(enabled=True),
+                ar5_land_use=Ar5LandUseConfig(enabled=True),
+            ),
+        )
+    else:  # national
+        return Config(
+            fylke="norway",
+            min_lake_area_m2=50000.0,
+            lake_display_mode="marker",
+            landcover_mode="disabled",
+            show_roads=False,
+            min_lake_tenting_quality="Fair",
+            map=MapConfig(
+                use_marker_cluster=True,
+                interactive_controls=InteractiveControlsConfig(enabled=False),
+            ),
+            scoring=ScoringConfig(
+                accessibility=AccessibilityConfig(enabled=False),
+                ar5_land_use=Ar5LandUseConfig(enabled=False),
+            ),
+        )
 
 
 def _convert_enums(obj: object) -> object:
