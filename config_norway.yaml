@@ -1,6 +1,5 @@
-# Telttur configuration - Full country (Norway) map
-# Optimised for static hosting: marker clustering, no road rendering,
-# only scoring dimensions that don't require full road processing.
+# Telttur configuration - First viable model (full Norway)
+# National-scale static map with interactive scoring controls.
 fylke: norway
 
 output_filename: map_norway.html
@@ -16,9 +15,10 @@ show_roads: false
 landcover_mode: disabled
 
 map:
-  use_marker_cluster: true
+  use_marker_cluster: false
+  base_map: greyscale
   interactive_controls:
-    enabled: false
+    enabled: true
 
 scoring:
   # Accessibility scoring requires road data for all of Norway — skip for performance
