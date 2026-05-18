@@ -4,9 +4,21 @@ import zipfile
 from pathlib import Path
 
 import requests
+from pydantic import BaseModel
+from pydantic import BaseModel
 from tqdm import tqdm
 
 from telttur.config import BBox
+
+class OrderFile(BaseModel):
+    name: str
+    status: str
+    downloadUrl: str
+
+
+class OrderReceipt(BaseModel):
+    files: list[OrderFile] = []
+
 
 N50_METADATA_UUID = "ea192681-d039-42ec-b1bc-f3ce04c189ac"
 GEONORGE_API_BASE = "https://nedlasting.geonorge.no/api"
@@ -119,7 +131,7 @@ def place_order(
     metadata_uuid: str = N50_METADATA_UUID,
     fmt: str = TARGET_FORMAT,
     projection: str = TARGET_PROJECTION,
-) -> dict:
+) -> OrderReceipt:
     """Place a download order via Geonorge API. Returns order receipt."""
     url = f"{GEONORGE_API_BASE}/order"
     order_payload = {
@@ -147,7 +159,7 @@ def place_order(
     }
     resp = requests.post(url, json=order_payload, timeout=60)
     resp.raise_for_status()
-    return resp.json()
+    return OrderReceipt.model_validate(resp.json())
 
 
 def download_file(download_url: str, dest_path: Path) -> None:
@@ -205,7 +217,7 @@ def download_n50(bbox: BBox, data_dir: Path) -> list[Path]:
         if receipt is None:
             continue
 
-        for file_info in receipt.get("files", []):
+        for file_info in receipt.files:
             if gdb_path := _download_and_extract(n50_dir, file_info, fylke_code, fylke_name):
                 gdb_paths.append(gdb_path)
 
@@ -221,7 +233,7 @@ def _find_existing(n50_dir: Path, fylke_code: str, fylke_name: str) -> Path | No
         return None
 
 
-def _order_fylke(fylke_code: str, fylke_name: str, areas: list[dict]) -> dict | None:
+def _order_fylke(fylke_code: str, fylke_name: str, areas: list[dict]) -> OrderReceipt | None:
         """Validate availability and place order. Returns receipt or None on failure."""
         area_entry = _find_area_entry(areas, fylke_code)
         if area_entry is None:
@@ -239,14 +251,14 @@ def _order_fylke(fylke_code: str, fylke_name: str, areas: list[dict]) -> dict | 
             return None
 
 
-def _download_and_extract(n50_dir: Path, file_info: dict, fylke_code: str, fylke_name: str) -> Path | None:
+def _download_and_extract(n50_dir: Path, file_info: OrderFile, fylke_code: str, fylke_name: str) -> Path | None:
     """Download a single file and extract its .gdb. Returns path or None on failure."""
-    if file_info.get("status") != "ReadyForDownload":
-        print(f"    File not ready: {file_info.get('name', 'unknown')}")
+    if file_info.status != "ReadyForDownload":
+        print(f"    File not ready: {file_info.name}")
         return None
 
-    download_url = file_info["downloadUrl"]
-    filename = file_info.get("name", f"n50_{fylke_code}.zip")
+    download_url = file_info.downloadUrl
+    filename = file_info.name or f"n50_{fylke_code}.zip"
     zip_path = n50_dir / filename
 
     if not zip_path.exists():
