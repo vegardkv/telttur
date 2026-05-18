@@ -25,6 +25,3 @@ map:
       fair: true
       poor: true
 
-# Tentability scoring: composite lake suitability score
-scoring:
-  enabled: true

@@ -68,7 +68,6 @@ def process_scoring(
     lakes: gpd.GeoDataFrame,
     road_lines: gpd.GeoDataFrame,
     config: ScoringConfig,
-    excluded_road_types: list[str] | None = None,
 ) -> gpd.GeoDataFrame:
     """Full scoring pipeline: run enabled dimensions then compute composite tentability.
 
@@ -101,7 +100,7 @@ def process_scoring(
     if config.accessibility.enabled:
         print("Scoring accessibility (distance to nearest drivable road)...")
         lakes = accessibility.score_accessibility(
-            lakes, road_lines, config.accessibility, excluded_road_types
+            lakes, road_lines, config.accessibility, config.accessibility.excluded_road_types
         )
         _print_distribution("Accessibility", lakes, accessibility.SCORE_COLUMN)
         dimension_score_columns.append(accessibility.SCORE_COLUMN)

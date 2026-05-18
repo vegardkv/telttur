@@ -7,7 +7,3 @@ bbox:
 
 # Output filename
 output_filename: map_innlandet.html
-
-# Tentability scoring: composite lake suitability score
-scoring:
-  enabled: true

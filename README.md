@@ -21,23 +21,43 @@ uv sync
 
 ## Usage
 
-### 1. Configure
+### Quick start with a built-in profile
 
-Edit `config.yaml` to set your area of interest (bounding box) and buffer distance:
+Three scale profiles are available — `local` (Oslo area), `regional` (Akershus), `national` (all of Norway):
+
+```bash
+# Generate directly from a profile
+uv run telttur generate --profile local
+
+# Or generate a full config file to customise, then run from it
+uv run telttur sample -o my-config.yaml --profile local
+uv run telttur generate --config my-config.yaml
+```
+
+The generated file contains every available option with its default value filled in, ready to edit.
+
+### Custom configuration
+
+Edit or create a `config.yaml`. The minimum required field is either `bbox` or `fylke`:
 
 ```yaml
+# Option A: explicit bounding box
 bbox:
   north: 61.2
   south: 60.8
   east: 10.0
   west: 9.4
-buffer_distance_m: 2000
+
+# Option B: named fylke (resolves to a preset bounding box)
+fylke: Innlandet
 ```
 
-### 2. Generate map
+Then generate:
 
 ```bash
 uv run telttur generate
+# or explicitly:
+uv run telttur generate --config my-config.yaml
 ```
 
 This will:
@@ -46,12 +66,9 @@ This will:
 3. Extract and classify lakes
 4. Generate an interactive HTML map in `output/map.html`
 
-### Options
+### Other commands
 
 ```bash
-# Use a different config file
-uv run telttur generate --config my-config.yaml
-
 # Skip download (reuse previously downloaded data)
 uv run telttur generate --skip-download
 

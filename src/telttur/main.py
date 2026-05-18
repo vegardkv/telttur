@@ -5,7 +5,7 @@ import time
 
 import click
 
-from telttur.config import BBox, load_config
+from telttur.config import BBox, build_profile_config, dump_config_yaml, load_config
 from telttur.download import download_n50
 from telttur.lakes import LakeCols, process_lakes
 from telttur.landcover import process_landcover
@@ -52,14 +52,26 @@ def cli() -> None:
 @click.option(
     "--config",
     "config_path",
-    default="config.yaml",
+    default=None,
     type=click.Path(exists=True),
     help="Path to config YAML file.",
 )
+@click.option(
+    "--profile",
+    "profile",
+    default=None,
+    type=click.Choice(["local", "regional", "national"]),
+    help="Use a built-in scale profile instead of a config file.",
+)
 @click.option("--skip-download", is_flag=True, help="Skip data download, use existing files.")
-def generate(config_path: str, skip_download: bool) -> None:
+def generate(config_path: str | None, profile: str | None, skip_download: bool) -> None:
     """Generate the camping suitability map."""
-    config = load_config(config_path)
+    if profile and config_path:
+        raise click.UsageError("--profile and --config are mutually exclusive.")
+    if profile:
+        config = build_profile_config(profile)  # type: ignore[arg-type]
+    else:
+        config = load_config(config_path or "config.yaml")
     pipeline_start = time.time()
 
     print(
@@ -127,7 +139,6 @@ def generate(config_path: str, skip_download: bool) -> None:
             lakes,
             road_lines,
             config.scoring,
-            excluded_road_types=config.excluded_road_types,
         )
         print(f"  [scoring: {time.time() - t0:.1f}s]")
 
@@ -179,13 +190,13 @@ def generate(config_path: str, skip_download: bool) -> None:
 @click.option(
     "--config",
     "config_path",
-    default="config.yaml",
+    default=None,
     type=click.Path(exists=True),
     help="Path to config YAML file.",
 )
-def download(config_path: str) -> None:
+def download(config_path: str | None) -> None:
     """Download N50 data only (no map generation)."""
-    config = load_config(config_path)
+    config = load_config(config_path or "config.yaml")
     config.data_path.mkdir(parents=True, exist_ok=True)
 
     gdb_paths = download_n50(config.bbox, config.data_path)
@@ -206,6 +217,34 @@ def inspect(gdb_path: str) -> None:
         with fiona.open(gdb_path, layer=layer) as src:
             props = list(src.schema["properties"].keys())[:8]
             print(f"  {layer}: {len(src)} features, schema: {props}")
+
+
+@cli.command()
+@click.option(
+    "--output",
+    "-o",
+    required=True,
+    type=click.Path(),
+    help="Output path for the generated config YAML.",
+)
+@click.option(
+    "--profile",
+    "-p",
+    default="local",
+    type=click.Choice(["local", "regional", "national"]),
+    show_default=True,
+    help="Scale profile to use as the basis for the sample config.",
+)
+def sample(output: str, profile: str) -> None:
+    """Generate a sample config YAML with all options filled in."""
+    from pathlib import Path
+
+    config = build_profile_config(profile)  # type: ignore[arg-type]
+    yaml_text = dump_config_yaml(config, profile)  # type: ignore[arg-type]
+    Path(output).write_text(yaml_text, encoding="utf-8")
+    print(f"Sample config ({profile} profile) written to: {output}")
+    print(f"Run with: uv run telttur generate --config {output}")
+    print(f"       or: uv run telttur generate --profile {profile}")
 
 
 if __name__ == "__main__":

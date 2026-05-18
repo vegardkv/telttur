@@ -21,7 +21,6 @@ map:
     enabled: false
 
 scoring:
-  enabled: true
   # Accessibility scoring requires road data for all of Norway — skip for performance
   accessibility:
     enabled: false
