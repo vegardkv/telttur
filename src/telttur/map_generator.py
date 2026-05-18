@@ -14,6 +14,28 @@ from telttur.landcover import get_wms_config
 from telttur.maputils.interactivity import add_interactive_controls
 from telttur.scoring import LEVEL_COLORS, LEVEL_NAMES, TentabilityLevel, get_scoring_popup_fields
 
+# Reverse lookup: level name string → badge background colour
+_LEVEL_NAME_TO_COLOR: dict[str, str] = {
+    name: LEVEL_COLORS[level] for level, name in LEVEL_NAMES.items()
+}
+# Level names whose background is light enough to need dark text
+_DARK_TEXT_LEVELS = {LEVEL_NAMES[int(TentabilityLevel.FAIR)]}
+
+
+def _score_badge(val: object) -> str:
+    """Return a colour-coded badge span if *val* is a tentability level name, else plain str."""
+    s = str(val) if val is not None else ""
+    color = _LEVEL_NAME_TO_COLOR.get(s)
+    if color is None:
+        return s
+    text_color = "#333333" if s in _DARK_TEXT_LEVELS else "white"
+    return (
+        f"<span style='background:{color};color:{text_color};"
+        "padding:1px 6px;border-radius:3px;font-size:11px'>"
+        f"{s}</span>"
+    )
+
+
 # Kartverket topographic map WMTS
 KARTVERKET_WMTS_URL = (
     "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png"
@@ -92,9 +114,10 @@ def _add_lake_markers(
             html = "<table style='font-size:12px;border-collapse:collapse'>"
             for field, alias in zip(fields, aliases, strict=True):
                 val = row.get(field, "")
+                cell = _score_badge(val)
                 html += (
                     f"<tr><th style='text-align:left;padding:2px 6px 2px 0'>{alias}</th>"
-                    f"<td style='padding:2px 0'>{val}</td></tr>"
+                    f"<td style='padding:2px 0'>{cell}</td></tr>"
                 )
             html += "</table>"
             popup = folium.Popup(html, max_width=300)
