@@ -197,60 +197,76 @@ def download_n50(bbox: BBox, data_dir: Path) -> list[Path]:
 
     gdb_paths: list[Path] = []
     for fylke_code, fylke_name in fylker:
-        # Check if already downloaded
-        existing = list(n50_dir.glob(f"*{fylke_code}*{fylke_name}*.gdb"))
-        if existing:
-            print(f"  Already downloaded: {existing[0].name}")
-            gdb_paths.append(existing[0])
+        if existing := _find_existing(n50_dir, fylke_code, fylke_name):
+            gdb_paths.append(existing)
             continue
 
-        # Check if format is available
-        area_entry = _find_area_entry(areas, fylke_code)
-        if area_entry is None:
-            print(f"  Warning: Fylke {fylke_name} ({fylke_code}) not found in Geonorge areas")
-            continue
-        if not _format_available(area_entry, TARGET_FORMAT, TARGET_PROJECTION):
-            print(f"  Warning: {TARGET_FORMAT}/{TARGET_PROJECTION} not available for {fylke_name}")
-            continue
-
-        try:
-            print(f"  Ordering N50 for {fylke_name} ({fylke_code})...")
-            receipt = place_order(fylke_code, fylke_name)
-        except requests.exceptions.RequestException as exc:
-            print(f"  Warning: Failed to order N50 for {fylke_name} ({fylke_code}): {exc}")
+        receipt = _order_fylke(fylke_code, fylke_name, areas)
+        if receipt is None:
             continue
 
         for file_info in receipt.get("files", []):
-            if file_info.get("status") != "ReadyForDownload":
-                print(f"    File not ready: {file_info.get('name', 'unknown')}")
-                continue
-
-            download_url = file_info["downloadUrl"]
-            filename = file_info.get("name", f"n50_{fylke_code}.zip")
-            zip_path = n50_dir / filename
-
-            if not zip_path.exists():
-                print(f"    Downloading {filename}...")
-                try:
-                    download_file(download_url, zip_path)
-                except requests.exceptions.RequestException as exc:
-                    print(f"    Warning: Failed to download {filename}: {exc}")
-                    zip_path.unlink(missing_ok=True)
-                    continue
-            else:
-                print(f"    Already have {filename}")
-
-            # Extract
-            extract_dir = n50_dir / f"{fylke_code}_{fylke_name}"
-            if not extract_dir.exists():
-                print("    Extracting...")
-                gdb_path = extract_fgdb(zip_path, extract_dir)
+            if gdb_path := _download_and_extract(n50_dir, file_info, fylke_code, fylke_name):
                 gdb_paths.append(gdb_path)
-            else:
-                # Find existing gdb
-                for gdb in extract_dir.rglob("*.gdb"):
-                    if gdb.is_dir():
-                        gdb_paths.append(gdb)
-                        break
 
     return gdb_paths
+
+
+def _find_existing(n50_dir: Path, fylke_code: str, fylke_name: str) -> Path | None:
+        """Return path to an already-extracted .gdb, or None."""
+        existing = list(n50_dir.glob(f"*{fylke_code}*{fylke_name}*.gdb"))
+        if existing:
+            print(f"  Already downloaded: {existing[0].name}")
+            return existing[0]
+        return None
+
+
+def _order_fylke(fylke_code: str, fylke_name: str, areas: list[dict]) -> dict | None:
+        """Validate availability and place order. Returns receipt or None on failure."""
+        area_entry = _find_area_entry(areas, fylke_code)
+        if area_entry is None:
+            print(f"  Warning: Fylke {fylke_name} ({fylke_code}) not found in Geonorge areas")
+            return None
+        if not _format_available(area_entry, TARGET_FORMAT, TARGET_PROJECTION):
+            print(f"  Warning: {TARGET_FORMAT}/{TARGET_PROJECTION} not available for {fylke_name}")
+            return None
+
+        try:
+            print(f"  Ordering N50 for {fylke_name} ({fylke_code})...")
+            return place_order(fylke_code, fylke_name)
+        except requests.exceptions.RequestException as exc:
+            print(f"  Warning: Failed to order N50 for {fylke_name} ({fylke_code}): {exc}")
+            return None
+
+
+def _download_and_extract(n50_dir: Path, file_info: dict, fylke_code: str, fylke_name: str) -> Path | None:
+    """Download a single file and extract its .gdb. Returns path or None on failure."""
+    if file_info.get("status") != "ReadyForDownload":
+        print(f"    File not ready: {file_info.get('name', 'unknown')}")
+        return None
+
+    download_url = file_info["downloadUrl"]
+    filename = file_info.get("name", f"n50_{fylke_code}.zip")
+    zip_path = n50_dir / filename
+
+    if not zip_path.exists():
+        print(f"    Downloading {filename}...")
+        try:
+            download_file(download_url, zip_path)
+        except requests.exceptions.RequestException as exc:
+            print(f"    Warning: Failed to download {filename}: {exc}")
+            zip_path.unlink(missing_ok=True)
+            return None
+    else:
+        print(f"    Already have {filename}")
+
+    extract_dir = n50_dir / f"{fylke_code}_{fylke_name}"
+    if not extract_dir.exists():
+        print("    Extracting...")
+        return extract_fgdb(zip_path, extract_dir)
+
+    # Find existing gdb
+    for gdb in extract_dir.rglob("*.gdb"):
+        if gdb.is_dir():
+            return gdb
+    return None
