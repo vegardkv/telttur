@@ -213,8 +213,12 @@ def download_n50(bbox: BBox, data_dir: Path) -> list[Path]:
             print(f"  Warning: {TARGET_FORMAT}/{TARGET_PROJECTION} not available for {fylke_name}")
             continue
 
-        print(f"  Ordering N50 for {fylke_name} ({fylke_code})...")
-        receipt = place_order(fylke_code, fylke_name)
+        try:
+            print(f"  Ordering N50 for {fylke_name} ({fylke_code})...")
+            receipt = place_order(fylke_code, fylke_name)
+        except requests.exceptions.RequestException as exc:
+            print(f"  Warning: Failed to order N50 for {fylke_name} ({fylke_code}): {exc}")
+            continue
 
         for file_info in receipt.get("files", []):
             if file_info.get("status") != "ReadyForDownload":
@@ -227,7 +231,12 @@ def download_n50(bbox: BBox, data_dir: Path) -> list[Path]:
 
             if not zip_path.exists():
                 print(f"    Downloading {filename}...")
-                download_file(download_url, zip_path)
+                try:
+                    download_file(download_url, zip_path)
+                except requests.exceptions.RequestException as exc:
+                    print(f"    Warning: Failed to download {filename}: {exc}")
+                    zip_path.unlink(missing_ok=True)
+                    continue
             else:
                 print(f"    Already have {filename}")
 
