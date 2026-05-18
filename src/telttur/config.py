@@ -52,13 +52,13 @@ class InteractiveDimensionToggles(BaseModel):
     fishing: bool = True
 
 
-class InteractiveAccessibilityThresholds(BaseModel):
-    """Which accessibility distance threshold sliders to expose."""
+class InteractiveAccessibilityRange(BaseModel):
+    """Range slider config for interactive accessibility scoring."""
 
-    excellent: bool = False
-    good: bool = False
-    fair: bool = False
-    poor: bool = False
+    enabled: bool = True
+    min_m: float = 200.0  # default preferred minimum distance
+    max_m: float = 2000.0  # default preferred maximum distance
+    slider_max_m: float = 10000.0  # upper bound of the slider
 
 
 class InteractiveCabinDensityThresholds(BaseModel):
@@ -78,8 +78,8 @@ class InteractiveControlsConfig(BaseModel):
         default_factory=InteractiveDimensionToggles
     )
     min_lake_area: bool = True
-    accessibility_thresholds: InteractiveAccessibilityThresholds = Field(
-        default_factory=InteractiveAccessibilityThresholds
+    accessibility_range: InteractiveAccessibilityRange = Field(
+        default_factory=InteractiveAccessibilityRange
     )
     cabin_density_thresholds: InteractiveCabinDensityThresholds = Field(
         default_factory=InteractiveCabinDensityThresholds

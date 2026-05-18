@@ -9,9 +9,9 @@ import folium
 import geopandas as gpd
 
 from telttur.config import (
-    AccessibilityThresholds,
     CabinDensityThresholds,
     Config,
+    InteractiveAccessibilityRange,
     InteractiveDimensionToggles,
     ScoringConfig,
 )
@@ -31,13 +31,7 @@ class _ThresholdSlider:
     is_int: bool  # whether to display as integer
 
 
-# Slider ranges per level for accessibility (metres) and cabin density.
-_ACCESS_SLIDER_RANGES: dict[str, tuple[float, float, float]] = {
-    "excellent": (0, 2000, 50),
-    "good": (0, 5000, 100),
-    "fair": (0, 10000, 200),
-    "poor": (0, 20000, 500),
-}
+# Slider ranges per level for cabin density.
 _CABIN_SLIDER_RANGES: dict[str, tuple[float, float, float]] = {
     "excellent": (0.0, 0.05, 0.001),
     "good": (0.0, 0.1, 0.002),
@@ -68,18 +62,11 @@ def add_interactive_controls(
         return
 
     scoring = config.scoring
-    at = scoring.accessibility.thresholds
     ct = scoring.cabin_density.thresholds
     dt = controls.dimension_toggles
+    ar = controls.accessibility_range
 
-    # Collect threshold sliders, driven by the toggle BaseModel fields.
-    access_sliders = _collect_threshold_sliders(
-        controls.accessibility_thresholds.model_dump(),
-        at.model_dump(),
-        _ACCESS_SLIDER_RANGES,
-        prefix="at",
-        is_int=True,
-    )
+    # Collect cabin density threshold sliders, driven by the toggle BaseModel fields.
     cabin_sliders = _collect_threshold_sliders(
         controls.cabin_density_thresholds.model_dump(),
         ct.model_dump(),
@@ -89,7 +76,7 @@ def add_interactive_controls(
     )
     # Only render threshold sliders when raw data columns are present.
     if LakeCols.ROAD_DISTANCE_M not in lakes.columns:
-        access_sliders = []
+        ar = None  # type: ignore[assignment]
     if LakeCols.BUILDING_DENSITY not in lakes.columns:
         cabin_sliders = []
 
@@ -103,19 +90,18 @@ def add_interactive_controls(
         scoring=scoring,
         show_min_area=controls.min_lake_area,
         min_area_init=int(config.min_lake_area_m2),
-        access_sliders=access_sliders,
+        access_range=ar,
         cabin_sliders=cabin_sliders,
     )
 
     js = _build_js(
         lake_data_block=lake_data_block,
-        at=at,
         ct=ct,
         dt=dt,
         scoring=scoring,
         show_min_area=controls.min_lake_area,
         min_area_init=int(config.min_lake_area_m2),
-        has_access_thresh=bool(access_sliders),
+        access_range=ar,
         has_cabin_thresh=bool(cabin_sliders),
     )
 
@@ -228,7 +214,7 @@ def _build_panel_html(
     scoring: ScoringConfig,
     show_min_area: bool,
     min_area_init: int,
-    access_sliders: list[_ThresholdSlider],
+    access_range: InteractiveAccessibilityRange | None,
     cabin_sliders: list[_ThresholdSlider],
 ) -> str:
     parts: list[str] = [
@@ -275,10 +261,23 @@ def _build_panel_html(
             'this.value;teltturUpdate()">'
         )
 
-    if access_sliders:
-        parts.append("<b>Accessibility thresholds (m):</b><br>")
-        for s in access_sliders:
-            parts.append(_slider_html(s))
+    if access_range is not None and access_range.enabled:
+        min_val = int(access_range.min_m)
+        max_val = int(access_range.max_m)
+        slider_max = int(access_range.slider_max_m)
+        parts.append(
+            "<b>Accessibility distance:</b><br>"
+            f'Min: <span id="telttur-ar-min-val" style="font-weight:bold">{min_val}</span> m<br>'
+            f'<input type="range" id="telttur-ar-min" min="0" max="{slider_max}" '
+            f'step="100" value="{min_val}" style="width:100%;margin:2px 0 6px"'
+            " oninput=\"document.getElementById('telttur-ar-min-val').textContent="
+            'this.value;teltturUpdate()"><br>'
+            f'Max: <span id="telttur-ar-max-val" style="font-weight:bold">{max_val}</span> m<br>'
+            f'<input type="range" id="telttur-ar-max" min="0" max="{slider_max}" '
+            f'step="100" value="{max_val}" style="width:100%;margin:2px 0 6px"'
+            " oninput=\"document.getElementById('telttur-ar-max-val').textContent="
+            'this.value;teltturUpdate()">'
+        )
 
     if cabin_sliders:
         parts.append("<b>Cabin density thresholds:</b><br>")
@@ -292,17 +291,25 @@ def _build_panel_html(
 def _build_js(
     *,
     lake_data_block: str,
-    at: AccessibilityThresholds,
     ct: CabinDensityThresholds,
     dt: InteractiveDimensionToggles,
     scoring: ScoringConfig,
     show_min_area: bool,
     min_area_init: int,
-    has_access_thresh: bool,
+    access_range: InteractiveAccessibilityRange | None,
     has_cabin_thresh: bool,
 ) -> str:
-    at_defaults = json.dumps(at.model_dump())
     ct_defaults = json.dumps(ct.model_dump())
+
+    # Accessibility range slider defaults (used when slider elements are absent).
+    if access_range is not None and access_range.enabled:
+        ar_min_default = int(access_range.min_m)
+        ar_max_default = int(access_range.max_m)
+        js_access_score = "scoreAccess(props.road_distance_m != null ? props.road_distance_m : 0)"
+    else:
+        ar_min_default = 0
+        ar_max_default = 0
+        js_access_score = "props.accessibility_score"
 
     cabin_init = str(scoring.cabin_density.enabled).lower()
     access_init = str(scoring.accessibility.enabled).lower()
@@ -313,11 +320,6 @@ def _build_js(
         "scoreCabin(props.building_density != null ? props.building_density : 0)"
         if has_cabin_thresh
         else "props.cabin_density_score"
-    )
-    js_access_score = (
-        "scoreAccess(props.road_distance_m != null ? props.road_distance_m : 0)"
-        if has_access_thresh
-        else "props.accessibility_score"
     )
     js_cabin_enabled = (
         f"el('telttur-cabin') ? el('telttur-cabin').checked : {cabin_init}"
@@ -348,8 +350,9 @@ def _build_js(
     return f"""<script>
 (function() {{
   {lake_data_block}
-  var AT_DEF = {at_defaults};
   var CT_DEF = {ct_defaults};
+  var AR_MIN_DEF = {ar_min_default};
+  var AR_MAX_DEF = {ar_max_default};
   var COLORS = {{1:'#d73027',2:'#fc8d59',3:'#fee08b',4:'#91cf60',5:'#1a9850'}};
 
   function el(id) {{ return document.getElementById(id); }}
@@ -366,20 +369,26 @@ def _build_js(
     return null;
   }}
 
-  function atVal(lvl) {{
-    var e = el('telttur-at-' + lvl);
-    return e ? parseFloat(e.value) : AT_DEF[lvl];
-  }}
   function ctVal(lvl) {{
     var e = el('telttur-ct-' + lvl);
     return e ? parseFloat(e.value) : CT_DEF[lvl];
   }}
 
   function scoreAccess(dist) {{
-    if (dist <= atVal('excellent')) return 5;
-    if (dist <= atVal('good'))      return 4;
-    if (dist <= atVal('fair'))      return 3;
-    if (dist <= atVal('poor'))      return 2;
+    var minKm = (el('telttur-ar-min') ? parseFloat(el('telttur-ar-min').value) : AR_MIN_DEF);
+    var maxKm = (el('telttur-ar-max') ? parseFloat(el('telttur-ar-max').value) : AR_MAX_DEF);
+    if (dist >= minKm && dist <= maxKm) return 5;
+    if (dist > maxKm) {{
+      if (dist <= maxKm * 1.25) return 4;
+      if (dist <= maxKm * 1.5)  return 3;
+      if (dist <= maxKm * 2.0)  return 2;
+      return 1;
+    }}
+    // dist < minKm
+    if (minKm === 0) return 5;
+    if (dist >= minKm * 0.75) return 4;
+    if (dist >= minKm * 0.5)  return 3;
+    if (dist >= minKm * 0.25) return 2;
     return 1;
   }}
 
