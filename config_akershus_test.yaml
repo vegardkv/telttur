@@ -1,8 +1,8 @@
 # Telttur configuration - First viable model (full Norway)
 # National-scale static map with interactive scoring controls.
-fylke: norway
+fylke: akershus
 
-output_filename: map_norway.html
+output_filename: map_akershus_test.html
 
 # Only include lakes ≥ 5 ha to keep the dataset manageable nationally
 min_lake_area_m2: 50000

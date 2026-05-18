@@ -7,3 +7,6 @@ bbox:
   west: 10.4
 
 min_lake_area_m2: 1000  # exclude lakes smaller than 0.1 ha
+
+map:
+  base_map: selectable

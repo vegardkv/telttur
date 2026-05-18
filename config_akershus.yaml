@@ -14,6 +14,7 @@ show_roads: false
 
 # Map rendering options
 map:
+  base_map: selectable
   interactive_controls:
     enabled: true
     dimension_toggles:

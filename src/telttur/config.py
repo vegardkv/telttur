@@ -91,6 +91,7 @@ class MapConfig(BaseModel):
 
     include_osm_layer: bool = False
     use_marker_cluster: bool = False
+    base_map: Literal["greyscale", "topographic", "selectable"] = "greyscale"
     interactive_controls: InteractiveControlsConfig = Field(
         default_factory=InteractiveControlsConfig
     )
@@ -231,6 +232,7 @@ def load_config(path: str | Path) -> Config:
 # ---------------------------------------------------------------------------
 
 Profile = Literal["local", "regional", "national"]
+
 
 def build_profile_config(profile: Profile) -> Config:
     """Build a Config from a named profile with sensible scale-based defaults."""

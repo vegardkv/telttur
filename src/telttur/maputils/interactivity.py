@@ -366,6 +366,14 @@ def _build_js(
         }}
       }}
     }}
+    // Fallback: no LayerControl present — search for Folium's FeatureGroup /
+    // MarkerCluster variables directly (named feature_group_* or marker_cluster_*).
+    for (var k in window) {{
+      if ((k.indexOf('feature_group_') === 0 || k.indexOf('marker_cluster_') === 0)
+          && typeof window[k].eachLayer === 'function') {{
+        return window[k];
+      }}
+    }}
     return null;
   }}
 

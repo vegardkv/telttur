@@ -226,43 +226,59 @@ def generate_map(
         tiles=None,
     )
 
-    # Base layer: blank "None" option — lets users deselect all base tiles
-    folium.TileLayer(
-        tiles="",
-        attr=" ",
-        name="None",
-        overlay=False,
-        control=True,
-    ).add_to(m)
-
-    # Base layer: Kartverket topographic
-    folium.TileLayer(
-        tiles=KARTVERKET_WMTS_URL,
-        attr=KARTVERKET_ATTR,
-        name="Kartverket Topografisk",
-        overlay=False,
-        control=True,
-    ).add_to(m)
-
-    # Also add OSM as fallback (opt-in via config)
-    if config.map.include_osm_layer:
+    base_map = config.map.base_map
+    if base_map == "selectable":
+        # Blank "None" option — lets users deselect all base tiles
         folium.TileLayer(
-            tiles="OpenStreetMap",
-            name="OpenStreetMap",
+            tiles="",
+            attr=" ",
+            name="None",
             overlay=False,
             control=True,
         ).add_to(m)
-
-    # Base layer: Kartverket topographic gray (added last = default)
-    folium.TileLayer(
-        tiles=KARTVERKET_WMTS_GRAY_URL,
-        attr=KARTVERKET_ATTR,
-        name="Kartverket Topografisk Grå",
-        overlay=False,
-        control=True,
-    ).add_to(m)
+        # Kartverket topographic
+        folium.TileLayer(
+            tiles=KARTVERKET_WMTS_URL,
+            attr=KARTVERKET_ATTR,
+            name="Kartverket Topografisk",
+            overlay=False,
+            control=True,
+        ).add_to(m)
+        if config.map.include_osm_layer:
+            folium.TileLayer(
+                tiles="OpenStreetMap",
+                name="OpenStreetMap",
+                overlay=False,
+                control=True,
+            ).add_to(m)
+        # Greyscale added last = default active layer
+        folium.TileLayer(
+            tiles=KARTVERKET_WMTS_GRAY_URL,
+            attr=KARTVERKET_ATTR,
+            name="Kartverket Topografisk Grå",
+            overlay=False,
+            control=True,
+        ).add_to(m)
+    elif base_map == "topographic":
+        folium.TileLayer(
+            tiles=KARTVERKET_WMTS_URL,
+            attr=KARTVERKET_ATTR,
+            name="Kartverket Topografisk",
+            overlay=False,
+            control=False,
+        ).add_to(m)
+    else:  # greyscale (default)
+        folium.TileLayer(
+            tiles=KARTVERKET_WMTS_GRAY_URL,
+            attr=KARTVERKET_ATTR,
+            name="Kartverket Topografisk Grå",
+            overlay=False,
+            control=False,
+        ).add_to(m)
 
     # Land cover layer
+    overlay_count = 0
+
     if landcover_mode == "wms":
         wms_config = get_wms_config()
         folium.WmsTileLayer(
@@ -275,6 +291,7 @@ def generate_map(
             control=True,
             opacity=wms_config["opacity"],
         ).add_to(m)
+        overlay_count += 1
     elif landcover is not None and not landcover.empty:
         lc_geojson = json.loads(_prepare_for_json(landcover).to_json())
         folium.GeoJson(
@@ -283,6 +300,7 @@ def generate_map(
             style_function=_style_landcover,
             show=False,
         ).add_to(m)
+        overlay_count += 1
 
     # Roads layer (centerlines)
     if config.show_roads and not roads.empty:
@@ -293,6 +311,7 @@ def generate_map(
             style_function=_style_road_line,
             show=False,
         ).add_to(m)
+        overlay_count += 1
 
     # Lakes layer
     if not lakes.empty:
@@ -327,9 +346,11 @@ def generate_map(
                     localize=True,
                 ).add_to(lake_layer)
             lake_layer.add_to(m)
+        overlay_count += 1
 
-    # Layer control
-    folium.LayerControl(collapsed=False).add_to(m)
+    # Layer control: show when base map is selectable, or when there are multiple overlays
+    if config.map.base_map == "selectable" or overlay_count > 1:
+        folium.LayerControl(collapsed=False).add_to(m)
 
     # Legend
     road_cats = []
