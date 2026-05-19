@@ -12,7 +12,6 @@ from pathlib import Path
 import fiona
 import geopandas as gpd
 import requests
-from shapely.geometry import box
 
 from telttur.config import Ar5DataSource, Ar5LandUseConfig, BBox
 from telttur.lakes import LakeCols
@@ -112,11 +111,15 @@ def _extract_n50_land_use_zones(
 
     Used as a fallback when the AR5 WFS is unavailable.  Returns
     ``(industrial, residential)`` GeoDataFrames in UTM33.
+
+    Filters to only industrial/residential polygons per GDB before accumulating
+    to avoid loading the entire arealdekke dataset into memory.
     """
     utm_bounds = _bbox_to_utm33(bbox)
-    clip_box = box(*utm_bounds)
 
-    frames: list[gpd.GeoDataFrame] = []
+    industrial_frames: list[gpd.GeoDataFrame] = []
+    residential_frames: list[gpd.GeoDataFrame] = []
+
     for gdb_path in gdb_paths:
         all_layers = fiona.listlayers(str(gdb_path))
         area_layers = [
@@ -132,33 +135,36 @@ def _extract_n50_land_use_zones(
             elif gdf.crs.to_epsg() != 25833:
                 gdf = gdf.to_crs(CRS_UTM33)
             gdf = gdf[gdf.geometry.geom_type.isin(["Polygon", "MultiPolygon"])]
-            frames.append(gdf)
+
+            type_col: str | None = None
+            for candidate in ("objtype", "OBJTYPE", "objType"):
+                if candidate in gdf.columns:
+                    type_col = candidate
+                    break
+            if type_col is None:
+                continue
+
+            lower_types = gdf[type_col].str.lower().fillna("")
+            industrial_frames.append(
+                gdf[lower_types.str.contains("|".join(_N50_INDUSTRIAL_TYPES), regex=True)][
+                    ["geometry"]
+                ].copy()
+            )
+            residential_frames.append(
+                gdf[lower_types.str.contains("|".join(_N50_RESIDENTIAL_TYPES), regex=True)][
+                    ["geometry"]
+                ].copy()
+            )
 
     empty = gpd.GeoDataFrame(columns=["geometry"], crs=CRS_UTM33)
-    if not frames:
-        return empty, empty
 
-    combined = gpd.GeoDataFrame(gpd.pd.concat(frames, ignore_index=True), crs=CRS_UTM33).clip(
-        clip_box
-    )
+    def _concat(frames: list[gpd.GeoDataFrame]) -> gpd.GeoDataFrame:
+        non_empty = [f for f in frames if not f.empty]
+        if not non_empty:
+            return empty
+        return gpd.GeoDataFrame(gpd.pd.concat(non_empty, ignore_index=True), crs=CRS_UTM33)
 
-    type_col: str | None = None
-    for candidate in ("objtype", "OBJTYPE", "objType"):
-        if candidate in combined.columns:
-            type_col = candidate
-            break
-
-    if type_col is None:
-        return empty, empty
-
-    lower_types = combined[type_col].str.lower().fillna("")
-    industrial = combined[lower_types.str.contains("|".join(_N50_INDUSTRIAL_TYPES), regex=True)][
-        ["geometry"]
-    ].copy()
-    residential = combined[lower_types.str.contains("|".join(_N50_RESIDENTIAL_TYPES), regex=True)][
-        ["geometry"]
-    ].copy()
-    return industrial, residential
+    return _concat(industrial_frames), _concat(residential_frames)
 
 
 def fetch_ar5_land_use_polygons(

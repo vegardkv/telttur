@@ -5,10 +5,7 @@ fylke: norway
 output_filename: map_norway.html
 
 # Only include lakes ≥ 5 ha to keep the dataset manageable nationally
-min_lake_area_m2: 50000
-
-# Show only lakes worth camping at
-min_lake_tenting_quality: Fair
+min_lake_area_m2: 10000
 
 lake_display_mode: marker
 show_roads: false
@@ -21,9 +18,5 @@ map:
     enabled: true
 
 scoring:
-  # Accessibility scoring requires road data for all of Norway — skip for performance
-  accessibility:
-    enabled: true
-  # AR5 WFS is fetched per-request and impractical at national scale
   ar5_land_use:
-    enabled: false
+    source: n50  # WFS rejects Norway-wide bbox; use local N50 data directly
