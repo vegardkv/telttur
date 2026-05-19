@@ -19,33 +19,16 @@ from telttur.scoring import (
     LEVEL_NAMES,
     TentabilityLevel,
     get_scoring_detail_fields,
-    get_scoring_popup_fields,
     get_scoring_score_fields,
 )
 
 # Sentinel value used in popup row lists to insert a visual separator.
 _SEP = "__sep__"
 
-# Reverse lookup: level name string → badge background colour
-_LEVEL_NAME_TO_COLOR: dict[str, str] = {
-    name: LEVEL_COLORS[level] for level, name in LEVEL_NAMES.items()
-}
-# Level names whose background is light enough to need dark text
-_DARK_TEXT_LEVELS = {LEVEL_NAMES[int(TentabilityLevel.FAIR)]}
-
-
-def _score_badge(val: object) -> str:
-    """Return a colour-coded badge span if *val* is a tentability level name, else plain str."""
-    s = str(val) if val is not None else ""
-    color = _LEVEL_NAME_TO_COLOR.get(s)
-    if color is None:
-        return s
-    text_color = "#333333" if s in _DARK_TEXT_LEVELS else "white"
-    return (
-        f"<span style='background:{color};color:{text_color};"
-        "padding:1px 6px;border-radius:3px;font-size:11px'>"
-        f"{s}</span>"
-    )
+# Reverse lookup: level name string ("Fair") → integer score (3).
+# Used to encode score-level popup values as compact integers in the marker
+# data array; the JavaScript factory function renders them as coloured badges.
+_LEVEL_NAME_TO_INT: dict[str, int] = {name: level for level, name in LEVEL_NAMES.items()}
 
 
 # Kartverket topographic map WMTS
@@ -122,15 +105,23 @@ class _JsBlock(folium.MacroElement):
 # JS template for the marker factory.  Placeholders (__HEADERS__, __DATA__,
 # __LAYER__) are replaced at build time.  Inline styles intentionally match
 # the patterns that optimize.py's CSS-extraction step will shorten.
+#
+# Badge rendering: score-level values are stored as integers (1–5) in the data
+# array.  The _bdg() helper converts them to coloured <span> badges at
+# runtime, using the _ttL (level names) and _ttC (CSS class names) arrays.
+# Non-integer values pass through as plain strings.
 _MARKER_JS_TEMPLATE = """\
 var _ttH=__HEADERS__;
 var _ttD=__DATA__;
+var _ttL=["","Terrible","Poor","Fair","Good","Excellent"];
+var _ttC=["","tt-b1","tt-b2","tt-b3","tt-b4","tt-b5"];
 (function(){
+function _bdg(v){return typeof v==="number"&&v>=1&&v<=5?"<span class='"+_ttC[v]+"'>"+_ttL[v]+"</span>":""+v;}
 function _am(d){
 var lat=d[0],lng=d[1],fc=d[2],vals=d[3];
 var m=L.circleMarker([lat,lng],{bubblingMouseEvents:true,color:"#333333",dashArray:null,dashOffset:null,fill:true,fillColor:fc,fillOpacity:0.65,fillRule:"evenodd",lineCap:"round",lineJoin:"round",opacity:1.0,radius:8,stroke:true,weight:0.8}).addTo(__LAYER__);
 var h="<table style='font-size:12px;border-collapse:collapse'>";var vi=0;
-for(var i=0;i<_ttH.length;i++){if(_ttH[i]===null){h+="<tr><td colspan='2'><hr style='margin:3px 0;border:none;border-top:1px solid #ccc'></td></tr>";continue;}h+="<tr><th style='text-align:left;padding:2px 6px 2px 0'>"+_ttH[i]+"</th><td style='padding:2px 0'>"+vals[vi]+"</td></tr>";
+for(var i=0;i<_ttH.length;i++){if(_ttH[i]===null){h+="<tr><td colspan='2'><hr style='margin:3px 0;border:none;border-top:1px solid #ccc'></td></tr>";continue;}h+="<tr><th style='text-align:left;padding:2px 6px 2px 0'>"+_ttH[i]+"</th><td style='padding:2px 0'>"+_bdg(vals[vi])+"</td></tr>";
 vi++;}h+="</table>";var p=L.popup({maxWidth:300});
 var e=$('<div style="width: 100.0%; height: 100.0%;">' + h + '</div>')[0];
 p.setContent(e);
@@ -185,7 +176,17 @@ def _add_lake_markers(
             headers.append(alias)
             value_fields.append(field)
 
-    # Collect per-marker data.
+    # Identify which value_fields are score-level columns (contain level names
+    # like "Fair" that should be encoded as integers for JS badge rendering).
+    score_level_cols: set[str] = set()
+    if LakeCols.TENTABILITY_LEVEL in lakes_clean.columns:
+        score_level_cols.add(LakeCols.TENTABILITY_LEVEL)
+    for col, _ in get_scoring_score_fields(lakes_clean):
+        score_level_cols.add(col)
+
+    # Collect per-marker data.  Score-level values are stored as integers
+    # (1–5) and rendered as coloured badges by the JS factory function.
+    # All other values are plain strings.
     default_color = "#67a9cf"
     marker_data: list[list[object]] = []
     for _, row in lakes_clean.iterrows():
@@ -196,7 +197,13 @@ def _add_lake_markers(
         lat = round(rep_point.y, coord_precision)
         lng = round(rep_point.x, coord_precision)
         color = row.get(LakeCols.TENTABILITY_COLOR, default_color) or default_color
-        values = [_score_badge(row.get(f, "")) for f in value_fields]
+        values: list[object] = []
+        for f in value_fields:
+            val = row.get(f, "")
+            if f in score_level_cols:
+                values.append(_LEVEL_NAME_TO_INT.get(str(val), 0) if val else 0)
+            else:
+                values.append(str(val) if val is not None else "")
         marker_data.append([lat, lng, color, values])
 
     if marker_data and rows:

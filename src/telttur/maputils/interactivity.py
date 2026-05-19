@@ -91,13 +91,43 @@ def add_interactive_controls(
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Compact key aliases for the per-lake data dictionary (TELTTUR_LAKE_DATA).
+#
+# Each lake's properties are repeated 60k+ times in the JSON output.  Using
+# single-character keys instead of the full column names (e.g. "a" instead
+# of "area_m2") saves ~6 MB on the Norway-scale map.
+#
+# The mapping is authoritative: _build_lake_data_block() writes the short
+# keys, and _build_js() references them in the interactivity JavaScript.
+# ---------------------------------------------------------------------------
+_LAKE_DATA_KEYS: dict[str, str] = {
+    LakeCols.AREA_M2: "a",  # lake area in m²
+    LakeCols.CABIN_DENSITY_SCORE: "c",  # cabin density score (1-5)
+    LakeCols.ACCESSIBILITY_SCORE: "x",  # accessibility score (1-5)
+    LakeCols.AR5_LAND_USE_SCORE: "r",  # AR5 land use score (1-5)
+    LakeCols.FISHING_SCORE: "f",  # fishing suitability score (1-5)
+    LakeCols.ROAD_DISTANCE_M: "d",  # distance to nearest road (m)
+    LakeCols.BUILDING_DENSITY: "b",  # building density (per √m²)
+    LakeCols.INDUSTRIAL_DISTANCE_M: "i",  # distance to industrial zone (m)
+    LakeCols.RESIDENTIAL_DISTANCE_M: "s",  # distance to residential zone (m)
+}
+
+
 def _build_lake_data_block(
     lakes: gpd.GeoDataFrame,
     is_marker_mode: bool,
 ) -> str:
-    """Return a JS variable declaration with per-lake data keyed by 'lat,lng'."""
+    """Return a JS variable declaration with per-lake data keyed by 'lat,lng'.
+
+    Property keys are shortened to single characters via ``_LAKE_DATA_KEYS``
+    to minimise the repeated JSON overhead across thousands of entries.
+    """
     if not is_marker_mode:
         return ""
+
+    # Local aliases for the short keys.
+    k = _LAKE_DATA_KEYS
 
     lake_lookup: dict[str, dict] = {}
     for _, row in lakes.iterrows():
@@ -122,15 +152,15 @@ def _build_lake_data_block(
                 return default
 
         lake_lookup[key] = {
-            LakeCols.AREA_M2: _float(LakeCols.AREA_M2),
-            LakeCols.CABIN_DENSITY_SCORE: _int(LakeCols.CABIN_DENSITY_SCORE),
-            LakeCols.ACCESSIBILITY_SCORE: _int(LakeCols.ACCESSIBILITY_SCORE),
-            LakeCols.AR5_LAND_USE_SCORE: _int(LakeCols.AR5_LAND_USE_SCORE),
-            LakeCols.FISHING_SCORE: _int(LakeCols.FISHING_SCORE),
-            LakeCols.ROAD_DISTANCE_M: _float(LakeCols.ROAD_DISTANCE_M),
-            LakeCols.BUILDING_DENSITY: _float(LakeCols.BUILDING_DENSITY),
-            LakeCols.INDUSTRIAL_DISTANCE_M: _float(LakeCols.INDUSTRIAL_DISTANCE_M),
-            LakeCols.RESIDENTIAL_DISTANCE_M: _float(LakeCols.RESIDENTIAL_DISTANCE_M),
+            k[LakeCols.AREA_M2]: _float(LakeCols.AREA_M2),
+            k[LakeCols.CABIN_DENSITY_SCORE]: _int(LakeCols.CABIN_DENSITY_SCORE),
+            k[LakeCols.ACCESSIBILITY_SCORE]: _int(LakeCols.ACCESSIBILITY_SCORE),
+            k[LakeCols.AR5_LAND_USE_SCORE]: _int(LakeCols.AR5_LAND_USE_SCORE),
+            k[LakeCols.FISHING_SCORE]: _int(LakeCols.FISHING_SCORE),
+            k[LakeCols.ROAD_DISTANCE_M]: _float(LakeCols.ROAD_DISTANCE_M),
+            k[LakeCols.BUILDING_DENSITY]: _float(LakeCols.BUILDING_DENSITY),
+            k[LakeCols.INDUSTRIAL_DISTANCE_M]: _float(LakeCols.INDUSTRIAL_DISTANCE_M),
+            k[LakeCols.RESIDENTIAL_DISTANCE_M]: _float(LakeCols.RESIDENTIAL_DISTANCE_M),
         }
 
     return f"var TELTTUR_LAKE_DATA = {json.dumps(lake_lookup)};\n"
@@ -253,17 +283,22 @@ def _build_js(
     cabin_density_slider: InteractiveCabinDensitySlider | None,
     ar5_buffers: InteractiveAr5Buffers | None,
 ) -> str:
+    # Short-key aliases used in the JS property lookups below.
+    # These must match the keys written by _build_lake_data_block().
+    _k = _LAKE_DATA_KEYS
+
     # Accessibility range slider defaults (used when slider elements are absent).
     if access_range is not None and access_range.enabled:
         ar_min_default = int(access_range.min_m)
         ar_max_default = int(access_range.max_m)
         js_access_score = (
-            "scoreAccess(props.road_distance_m != null ? parseFloat(props.road_distance_m) : 0)"
+            f"scoreAccess(props.{_k[LakeCols.ROAD_DISTANCE_M]} != null"
+            f" ? parseFloat(props.{_k[LakeCols.ROAD_DISTANCE_M]}) : 0)"
         )
     else:
         ar_min_default = 0
         ar_max_default = 0
-        js_access_score = "props.accessibility_score"
+        js_access_score = f"props.{_k[LakeCols.ACCESSIBILITY_SCORE]}"
 
     # Cabin density default threshold (used when slider element is absent).
     ct_default = (
@@ -272,9 +307,10 @@ def _build_js(
         else scoring.cabin_density.thresholds.good
     )
     js_cabin_score = (
-        "scoreCabin(props.building_density != null ? parseFloat(props.building_density) : 0)"
+        f"scoreCabin(props.{_k[LakeCols.BUILDING_DENSITY]} != null"
+        f" ? parseFloat(props.{_k[LakeCols.BUILDING_DENSITY]}) : 0)"
         if cabin_density_slider is not None
-        else "props.cabin_density_score"
+        else f"props.{_k[LakeCols.CABIN_DENSITY_SCORE]}"
     )
 
     # AR5 buffer defaults (used when slider elements are absent).
@@ -282,10 +318,12 @@ def _build_js(
     ar5_ind_default = int(scoring.ar5_land_use.industrial_buffer_m)
     js_ar5_score = (
         "scoreAr5("
-        "props.industrial_distance_m != null ? parseFloat(props.industrial_distance_m) : 0,"
-        "props.residential_distance_m != null ? parseFloat(props.residential_distance_m) : 0)"
+        f"props.{_k[LakeCols.INDUSTRIAL_DISTANCE_M]} != null"
+        f" ? parseFloat(props.{_k[LakeCols.INDUSTRIAL_DISTANCE_M]}) : 0,"
+        f"props.{_k[LakeCols.RESIDENTIAL_DISTANCE_M]} != null"
+        f" ? parseFloat(props.{_k[LakeCols.RESIDENTIAL_DISTANCE_M]}) : 0)"
         if ar5_buffers is not None
-        else "props.ar5_land_use_score"
+        else f"props.{_k[LakeCols.AR5_LAND_USE_SCORE]}"
     )
 
     cabin_init = str(scoring.cabin_density.enabled).lower()
@@ -415,7 +453,7 @@ def _build_js(
       }}
       if (!props) return;
 
-      var area = props.area_m2 || 0;
+      var area = props.{_k[LakeCols.AREA_M2]} || 0;
       if (minArea > 0 && area < minArea) {{
         layer.setStyle({{fillOpacity: 0, opacity: 0, weight: 0}});
         return;
@@ -436,7 +474,7 @@ def _build_js(
         if (rs != null) scores.push(parseInt(rs));
       }}
       if (fishingOn) {{
-        var fs = props.fishing_score;
+        var fs = props.{_k[LakeCols.FISHING_SCORE]};
         if (fs != null) scores.push(parseInt(fs));
       }}
 

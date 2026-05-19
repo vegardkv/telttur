@@ -5,10 +5,10 @@ from pathlib import Path
 
 import requests
 from pydantic import BaseModel
-from pydantic import BaseModel
 from tqdm import tqdm
 
 from telttur.config import BBox
+
 
 class OrderFile(BaseModel):
     name: str
@@ -225,33 +225,35 @@ def download_n50(bbox: BBox, data_dir: Path) -> list[Path]:
 
 
 def _find_existing(n50_dir: Path, fylke_code: str, fylke_name: str) -> Path | None:
-        """Return path to an already-extracted .gdb, or None."""
-        existing = list(n50_dir.glob(f"*{fylke_code}*{fylke_name}*.gdb"))
-        if existing:
-            print(f"  Already downloaded: {existing[0].name}")
-            return existing[0]
-        return None
+    """Return path to an already-extracted .gdb, or None."""
+    existing = list(n50_dir.glob(f"*{fylke_code}*{fylke_name}*.gdb"))
+    if existing:
+        print(f"  Already downloaded: {existing[0].name}")
+        return existing[0]
+    return None
 
 
 def _order_fylke(fylke_code: str, fylke_name: str, areas: list[dict]) -> OrderReceipt | None:
-        """Validate availability and place order. Returns receipt or None on failure."""
-        area_entry = _find_area_entry(areas, fylke_code)
-        if area_entry is None:
-            print(f"  Warning: Fylke {fylke_name} ({fylke_code}) not found in Geonorge areas")
-            return None
-        if not _format_available(area_entry, TARGET_FORMAT, TARGET_PROJECTION):
-            print(f"  Warning: {TARGET_FORMAT}/{TARGET_PROJECTION} not available for {fylke_name}")
-            return None
+    """Validate availability and place order. Returns receipt or None on failure."""
+    area_entry = _find_area_entry(areas, fylke_code)
+    if area_entry is None:
+        print(f"  Warning: Fylke {fylke_name} ({fylke_code}) not found in Geonorge areas")
+        return None
+    if not _format_available(area_entry, TARGET_FORMAT, TARGET_PROJECTION):
+        print(f"  Warning: {TARGET_FORMAT}/{TARGET_PROJECTION} not available for {fylke_name}")
+        return None
 
-        try:
-            print(f"  Ordering N50 for {fylke_name} ({fylke_code})...")
-            return place_order(fylke_code, fylke_name)
-        except requests.exceptions.RequestException as exc:
-            print(f"  Warning: Failed to order N50 for {fylke_name} ({fylke_code}): {exc}")
-            return None
+    try:
+        print(f"  Ordering N50 for {fylke_name} ({fylke_code})...")
+        return place_order(fylke_code, fylke_name)
+    except requests.exceptions.RequestException as exc:
+        print(f"  Warning: Failed to order N50 for {fylke_name} ({fylke_code}): {exc}")
+        return None
 
 
-def _download_and_extract(n50_dir: Path, file_info: OrderFile, fylke_code: str, fylke_name: str) -> Path | None:
+def _download_and_extract(
+    n50_dir: Path, file_info: OrderFile, fylke_code: str, fylke_name: str
+) -> Path | None:
     """Download a single file and extract its .gdb. Returns path or None on failure."""
     if file_info.status != "ReadyForDownload":
         print(f"    File not ready: {file_info.name}")
