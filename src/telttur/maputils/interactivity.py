@@ -332,6 +332,8 @@ def _build_js(
   function el(id) {{ return document.getElementById(id); }}
 
   function findLakesLayer() {{
+    // Direct reference set by data-driven marker injection.
+    if (window._teltturLakesLayer) return window._teltturLakesLayer;
     for (var k in window) {{
       if (k.indexOf('layer_control_') === 0 && k.indexOf('_layers') > 0) {{
         var obj = window[k];

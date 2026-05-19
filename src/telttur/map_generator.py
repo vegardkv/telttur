@@ -7,6 +7,7 @@ import folium
 import folium.plugins
 import geopandas as gpd
 import pandas as pd
+from jinja2 import Template as _JinjaTemplate
 
 from telttur.config import Config
 from telttur.lakes import LakeCols
@@ -102,13 +103,70 @@ def _style_landcover(feature: dict) -> dict:
     }
 
 
+# ---------------------------------------------------------------------------
+# Data-driven marker injection
+# ---------------------------------------------------------------------------
+
+
+class _JsBlock(folium.MacroElement):
+    """Inject raw JavaScript into a parent element's script rendering context."""
+
+    _template = _JinjaTemplate("{% macro script(this, kwargs) %}{{ this.js_code }}{% endmacro %}")
+
+    def __init__(self, js_code: str) -> None:
+        super().__init__()
+        self._name = "js_block"
+        self.js_code = js_code
+
+
+# JS template for the marker factory.  Placeholders (__HEADERS__, __DATA__,
+# __LAYER__) are replaced at build time.  Inline styles intentionally match
+# the patterns that optimize.py's CSS-extraction step will shorten.
+_MARKER_JS_TEMPLATE = """\
+var _ttH=__HEADERS__;
+var _ttD=__DATA__;
+(function(){
+function _am(d){
+var lat=d[0],lng=d[1],fc=d[2],vals=d[3];
+var m=L.circleMarker([lat,lng],{bubblingMouseEvents:true,color:"#333333",dashArray:null,dashOffset:null,fill:true,fillColor:fc,fillOpacity:0.65,fillRule:"evenodd",lineCap:"round",lineJoin:"round",opacity:1.0,radius:8,stroke:true,weight:0.8}).addTo(__LAYER__);
+var h="<table style='font-size:12px;border-collapse:collapse'>";var vi=0;
+for(var i=0;i<_ttH.length;i++){if(_ttH[i]===null){h+="<tr><td colspan='2'><hr style='margin:3px 0;border:none;border-top:1px solid #ccc'></td></tr>";continue;}h+="<tr><th style='text-align:left;padding:2px 6px 2px 0'>"+_ttH[i]+"</th><td style='padding:2px 0'>"+vals[vi]+"</td></tr>";
+vi++;}h+="</table>";var p=L.popup({maxWidth:300});
+var e=$('<div style="width: 100.0%; height: 100.0%;">' + h + '</div>')[0];
+p.setContent(e);
+m.bindPopup(p);}
+for(var i=0;i<_ttD.length;i++){_am(_ttD[i]);}
+window._teltturLakesLayer=__LAYER__;
+})();"""
+
+
+def _build_marker_js(
+    headers: list[str | None],
+    marker_data: list[list[object]],
+    layer_name: str,
+) -> str:
+    """Build JavaScript that creates circle markers from a compact data array."""
+    headers_json = json.dumps(headers, ensure_ascii=False)
+    data_json = json.dumps(marker_data, separators=(",", ":"), ensure_ascii=False)
+    return (
+        _MARKER_JS_TEMPLATE.replace("__HEADERS__", headers_json)
+        .replace("__DATA__", data_json)
+        .replace("__LAYER__", layer_name)
+    )
+
+
 def _add_lake_markers(
     m: folium.Map,
     lakes_clean: gpd.GeoDataFrame,
     use_cluster: bool = False,
     coord_precision: int = 6,
 ) -> None:
-    """Add lakes as circle markers (one per lake centroid) to the map."""
+    """Add lakes as circle markers (one per lake centroid) to the map.
+
+    Instead of creating individual Folium CircleMarker objects (which produces
+    large, repetitive JavaScript), this injects a compact data-driven script:
+    one factory function + one JSON data array.
+    """
     rows = _lake_popup_rows(lakes_clean)
     if use_cluster:
         layer: folium.FeatureGroup | folium.plugins.MarkerCluster = folium.plugins.MarkerCluster(
@@ -116,41 +174,35 @@ def _add_lake_markers(
         )
     else:
         layer = folium.FeatureGroup(name="Lakes")
+
+    # Build header list for popup template: alias strings, None for separators.
+    headers: list[str | None] = []
+    value_fields: list[str] = []
+    for field, alias in rows:
+        if field == _SEP:
+            headers.append(None)
+        else:
+            headers.append(alias)
+            value_fields.append(field)
+
+    # Collect per-marker data.
     default_color = "#67a9cf"
+    marker_data: list[list[object]] = []
     for _, row in lakes_clean.iterrows():
         geom = row.geometry
         if geom is None or geom.is_empty:
             continue
         rep_point = geom.representative_point()
+        lat = round(rep_point.y, coord_precision)
+        lng = round(rep_point.x, coord_precision)
         color = row.get(LakeCols.TENTABILITY_COLOR, default_color) or default_color
-        popup: folium.Popup | None = None
-        if rows:
-            html = "<table style='font-size:12px;border-collapse:collapse'>"
-            for field, alias in rows:
-                if field == _SEP:
-                    html += (
-                        "<tr><td colspan='2'><hr style='margin:3px 0;border:none;"
-                        "border-top:1px solid #ccc'></td></tr>"
-                    )
-                    continue
-                val = row.get(field, "")
-                cell = _score_badge(val)
-                html += (
-                    f"<tr><th style='text-align:left;padding:2px 6px 2px 0'>{alias}</th>"
-                    f"<td style='padding:2px 0'>{cell}</td></tr>"
-                )
-            html += "</table>"
-            popup = folium.Popup(html, max_width=300)
-        folium.CircleMarker(
-            location=[round(rep_point.y, coord_precision), round(rep_point.x, coord_precision)],
-            radius=8,
-            color="#333333",
-            weight=0.8,
-            fill=True,
-            fill_color=color,
-            fill_opacity=0.65,
-            popup=popup,
-        ).add_to(layer)
+        values = [_score_badge(row.get(f, "")) for f in value_fields]
+        marker_data.append([lat, lng, color, values])
+
+    if marker_data and rows:
+        js = _build_marker_js(headers, marker_data, layer.get_name())
+        _JsBlock(js).add_to(layer)
+
     layer.add_to(m)
 
 

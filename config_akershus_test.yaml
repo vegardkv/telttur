@@ -16,3 +16,5 @@ map:
   base_map: greyscale
   interactive_controls:
     enabled: true
+  output:
+    minify: false
