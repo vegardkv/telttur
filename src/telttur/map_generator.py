@@ -12,6 +12,7 @@ from telttur.config import Config
 from telttur.lakes import LakeCols
 from telttur.landcover import get_wms_config
 from telttur.maputils.interactivity import add_interactive_controls
+from telttur.maputils.optimize import optimize_html
 from telttur.scoring import (
     LEVEL_COLORS,
     LEVEL_NAMES,
@@ -102,7 +103,10 @@ def _style_landcover(feature: dict) -> dict:
 
 
 def _add_lake_markers(
-    m: folium.Map, lakes_clean: gpd.GeoDataFrame, use_cluster: bool = False
+    m: folium.Map,
+    lakes_clean: gpd.GeoDataFrame,
+    use_cluster: bool = False,
+    coord_precision: int = 6,
 ) -> None:
     """Add lakes as circle markers (one per lake centroid) to the map."""
     rows = _lake_popup_rows(lakes_clean)
@@ -138,7 +142,7 @@ def _add_lake_markers(
             html += "</table>"
             popup = folium.Popup(html, max_width=300)
         folium.CircleMarker(
-            location=[rep_point.y, rep_point.x],
+            location=[round(rep_point.y, coord_precision), round(rep_point.x, coord_precision)],
             radius=8,
             color="#333333",
             weight=0.8,
@@ -356,7 +360,12 @@ def generate_map(
             lakes_clean[LakeCols.AREA_DISPLAY] = lakes_clean[LakeCols.AREA_M2].apply(_format_area)
 
         if config.lake_display_mode == "marker":
-            _add_lake_markers(m, lakes_clean, use_cluster=config.map.use_marker_cluster)
+            _add_lake_markers(
+                m,
+                lakes_clean,
+                use_cluster=config.map.use_marker_cluster,
+                coord_precision=config.output.coordinate_precision,
+            )
         else:
             lake_geojson = json.loads(lakes_clean.to_json())
             lake_layer = folium.GeoJson(
@@ -401,6 +410,11 @@ def save_map(m: folium.Map, config: Config) -> str:
     output_dir.mkdir(parents=True, exist_ok=True)
     output_file = output_dir / config.output_filename
     m.save(str(output_file))
+
+    if config.output.minify:
+        html = output_file.read_text(encoding="utf-8")
+        optimized = optimize_html(html, config.output)
+        output_file.write_text(optimized, encoding="utf-8")
 
     size_mb = output_file.stat().st_size / (1024 * 1024)
     print(f"  Output file size: {size_mb:.1f} MB")

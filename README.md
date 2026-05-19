@@ -79,6 +79,37 @@ uv run telttur download
 uv run telttur inspect data/n50/34_Innlandet/Basisdata_34_Innlandet_25833_N50Kartdata_FGDB.gdb
 ```
 
+### Reducing output file size
+
+Optimization (variable name shortening, coordinate precision reduction, CSS class extraction,
+whitespace stripping) runs automatically after every `generate`. It is controlled by two fields
+in `config.yaml`:
+
+```yaml
+output:
+  minify: true          # enabled by default
+  coordinate_precision: 6  # decimal places for lat/lng (~0.1 m accuracy)
+```
+
+To disable it (e.g. for debugging the raw Folium output):
+
+```yaml
+output:
+  minify: false
+```
+
+To post-process an existing HTML file without re-running the full pipeline:
+
+```bash
+uv run telttur optimize --input output/map_norway.html
+# overwrites in-place; use --output to write elsewhere:
+uv run telttur optimize --input output/map_norway.html --output output/map_norway_opt.html
+# adjust coordinate precision (default 6):
+uv run telttur optimize --input output/map.html --precision 5
+```
+
+Typical reduction is around **40%** (e.g. 224 MB → 135 MB for a full-Norway map).
+
 ## Data Sources
 
 All data from [Geonorge](https://kartkatalog.geonorge.no/) (CC BY 4.0):

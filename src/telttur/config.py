@@ -112,6 +112,15 @@ class MapConfig(BaseModel):
     )
 
 
+class OutputConfig(BaseModel):
+    """Configuration for HTML output post-processing."""
+
+    coordinate_precision: int = 6
+    """Decimal places for lat/lng coordinates (6 ≈ 0.1 m accuracy, sufficient for maps)."""
+    minify: bool = True
+    """Apply minification and coordinate-precision reduction after saving."""
+
+
 class CabinDensityConfig(BaseModel):
     """Configuration for cabin density scoring dimension."""
 
@@ -175,6 +184,7 @@ class Config(BaseModel):
     output_filename: str = "map.html"
     landcover_mode: Literal["wms", "vector", "disabled"] = "wms"
     map: MapConfig = MapConfig()
+    output: OutputConfig = Field(default_factory=OutputConfig)
     scoring: ScoringConfig = ScoringConfig()
     show_roads: bool = True
     lake_display_mode: Literal["polygon", "marker"] = "polygon"

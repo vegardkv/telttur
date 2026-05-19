@@ -5,7 +5,7 @@ import time
 
 import click
 
-from telttur.config import BBox, build_profile_config, dump_config_yaml, load_config
+from telttur.config import BBox, OutputConfig, build_profile_config, dump_config_yaml, load_config
 from telttur.download import download_n50
 from telttur.lakes import LakeCols, process_lakes
 from telttur.landcover import process_landcover
@@ -245,6 +245,55 @@ def sample(output: str, profile: str) -> None:
     print(f"Sample config ({profile} profile) written to: {output}")
     print(f"Run with: uv run telttur generate --config {output}")
     print(f"       or: uv run telttur generate --profile {profile}")
+
+
+@cli.command()
+@click.option(
+    "--input",
+    "-i",
+    "input_path",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to the HTML file to optimize.",
+)
+@click.option(
+    "--output",
+    "-o",
+    "output_path",
+    default=None,
+    type=click.Path(),
+    help="Output path. Defaults to overwriting the input file.",
+)
+@click.option(
+    "--precision",
+    default=6,
+    show_default=True,
+    type=int,
+    help="Decimal places for coordinate precision.",
+)
+def optimize(input_path: str, output_path: str | None, precision: int) -> None:
+    """Post-process an existing HTML map to reduce file size."""
+    from pathlib import Path
+
+    from telttur.maputils.optimize import optimize_html
+
+    src = Path(input_path)
+    dst = Path(output_path) if output_path else src
+
+    before_mb = src.stat().st_size / (1024 * 1024)
+    html = src.read_text(encoding="utf-8")
+
+    cfg = OutputConfig(coordinate_precision=precision, minify=True)
+    optimized = optimize_html(html, cfg)
+
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    dst.write_text(optimized, encoding="utf-8")
+
+    after_mb = dst.stat().st_size / (1024 * 1024)
+    reduction = (1 - after_mb / before_mb) * 100
+    print(f"  Before: {before_mb:.1f} MB")
+    print(f"  After:  {after_mb:.1f} MB  ({reduction:.0f}% reduction)")
+    print(f"  Saved to: {dst}")
 
 
 if __name__ == "__main__":
