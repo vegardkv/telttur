@@ -24,11 +24,14 @@ from telttur.scoring.common import (
 
 SCORE_COLUMN = LakeCols.CABIN_DENSITY_SCORE
 
-POPUP_FIELDS: list[PopupField] = [
+SCORE_FIELDS: list[PopupField] = [
     (LakeCols.CABIN_DENSITY_LEVEL, "Cabin density"),
-    (LakeCols.BUILDING_COUNT, "Buildings within buffer"),
-    (LakeCols.BUILDING_DENSITY, "Building density (per √m²)"),
 ]
+DETAIL_FIELDS: list[PopupField] = [
+    (LakeCols.BUILDING_COUNT, "Buildings within buffer"),
+    (LakeCols.BUILDING_DENSITY, "Building density (per \u221am\u00b2)"),
+]
+POPUP_FIELDS: list[PopupField] = SCORE_FIELDS + DETAIL_FIELDS
 
 # Norwegian building type codes (bygningstype) that indicate habitation:
 #   100–199: Residential buildings, including:

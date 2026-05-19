@@ -55,11 +55,14 @@ from telttur.scoring.common import (
 
 SCORE_COLUMN = LakeCols.FISHING_SCORE
 
-POPUP_FIELDS: list[PopupField] = [
+SCORE_FIELDS: list[PopupField] = [
     (LakeCols.FISHING_LEVEL, "Fishing suitability"),
+]
+DETAIL_FIELDS: list[PopupField] = [
     (LakeCols.FISH_SPECIES_COUNT, "Fish species observed (nearby)"),
     (LakeCols.FISH_PRIZED_COUNT, "Prized game fish species"),
 ]
+POPUP_FIELDS: list[PopupField] = SCORE_FIELDS + DETAIL_FIELDS
 
 _NINA_URL = "https://ipt.nina.no/archive.do?r=vanninfofisk"
 
@@ -200,7 +203,9 @@ def score_fishing(
     lakes[LakeCols.FISH_SPECIES_COUNT] = (
         agg[LakeCols.FISH_SPECIES_COUNT].reindex(lakes.index).fillna(0).astype(int)
     )
-    lakes[LakeCols.FISH_PRIZED_COUNT] = agg[LakeCols.FISH_PRIZED_COUNT].reindex(lakes.index).fillna(0).astype(int)
+    lakes[LakeCols.FISH_PRIZED_COUNT] = (
+        agg[LakeCols.FISH_PRIZED_COUNT].reindex(lakes.index).fillna(0).astype(int)
+    )
     lakes[SCORE_COLUMN] = [
         _compute_score(s, p)
         for s, p in zip(lakes[LakeCols.FISH_SPECIES_COUNT], lakes[LakeCols.FISH_PRIZED_COUNT])

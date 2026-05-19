@@ -26,11 +26,14 @@ from telttur.scoring.common import (
 
 SCORE_COLUMN = LakeCols.AR5_LAND_USE_SCORE
 
-POPUP_FIELDS: list[PopupField] = [
+SCORE_FIELDS: list[PopupField] = [
     (LakeCols.AR5_LAND_USE_LEVEL, "AR5 land use"),
+]
+DETAIL_FIELDS: list[PopupField] = [
     (LakeCols.INDUSTRIAL_DISTANCE_M, "Distance to industrial zone (m)"),
     (LakeCols.RESIDENTIAL_DISTANCE_M, "Distance to residential zone (m)"),
 ]
+POPUP_FIELDS: list[PopupField] = SCORE_FIELDS + DETAIL_FIELDS
 
 # NIBIO AR5 WFS endpoint — same server as the WMS, supports SERVICE=WFS
 _AR5_WFS_URL = "https://wms.nibio.no/cgi-bin/ar5"

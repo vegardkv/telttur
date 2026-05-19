@@ -41,6 +41,8 @@ __all__ = [
     "compute_tentability",
     "process_scoring",
     "get_scoring_popup_fields",
+    "get_scoring_score_fields",
+    "get_scoring_detail_fields",
 ]
 
 # All dimension modules in display order (used for popup field collection)
@@ -57,6 +59,26 @@ def get_scoring_popup_fields(lakes: gpd.GeoDataFrame) -> list[PopupField]:
     result: list[PopupField] = []
     for module in _DIMENSION_MODULES:
         for col, alias in module.POPUP_FIELDS:
+            if col in lakes.columns:
+                result.append((col, alias))
+    return result
+
+
+def get_scoring_score_fields(lakes: gpd.GeoDataFrame) -> list[PopupField]:
+    """Return (column, label) pairs for scoring *level* columns present in lakes."""
+    result: list[PopupField] = []
+    for module in _DIMENSION_MODULES:
+        for col, alias in module.SCORE_FIELDS:
+            if col in lakes.columns:
+                result.append((col, alias))
+    return result
+
+
+def get_scoring_detail_fields(lakes: gpd.GeoDataFrame) -> list[PopupField]:
+    """Return (column, label) pairs for scoring *detail* columns present in lakes."""
+    result: list[PopupField] = []
+    for module in _DIMENSION_MODULES:
+        for col, alias in module.DETAIL_FIELDS:
             if col in lakes.columns:
                 result.append((col, alias))
     return result

@@ -61,13 +61,27 @@ class InteractiveAccessibilityRange(BaseModel):
     slider_max_m: float = 10000.0  # upper bound of the slider
 
 
-class InteractiveCabinDensityThresholds(BaseModel):
-    """Which cabin density threshold sliders to expose."""
+class InteractiveCabinDensitySlider(BaseModel):
+    """Single slider for cabin density threshold interpretation.
 
-    excellent: bool = False
-    good: bool = False
-    fair: bool = False
-    poor: bool = False
+    The slider value is the building-density threshold below which a lake is
+    scored Excellent.  Scores degrade linearly up to 2× the threshold (Terrible).
+    """
+
+    enabled: bool = True
+    value: float = 0.05  # density threshold at which Excellent begins
+    slider_max: float = 0.5  # upper bound of the slider
+
+
+class InteractiveAr5Buffers(BaseModel):
+    """Sliders for AR5 residential and industrial proximity buffer distances.
+
+    When enabled, one slider per zone type is shown.  Within the buffer = Terrible;
+    beyond 2× the buffer = Excellent, with gradual steps in between.
+    """
+
+    enabled: bool = True
+    slider_max_m: float = 10000.0
 
 
 class InteractiveControlsConfig(BaseModel):
@@ -81,9 +95,10 @@ class InteractiveControlsConfig(BaseModel):
     accessibility_range: InteractiveAccessibilityRange = Field(
         default_factory=InteractiveAccessibilityRange
     )
-    cabin_density_thresholds: InteractiveCabinDensityThresholds = Field(
-        default_factory=InteractiveCabinDensityThresholds
+    cabin_density_slider: InteractiveCabinDensitySlider = Field(
+        default_factory=InteractiveCabinDensitySlider
     )
+    ar5_buffers: InteractiveAr5Buffers = Field(default_factory=InteractiveAr5Buffers)
 
 
 class MapConfig(BaseModel):

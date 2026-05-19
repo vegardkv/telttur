@@ -29,6 +29,7 @@ Known issues to fix later:
 - min lake size should probably be hidden? want to perhaps dynamically reduce the number of shown markers based on zoom level
 - When the final layout has been determined:
   - Minimize the amount of javascript (for maintainability)
+    - I believe a lot of the scoring mechanisms can be handled differently. Ideally, no logic should be necessary in JavaScript. Threshold checks should suffice.
   - But keep in mind performance
   - Pre-compute data if possible
   - But be wary of the national scale file size

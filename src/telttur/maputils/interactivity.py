@@ -3,43 +3,19 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
 
 import folium
 import geopandas as gpd
 
 from telttur.config import (
-    CabinDensityThresholds,
     Config,
     InteractiveAccessibilityRange,
+    InteractiveAr5Buffers,
+    InteractiveCabinDensitySlider,
     InteractiveDimensionToggles,
     ScoringConfig,
 )
 from telttur.lakes import LakeCols
-
-
-@dataclass
-class _ThresholdSlider:
-    """One threshold slider to render in the control panel."""
-
-    level: str  # e.g. "excellent"
-    value: float  # current threshold value from config
-    lo: float  # slider min
-    hi: float  # slider max
-    step: float  # slider step
-    prefix: str  # HTML id prefix ("at" or "ct")
-    is_int: bool  # whether to display as integer
-
-
-# Slider ranges per level for cabin density.
-_CABIN_SLIDER_RANGES: dict[str, tuple[float, float, float]] = {
-    "excellent": (0.0, 0.05, 0.001),
-    "good": (0.0, 0.1, 0.002),
-    "fair": (0.0, 0.2, 0.005),
-    "poor": (0.0, 0.5, 0.01),
-}
-
-_LEVELS = ("excellent", "good", "fair", "poor")
 
 
 def add_interactive_controls(
@@ -62,23 +38,23 @@ def add_interactive_controls(
         return
 
     scoring = config.scoring
-    ct = scoring.cabin_density.thresholds
     dt = controls.dimension_toggles
-    ar = controls.accessibility_range
 
-    # Collect cabin density threshold sliders, driven by the toggle BaseModel fields.
-    cabin_sliders = _collect_threshold_sliders(
-        controls.cabin_density_thresholds.model_dump(),
-        ct.model_dump(),
-        _CABIN_SLIDER_RANGES,
-        prefix="ct",
-        is_int=False,
-    )
-    # Only render threshold sliders when raw data columns are present.
+    # Guard: only show interactive sliders when the underlying data columns are present.
+    ar: InteractiveAccessibilityRange | None = controls.accessibility_range
     if LakeCols.ROAD_DISTANCE_M not in lakes.columns:
-        ar = None  # type: ignore[assignment]
+        ar = None
+
+    cabin_density_slider: InteractiveCabinDensitySlider | None = controls.cabin_density_slider
     if LakeCols.BUILDING_DENSITY not in lakes.columns:
-        cabin_sliders = []
+        cabin_density_slider = None
+
+    ar5_buffers: InteractiveAr5Buffers | None = controls.ar5_buffers
+    if (
+        LakeCols.INDUSTRIAL_DISTANCE_M not in lakes.columns
+        or LakeCols.RESIDENTIAL_DISTANCE_M not in lakes.columns
+    ):
+        ar5_buffers = None
 
     lake_data_block = _build_lake_data_block(
         lakes,
@@ -91,18 +67,19 @@ def add_interactive_controls(
         show_min_area=controls.min_lake_area,
         min_area_init=int(config.min_lake_area_m2),
         access_range=ar,
-        cabin_sliders=cabin_sliders,
+        cabin_density_slider=cabin_density_slider,
+        ar5_buffers=ar5_buffers,
     )
 
     js = _build_js(
         lake_data_block=lake_data_block,
-        ct=ct,
         dt=dt,
         scoring=scoring,
         show_min_area=controls.min_lake_area,
         min_area_init=int(config.min_lake_area_m2),
         access_range=ar,
-        has_cabin_thresh=bool(cabin_sliders),
+        cabin_density_slider=cabin_density_slider,
+        ar5_buffers=ar5_buffers,
     )
 
     root = m.get_root()
@@ -112,34 +89,6 @@ def add_interactive_controls(
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
-
-
-def _collect_threshold_sliders(
-    toggles: dict[str, bool],
-    values: dict[str, float],
-    ranges: dict[str, tuple[float, float, float]],
-    *,
-    prefix: str,
-    is_int: bool,
-) -> list[_ThresholdSlider]:
-    """Build slider descriptors for each enabled threshold level."""
-    sliders: list[_ThresholdSlider] = []
-    for lvl in _LEVELS:
-        if not toggles.get(lvl, False):
-            continue
-        lo, hi, step = ranges.get(lvl, (0, 10000, 100))
-        sliders.append(
-            _ThresholdSlider(
-                level=lvl,
-                value=values[lvl],
-                lo=lo,
-                hi=hi,
-                step=step,
-                prefix=prefix,
-                is_int=is_int,
-            )
-        )
-    return sliders
 
 
 def _build_lake_data_block(
@@ -180,32 +129,11 @@ def _build_lake_data_block(
             LakeCols.FISHING_SCORE: _int(LakeCols.FISHING_SCORE),
             LakeCols.ROAD_DISTANCE_M: _float(LakeCols.ROAD_DISTANCE_M),
             LakeCols.BUILDING_DENSITY: _float(LakeCols.BUILDING_DENSITY),
+            LakeCols.INDUSTRIAL_DISTANCE_M: _float(LakeCols.INDUSTRIAL_DISTANCE_M),
+            LakeCols.RESIDENTIAL_DISTANCE_M: _float(LakeCols.RESIDENTIAL_DISTANCE_M),
         }
 
     return f"var TELTTUR_LAKE_DATA = {json.dumps(lake_lookup)};\n"
-
-
-def _slider_html(s: _ThresholdSlider) -> str:
-    """Render one threshold slider as HTML."""
-    el_id = f"telttur-{s.prefix}-{s.level}"
-    val_id = f"{el_id}-val"
-    if s.is_int:
-        v_display = str(int(s.value))
-        oninput_fmt = "this.value"
-        val_str = str(int(s.value))
-    else:
-        v_display = f"{s.value:.3f}"
-        oninput_fmt = "parseFloat(this.value).toFixed(3)"
-        val_str = f"{s.value:.3f}"
-    unit = "m" if s.is_int else ""
-    return (
-        f"<label>{s.level.capitalize()} \u2264 "
-        f'<span id="{val_id}" style="font-weight:bold">{v_display}</span>{unit}</label><br>'
-        f'<input type="range" id="{el_id}" min="{s.lo}" max="{s.hi}" '
-        f'step="{s.step}" value="{val_str}" style="width:100%;margin:2px 0 6px"'
-        f" oninput=\"document.getElementById('{val_id}').textContent="
-        f'{oninput_fmt};teltturUpdate()">'
-    )
 
 
 def _build_panel_html(
@@ -215,7 +143,8 @@ def _build_panel_html(
     show_min_area: bool,
     min_area_init: int,
     access_range: InteractiveAccessibilityRange | None,
-    cabin_sliders: list[_ThresholdSlider],
+    cabin_density_slider: InteractiveCabinDensitySlider | None,
+    ar5_buffers: InteractiveAr5Buffers | None,
 ) -> str:
     parts: list[str] = [
         '<div id="telttur-controls" style="'
@@ -279,10 +208,35 @@ def _build_panel_html(
             'this.value;teltturUpdate()">'
         )
 
-    if cabin_sliders:
-        parts.append("<b>Cabin density thresholds:</b><br>")
-        for s in cabin_sliders:
-            parts.append(_slider_html(s))
+    if cabin_density_slider is not None and cabin_density_slider.enabled:
+        val_str = f"{cabin_density_slider.value:.3f}"
+        slider_max_str = f"{cabin_density_slider.slider_max:.3f}"
+        parts.append(
+            "<b>Cabin density threshold:</b> "
+            f'<span id="telttur-ct-val" style="font-weight:bold">{val_str}</span><br>'
+            f'<input type="range" id="telttur-ct" min="0" max="{slider_max_str}" '
+            f'step="0.001" value="{val_str}" style="width:100%;margin:3px 0 8px"'
+            " oninput=\"document.getElementById('telttur-ct-val').textContent="
+            'parseFloat(this.value).toFixed(3);teltturUpdate()">'
+        )
+
+    if ar5_buffers is not None and ar5_buffers.enabled:
+        res_val = int(scoring.ar5_land_use.residential_buffer_m)
+        ind_val = int(scoring.ar5_land_use.industrial_buffer_m)
+        ar5_slider_max = int(ar5_buffers.slider_max_m)
+        parts.append(
+            "<b>AR5 buffers:</b><br>"
+            f'Residential: <span id="telttur-ar5-res-val" style="font-weight:bold">{res_val}</span> m<br>'
+            f'<input type="range" id="telttur-ar5-res" min="0" max="{ar5_slider_max}" '
+            f'step="100" value="{res_val}" style="width:100%;margin:2px 0 6px"'
+            " oninput=\"document.getElementById('telttur-ar5-res-val').textContent="
+            'this.value;teltturUpdate()"><br>'
+            f'Industrial: <span id="telttur-ar5-ind-val" style="font-weight:bold">{ind_val}</span> m<br>'
+            f'<input type="range" id="telttur-ar5-ind" min="0" max="{ar5_slider_max}" '
+            f'step="100" value="{ind_val}" style="width:100%;margin:2px 0 6px"'
+            " oninput=\"document.getElementById('telttur-ar5-ind-val').textContent="
+            'this.value;teltturUpdate()">'
+        )
 
     parts.append("</div></div>")
     return "\n".join(parts)
@@ -291,36 +245,54 @@ def _build_panel_html(
 def _build_js(
     *,
     lake_data_block: str,
-    ct: CabinDensityThresholds,
     dt: InteractiveDimensionToggles,
     scoring: ScoringConfig,
     show_min_area: bool,
     min_area_init: int,
     access_range: InteractiveAccessibilityRange | None,
-    has_cabin_thresh: bool,
+    cabin_density_slider: InteractiveCabinDensitySlider | None,
+    ar5_buffers: InteractiveAr5Buffers | None,
 ) -> str:
-    ct_defaults = json.dumps(ct.model_dump())
-
     # Accessibility range slider defaults (used when slider elements are absent).
     if access_range is not None and access_range.enabled:
         ar_min_default = int(access_range.min_m)
         ar_max_default = int(access_range.max_m)
-        js_access_score = "scoreAccess(props.road_distance_m != null ? props.road_distance_m : 0)"
+        js_access_score = (
+            "scoreAccess(props.road_distance_m != null ? parseFloat(props.road_distance_m) : 0)"
+        )
     else:
         ar_min_default = 0
         ar_max_default = 0
         js_access_score = "props.accessibility_score"
+
+    # Cabin density default threshold (used when slider element is absent).
+    ct_default = (
+        cabin_density_slider.value
+        if cabin_density_slider is not None
+        else scoring.cabin_density.thresholds.good
+    )
+    js_cabin_score = (
+        "scoreCabin(props.building_density != null ? parseFloat(props.building_density) : 0)"
+        if cabin_density_slider is not None
+        else "props.cabin_density_score"
+    )
+
+    # AR5 buffer defaults (used when slider elements are absent).
+    ar5_res_default = int(scoring.ar5_land_use.residential_buffer_m)
+    ar5_ind_default = int(scoring.ar5_land_use.industrial_buffer_m)
+    js_ar5_score = (
+        "scoreAr5("
+        "props.industrial_distance_m != null ? parseFloat(props.industrial_distance_m) : 0,"
+        "props.residential_distance_m != null ? parseFloat(props.residential_distance_m) : 0)"
+        if ar5_buffers is not None
+        else "props.ar5_land_use_score"
+    )
 
     cabin_init = str(scoring.cabin_density.enabled).lower()
     access_init = str(scoring.accessibility.enabled).lower()
     ar5_init = str(scoring.ar5_land_use.enabled).lower()
     fishing_init = str(scoring.fishing.enabled).lower()
 
-    js_cabin_score = (
-        "scoreCabin(props.building_density != null ? props.building_density : 0)"
-        if has_cabin_thresh
-        else "props.cabin_density_score"
-    )
     js_cabin_enabled = (
         f"el('telttur-cabin') ? el('telttur-cabin').checked : {cabin_init}"
         if dt.cabin_density
@@ -350,9 +322,11 @@ def _build_js(
     return f"""<script>
 (function() {{
   {lake_data_block}
-  var CT_DEF = {ct_defaults};
+  var CT_DEF = {ct_default};
   var AR_MIN_DEF = {ar_min_default};
   var AR_MAX_DEF = {ar_max_default};
+  var AR5_RES_DEF = {ar5_res_default};
+  var AR5_IND_DEF = {ar5_ind_default};
   var COLORS = {{1:'#d73027',2:'#fc8d59',3:'#fee08b',4:'#91cf60',5:'#1a9850'}};
 
   function el(id) {{ return document.getElementById(id); }}
@@ -377,11 +351,6 @@ def _build_js(
     return null;
   }}
 
-  function ctVal(lvl) {{
-    var e = el('telttur-ct-' + lvl);
-    return e ? parseFloat(e.value) : CT_DEF[lvl];
-  }}
-
   function scoreAccess(dist) {{
     var minKm = (el('telttur-ar-min') ? parseFloat(el('telttur-ar-min').value) : AR_MIN_DEF);
     var maxKm = (el('telttur-ar-max') ? parseFloat(el('telttur-ar-max').value) : AR_MAX_DEF);
@@ -401,18 +370,35 @@ def _build_js(
   }}
 
   function scoreCabin(density) {{
-    if (density <= ctVal('excellent')) return 5;
-    if (density <= ctVal('good'))      return 4;
-    if (density <= ctVal('fair'))      return 3;
-    if (density <= ctVal('poor'))      return 2;
+    var T = el('telttur-ct') ? parseFloat(el('telttur-ct').value) : CT_DEF;
+    if (T <= 0) return density <= 0 ? 5 : 1;
+    if (density <= T)         return 5;
+    if (density <= T * 1.25)  return 4;
+    if (density <= T * 1.5)   return 3;
+    if (density <= T * 2.0)   return 2;
     return 1;
+  }}
+
+  function _scoreAr5One(dist, buf) {{
+    if (buf <= 0) return 5;
+    if (dist <= buf)         return 1;
+    if (dist <= buf * 1.25)  return 2;
+    if (dist <= buf * 1.5)   return 3;
+    if (dist <= buf * 2.0)   return 4;
+    return 5;
+  }}
+
+  function scoreAr5(indDist, resDist) {{
+    var resBuf = el('telttur-ar5-res') ? parseFloat(el('telttur-ar5-res').value) : AR5_RES_DEF;
+    var indBuf = el('telttur-ar5-ind') ? parseFloat(el('telttur-ar5-ind').value) : AR5_IND_DEF;
+    return Math.min(_scoreAr5One(indDist, indBuf), _scoreAr5One(resDist, resBuf));
   }}
 
   window.teltturUpdate = function() {{
     var lakesLayer = findLakesLayer();
     if (!lakesLayer) return;
 
-    var minArea    = {js_min_area};
+    var minArea   = {js_min_area};
     var cabinOn   = {js_cabin_enabled};
     var accessOn  = {js_access_enabled};
     var ar5On     = {js_ar5_enabled};
@@ -444,7 +430,7 @@ def _build_js(
         if (as_ != null) scores.push(parseInt(as_));
       }}
       if (ar5On) {{
-        var rs = props.ar5_land_use_score;
+        var rs = {js_ar5_score};
         if (rs != null) scores.push(parseInt(rs));
       }}
       if (fishingOn) {{

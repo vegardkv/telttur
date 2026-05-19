@@ -12,7 +12,17 @@ from telttur.config import Config
 from telttur.lakes import LakeCols
 from telttur.landcover import get_wms_config
 from telttur.maputils.interactivity import add_interactive_controls
-from telttur.scoring import LEVEL_COLORS, LEVEL_NAMES, TentabilityLevel, get_scoring_popup_fields
+from telttur.scoring import (
+    LEVEL_COLORS,
+    LEVEL_NAMES,
+    TentabilityLevel,
+    get_scoring_detail_fields,
+    get_scoring_popup_fields,
+    get_scoring_score_fields,
+)
+
+# Sentinel value used in popup row lists to insert a visual separator.
+_SEP = "__sep__"
 
 # Reverse lookup: level name string → badge background colour
 _LEVEL_NAME_TO_COLOR: dict[str, str] = {
@@ -95,7 +105,7 @@ def _add_lake_markers(
     m: folium.Map, lakes_clean: gpd.GeoDataFrame, use_cluster: bool = False
 ) -> None:
     """Add lakes as circle markers (one per lake centroid) to the map."""
-    fields, aliases = _lake_popup_fields(lakes_clean)
+    rows = _lake_popup_rows(lakes_clean)
     if use_cluster:
         layer: folium.FeatureGroup | folium.plugins.MarkerCluster = folium.plugins.MarkerCluster(
             name="Lakes"
@@ -110,9 +120,15 @@ def _add_lake_markers(
         rep_point = geom.representative_point()
         color = row.get(LakeCols.TENTABILITY_COLOR, default_color) or default_color
         popup: folium.Popup | None = None
-        if fields:
+        if rows:
             html = "<table style='font-size:12px;border-collapse:collapse'>"
-            for field, alias in zip(fields, aliases, strict=True):
+            for field, alias in rows:
+                if field == _SEP:
+                    html += (
+                        "<tr><td colspan='2'><hr style='margin:3px 0;border:none;"
+                        "border-top:1px solid #ccc'></td></tr>"
+                    )
+                    continue
                 val = row.get(field, "")
                 cell = _score_badge(val)
                 html += (
@@ -134,33 +150,44 @@ def _add_lake_markers(
     layer.add_to(m)
 
 
-def _lake_popup_fields(lakes: gpd.GeoDataFrame) -> tuple[list[str], list[str]]:
-    """Return (fields, aliases) for a GeoJsonPopup showing the most useful lake columns."""
-    fields: list[str] = []
-    aliases: list[str] = []
+def _lake_popup_rows(lakes: gpd.GeoDataFrame) -> list[tuple[str, str]]:
+    """Return popup rows as (field, alias) pairs, with _SEP marking a visual separator.
 
-    # Lake name
+    Order: Name → Tentability → per-dimension score badges → separator → Area → detail data.
+    """
+    rows: list[tuple[str, str]] = []
+
+    # --- Score section ---
     for name_col, label in (("navn", "Name"), ("NAVN", "Name")):
         if name_col in lakes.columns:
-            fields.append(name_col)
-            aliases.append(label)
+            rows.append((name_col, label))
             break
 
-    # Lake area
-    if LakeCols.AREA_DISPLAY in lakes.columns:
-        fields.append(LakeCols.AREA_DISPLAY)
-        aliases.append("Area")
-
-    # Composite tentability (present when scoring is enabled)
     if LakeCols.TENTABILITY_LEVEL in lakes.columns:
-        fields.append(LakeCols.TENTABILITY_LEVEL)
-        aliases.append("Tentability")
+        rows.append((LakeCols.TENTABILITY_LEVEL, "Tentability"))
 
-    # Per-dimension scoring fields — auto-collected from each dimension module
-    for col, alias in get_scoring_popup_fields(lakes):
-        fields.append(col)
-        aliases.append(alias)
+    for col, alias in get_scoring_score_fields(lakes):
+        rows.append((col, alias))
 
+    # --- Detail section ---
+    detail: list[tuple[str, str]] = []
+    if LakeCols.AREA_DISPLAY in lakes.columns:
+        detail.append((LakeCols.AREA_DISPLAY, "Area"))
+    for col, alias in get_scoring_detail_fields(lakes):
+        detail.append((col, alias))
+
+    if detail:
+        rows.append((_SEP, ""))
+        rows.extend(detail)
+
+    return rows
+
+
+def _lake_popup_fields(lakes: gpd.GeoDataFrame) -> tuple[list[str], list[str]]:
+    """Return (fields, aliases) for polygon-mode GeoJsonPopup (no separator)."""
+    all_rows = [(f, a) for f, a in _lake_popup_rows(lakes) if f != _SEP]
+    fields = [f for f, _ in all_rows]
+    aliases = [a for _, a in all_rows]
     return fields, aliases
 
 

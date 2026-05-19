@@ -18,10 +18,13 @@ from telttur.scoring.common import (
 
 SCORE_COLUMN = LakeCols.ACCESSIBILITY_SCORE
 
-POPUP_FIELDS: list[PopupField] = [
+SCORE_FIELDS: list[PopupField] = [
     (LakeCols.ACCESSIBILITY_LEVEL, "Accessibility"),
+]
+DETAIL_FIELDS: list[PopupField] = [
     (LakeCols.ROAD_DISTANCE_M, "Distance to road (m)"),
 ]
+POPUP_FIELDS: list[PopupField] = SCORE_FIELDS + DETAIL_FIELDS
 
 # Non-motorised road categories — excluded from accessibility scoring because
 # they cannot be reached by car.
