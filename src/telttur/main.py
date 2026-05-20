@@ -5,11 +5,10 @@ import time
 
 import click
 
-from telttur.config import BBox, OutputConfig, build_profile_config, dump_config_yaml, load_config
+from telttur.config import BBox, build_profile_config, dump_config_yaml, load_config
+from telttur.data_export import export_data
 from telttur.download import download_n50
 from telttur.lakes import LakeCols, process_lakes
-from telttur.landcover import process_landcover
-from telttur.map_generator import generate_map, save_map
 from telttur.roads import process_roads
 from telttur.scoring import process_scoring
 
@@ -159,30 +158,17 @@ def generate(config_path: str | None, profile: str | None, skip_download: bool) 
             f" with tenting level >= {config.min_lake_tenting_quality}]"
         )
 
-    # Step 5: Land cover (vector mode only; WMS is added directly in map generator)
-    landcover = None
-    if config.landcover_mode == "vector":
-        t0 = time.time()
-        landcover = process_landcover(
-            gdb_paths,
-            config.bbox,
-            effective_simplify,
-        )
-        print(f"  [landcover: {time.time() - t0:.1f}s]")
-
-    # Step 6: Generate map
+    # Step 5: Export data.json
     t0 = time.time()
-    print("Generating map...")
-    m = generate_map(
-        config,
-        road_lines,
-        lakes,
-        landcover=landcover,
-        landcover_mode=config.landcover_mode,
-    )
-    output_path = save_map(m, config)
-    print(f"  [map render+save: {time.time() - t0:.1f}s]")
-    print(f"Map saved to: {output_path}")
+    print("Exporting data.json...")
+    output_dir = config.output_path
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_file = output_dir / config.output_filename
+    export_data(lakes, road_lines, config, output_file)
+    js_file = output_file.with_suffix(".js")
+    js_kb = js_file.stat().st_size / 1024
+    print(f"  [export: {time.time() - t0:.1f}s]")
+    print(f"Data saved to: {js_file}  ({js_kb:.0f} KB)")
     print(f"Total time: {time.time() - pipeline_start:.1f}s")
 
 
@@ -245,55 +231,6 @@ def sample(output: str, profile: str) -> None:
     print(f"Sample config ({profile} profile) written to: {output}")
     print(f"Run with: uv run telttur generate --config {output}")
     print(f"       or: uv run telttur generate --profile {profile}")
-
-
-@cli.command()
-@click.option(
-    "--input",
-    "-i",
-    "input_path",
-    required=True,
-    type=click.Path(exists=True),
-    help="Path to the HTML file to optimize.",
-)
-@click.option(
-    "--output",
-    "-o",
-    "output_path",
-    default=None,
-    type=click.Path(),
-    help="Output path. Defaults to overwriting the input file.",
-)
-@click.option(
-    "--precision",
-    default=6,
-    show_default=True,
-    type=int,
-    help="Decimal places for coordinate precision.",
-)
-def optimize(input_path: str, output_path: str | None, precision: int) -> None:
-    """Post-process an existing HTML map to reduce file size."""
-    from pathlib import Path
-
-    from telttur.maputils.optimize import optimize_html
-
-    src = Path(input_path)
-    dst = Path(output_path) if output_path else src
-
-    before_mb = src.stat().st_size / (1024 * 1024)
-    html = src.read_text(encoding="utf-8")
-
-    cfg = OutputConfig(coordinate_precision=precision, minify=True)
-    optimized = optimize_html(html, cfg)
-
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    dst.write_text(optimized, encoding="utf-8")
-
-    after_mb = dst.stat().st_size / (1024 * 1024)
-    reduction = (1 - after_mb / before_mb) * 100
-    print(f"  Before: {before_mb:.1f} MB")
-    print(f"  After:  {after_mb:.1f} MB  ({reduction:.0f}% reduction)")
-    print(f"  Saved to: {dst}")
 
 
 if __name__ == "__main__":

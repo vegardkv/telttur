@@ -1,8 +1,7 @@
 # Telttur configuration
 fylke: Akershus
 
-# Output filename
-output_filename: map_akershus.html
+output_filename: data_akershus.js
 
 min_lake_area_m2: 1000  # exclude lakes smaller than 0.1 ha
 
@@ -12,9 +11,7 @@ lake_display_mode: marker
 
 show_roads: false
 
-# Map rendering options
 map:
-  base_map: selectable
   interactive_controls:
     enabled: true
     dimension_toggles:
@@ -22,7 +19,4 @@ map:
       accessibility: true
       ar5_land_use: true
     min_lake_area: true
-    accessibility_thresholds:
-      fair: true
-      poor: true
 

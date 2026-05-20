@@ -5,5 +5,4 @@ bbox:
   east: 12.6
   west: 7.5
 
-# Output filename
-output_filename: map_innlandet.html
+output_filename: data_innlandet.js

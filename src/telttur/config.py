@@ -104,21 +104,9 @@ class InteractiveControlsConfig(BaseModel):
 class MapConfig(BaseModel):
     """Configuration for map rendering options."""
 
-    include_osm_layer: bool = False
-    use_marker_cluster: bool = False
-    base_map: Literal["greyscale", "topographic", "selectable"] = "greyscale"
     interactive_controls: InteractiveControlsConfig = Field(
         default_factory=InteractiveControlsConfig
     )
-
-
-class OutputConfig(BaseModel):
-    """Configuration for HTML output post-processing."""
-
-    coordinate_precision: int = 6
-    """Decimal places for lat/lng coordinates (6 ≈ 0.1 m accuracy, sufficient for maps)."""
-    minify: bool = True
-    """Apply minification and coordinate-precision reduction after saving."""
 
 
 class CabinDensityConfig(BaseModel):
@@ -181,10 +169,9 @@ class Config(BaseModel):
     min_lake_area_m2: float = 0.0
     data_dir: str = "data"
     output_dir: str = "output"
-    output_filename: str = "map.html"
+    output_filename: str = "data.js"
     landcover_mode: Literal["wms", "vector", "disabled"] = "wms"
     map: MapConfig = MapConfig()
-    output: OutputConfig = Field(default_factory=OutputConfig)
     scoring: ScoringConfig = ScoringConfig()
     show_roads: bool = True
     lake_display_mode: Literal["polygon", "marker"] = "polygon"
@@ -269,7 +256,6 @@ def build_profile_config(profile: Profile) -> Config:
             landcover_mode="wms",
             show_roads=True,
             map=MapConfig(
-                use_marker_cluster=False,
                 interactive_controls=InteractiveControlsConfig(enabled=True),
             ),
             scoring=ScoringConfig(
@@ -286,7 +272,6 @@ def build_profile_config(profile: Profile) -> Config:
             show_roads=False,
             min_lake_tenting_quality="Fair",
             map=MapConfig(
-                use_marker_cluster=False,
                 interactive_controls=InteractiveControlsConfig(enabled=True),
             ),
             scoring=ScoringConfig(
@@ -303,7 +288,6 @@ def build_profile_config(profile: Profile) -> Config:
             show_roads=False,
             min_lake_tenting_quality="Fair",
             map=MapConfig(
-                use_marker_cluster=True,
                 interactive_controls=InteractiveControlsConfig(enabled=False),
             ),
             scoring=ScoringConfig(

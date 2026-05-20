@@ -1,0 +1,134 @@
+/* ─── Layout ──────────────────────────────────────────────────────────────── */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: sans-serif;
+}
+
+#map {
+  height: 100vh;
+  width: 100%;
+}
+
+/* ─── Control panel ───────────────────────────────────────────────────────── */
+
+#tt-controls {
+  position: fixed;
+  top: 80px;
+  right: 10px;
+  z-index: 9999;
+  background: white;
+  padding: 10px 14px;
+  border: 2px solid #666;
+  border-radius: 6px;
+  font-size: 13px;
+  min-width: 190px;
+  max-width: 250px;
+  box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+#tt-controls-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+#tt-controls-header b {
+  font-size: 14px;
+}
+
+#tt-toggle-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0;
+}
+
+#tt-body label {
+  display: block;
+  margin-bottom: 2px;
+}
+
+#tt-body input[type="range"] {
+  width: 100%;
+  margin: 3px 0 8px;
+}
+
+.tt-section {
+  margin-bottom: 6px;
+}
+
+.tt-spacer {
+  height: 6px;
+}
+
+/* ─── Legend ──────────────────────────────────────────────────────────────── */
+
+#tt-legend {
+  position: fixed;
+  bottom: 30px;
+  left: 30px;
+  z-index: 9999;
+  background: white;
+  padding: 10px;
+  border: 2px solid grey;
+  border-radius: 5px;
+  font-size: 12px;
+  max-width: 220px;
+  box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+#tt-legend b {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.tt-legend-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.tt-legend-swatch {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  margin-right: 6px;
+  opacity: 0.75;
+  flex-shrink: 0;
+}
+
+/* ─── Popups ──────────────────────────────────────────────────────────────── */
+
+.tt-popup table {
+  font-size: 12px;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.tt-popup th {
+  text-align: left;
+  padding: 2px 6px 2px 0;
+  white-space: nowrap;
+}
+
+.tt-popup td {
+  padding: 2px 0;
+}
+
+.tt-popup hr {
+  margin: 3px 0;
+  border: none;
+  border-top: 1px solid #ccc;
+}
+
+/* Score badge colours — TentabilityLevel 1–5 */
+.tt-b1 { background: #d73027; color: white; padding: 1px 5px; border-radius: 3px; }
+.tt-b2 { background: #fc8d59; color: white; padding: 1px 5px; border-radius: 3px; }
+.tt-b3 { background: #fee08b; color: #333;  padding: 1px 5px; border-radius: 3px; }
+.tt-b4 { background: #91cf60; color: #333;  padding: 1px 5px; border-radius: 3px; }
+.tt-b5 { background: #1a9850; color: white; padding: 1px 5px; border-radius: 3px; }

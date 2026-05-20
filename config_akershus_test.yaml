@@ -2,7 +2,7 @@
 # National-scale static map with interactive scoring controls.
 fylke: akershus
 
-output_filename: map_akershus_test.html
+output_filename: data_akershus_test.js
 
 # Only include lakes ≥ 5 ha to keep the dataset manageable nationally
 min_lake_area_m2: 10000
@@ -12,9 +12,5 @@ show_roads: false
 landcover_mode: disabled
 
 map:
-  use_marker_cluster: false
-  base_map: greyscale
   interactive_controls:
     enabled: true
-  output:
-    minify: false
