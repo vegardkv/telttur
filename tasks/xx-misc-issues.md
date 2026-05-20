@@ -20,11 +20,25 @@ Tracked in tasks 15–18. Key decisions:
 
 ## Fine-tuning the first viable model
 
+### Round 1
+
 - I want interactivity controls for AR5 use as well: one slider for residential buffer, and one for industrial. Everything within the buffer is "terrible". everything beyond 2x buffer is excellent. Gradual step-down in-between.
 - Interactivity control for cabin density. (one slider, handle similarly to the above)
 - Re-organize popup information: scoring labels first, then additional data like area, "buildings within buffer", etc.
 
-Known issues to fix later:
+
+### Round 2
+
+From the recent js optimizations to minimize the html size, it is evident that i probably want more direct control over the html and js side. Moreover, the website is a bit laggy when panning due to the sheer amount of visible markers (i believe, I haven't profiled properly). Making the markers opaque may help, but still...
+
+I therefore want do migrate from folium to direct html/js/css (using leaflet and modern "vanilla" javascript). The core idea is still the same: serve the final result via static website provider. Moreover, the workflow should still be the same, except that the output should probably be a json file (or js file containing a js object definition with the necessary data). Within the html main file for the web site, or the javascript file, there should be a path that points to the relevant data. I am open to other suggestions as well. It is important to keep the end goal in mind, while at the same time keep the developer workflow convenient.
+
+After this has been done, it should be easier (i hope) to experiment and adjust how the app/website works.
+
+Create task 19 with a plan for how to do this, and update readme and github instructions to reflect these planned changes.
+
+### Known issues to fix later
+
 - Popup labels does not reflect interactively changed values. 
 - min lake size should probably be hidden? want to perhaps dynamically reduce the number of shown markers based on zoom level
 - When the final layout has been determined:

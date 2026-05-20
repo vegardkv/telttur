@@ -10,9 +10,13 @@ Build a **static map** that does not rely on a back-end server. All relevant dat
 
 ## Architecture & Tools
 
-- **Folium** and **GeoPandas** are the main workhorses for map generation. They should suffice until proven too limiting.
+- **GeoPandas** handles all geospatial data processing (extraction, scoring, spatial operations).
+- The Python pipeline outputs a **`data.json`** file containing pre-computed lake scores, road geometries, and scoring config.
+- The **frontend** is a hand-authored static site (`web/`) using **Leaflet** and vanilla JavaScript — no build step, no framework.
 - **Pydantic** drives a rigorous configuration system with sensible defaults.
 - The CLI entry point is `telttur` (via Click).
+
+> **Migration note (task 19):** The project is migrating from Folium-generated HTML to a direct Leaflet frontend. Folium is being removed. Do not add Folium code.
 
 ## Configuration
 
