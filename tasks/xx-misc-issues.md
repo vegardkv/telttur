@@ -37,6 +37,20 @@ After this has been done, it should be easier (i hope) to experiment and adjust 
 
 Create task 19 with a plan for how to do this, and update readme and github instructions to reflect these planned changes.
 
+### Round 3 - polish
+
+This is starting to look good. I want to do some final polish and bug fixes:
+- Bug: Popup labels does not reflect interactively changed values.
+- Scoring dimensions should have a short info button that can be hovered or clicked to show what this dimension means
+- Styling/layout:
+  - Each scoring dimension should have its own "card", with an enable toggle. The current approach has a scoring selection above and settings below. Instead, i want the settings directly next to the toggle.
+  - I want a range slider for accessbility instead of two sliders. If this is complicated with vanilla javascript, perhaps there are some lightweight libraries/frameworks that can be utilized?
+  - I want to support two languages: norwegian and english
+  - pop ups should ideally show the lake name on top. Not sure this is available though?
+- Terminology: on the web app, the terminology should be aimed more towards the user ("a hiker looking for a nice place to tent"). It is currently very developer oriented.
+- Bug: The initial zoom should is currently south-east of norway (for the full map, not the akershus test). need to zoom out/pan to find the map.
+
+
 ### Known issues to fix later
 
 - Popup labels does not reflect interactively changed values. 
