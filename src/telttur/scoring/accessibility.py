@@ -11,20 +11,7 @@ from telttur.config import AccessibilityConfig
 from telttur.lakes import LakeCols
 from telttur.scoring.common import (
     CRS_UTM33,
-    LEVEL_NAMES,
-    PopupField,
-    TentabilityLevel,
 )
-
-SCORE_COLUMN = LakeCols.ACCESSIBILITY_SCORE
-
-SCORE_FIELDS: list[PopupField] = [
-    (LakeCols.ACCESSIBILITY_LEVEL, "Accessibility"),
-]
-DETAIL_FIELDS: list[PopupField] = [
-    (LakeCols.ROAD_DISTANCE_M, "Distance to road (m)"),
-]
-POPUP_FIELDS: list[PopupField] = SCORE_FIELDS + DETAIL_FIELDS
 
 # Non-motorised road categories — excluded from accessibility scoring because
 # they cannot be reached by car.
@@ -45,8 +32,6 @@ def score_accessibility(
 
     Added columns:
       road_distance_m      — metres to nearest drivable road (rounded to 1 dp)
-      accessibility_score  — TentabilityLevel integer (1 = Terrible … 5 = Excellent)
-      accessibility_level  — human-readable level name
     """
     lakes = lakes.copy()
 
@@ -59,8 +44,6 @@ def score_accessibility(
 
     if drivable.empty:
         lakes[LakeCols.ROAD_DISTANCE_M] = float("inf")
-        lakes[SCORE_COLUMN] = int(TentabilityLevel.TERRIBLE)
-        lakes[LakeCols.ACCESSIBILITY_LEVEL] = LEVEL_NAMES[TentabilityLevel.TERRIBLE]
         return lakes
 
     lakes_utm = lakes.to_crs(CRS_UTM33)
@@ -77,19 +60,4 @@ def score_accessibility(
     distances = joined.groupby(joined.index)[LakeCols.ROAD_DISTANCE_M].min()
     lakes[LakeCols.ROAD_DISTANCE_M] = lakes.index.map(distances).fillna(float("inf")).round(1)
 
-    thresholds = config.thresholds
-
-    def _score(d: float) -> int:
-        if d <= thresholds.excellent:
-            return int(TentabilityLevel.EXCELLENT)
-        elif d <= thresholds.good:
-            return int(TentabilityLevel.GOOD)
-        elif d <= thresholds.fair:
-            return int(TentabilityLevel.FAIR)
-        elif d <= thresholds.poor:
-            return int(TentabilityLevel.POOR)
-        return int(TentabilityLevel.TERRIBLE)
-
-    lakes[SCORE_COLUMN] = lakes[LakeCols.ROAD_DISTANCE_M].apply(_score)
-    lakes[LakeCols.ACCESSIBILITY_LEVEL] = lakes[SCORE_COLUMN].map(LEVEL_NAMES)
     return lakes

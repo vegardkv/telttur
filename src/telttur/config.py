@@ -175,7 +175,6 @@ class Config(BaseModel):
     scoring: ScoringConfig = ScoringConfig()
     show_roads: bool = True
     lake_display_mode: Literal["polygon", "marker"] = "polygon"
-    min_lake_tenting_quality: Literal["Terrible", "Poor", "Fair", "Good", "Excellent"] | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -270,7 +269,6 @@ def build_profile_config(profile: Profile) -> Config:
             lake_display_mode="marker",
             landcover_mode="wms",
             show_roads=False,
-            min_lake_tenting_quality="Fair",
             map=MapConfig(
                 interactive_controls=InteractiveControlsConfig(enabled=True),
             ),
@@ -286,7 +284,6 @@ def build_profile_config(profile: Profile) -> Config:
             lake_display_mode="marker",
             landcover_mode="disabled",
             show_roads=False,
-            min_lake_tenting_quality="Fair",
             map=MapConfig(
                 interactive_controls=InteractiveControlsConfig(enabled=False),
             ),

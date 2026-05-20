@@ -15,8 +15,6 @@ from telttur.lakes import LakeCols
 from telttur.scoring import (
     LEVEL_COLORS,
     LEVEL_NAMES,
-    get_scoring_detail_fields,
-    get_scoring_score_fields,
 )
 
 # Coordinate precision: 6 decimals ≈ 0.1 m accuracy, sufficient for maps.
@@ -29,11 +27,7 @@ _LAKE_FIELDS: list[str] = [
     "lat",
     "lng",
     "area",
-    LakeCols.CABIN_DENSITY_SCORE,
-    LakeCols.ACCESSIBILITY_SCORE,
-    LakeCols.AR5_LAND_USE_SCORE,
     LakeCols.FISHING_SCORE,
-    LakeCols.TENTABILITY_SCORE,
     LakeCols.ROAD_DISTANCE_M,
     LakeCols.BUILDING_DENSITY,
     LakeCols.INDUSTRIAL_DISTANCE_M,
@@ -62,11 +56,7 @@ def build_lake_data(
     """
     # Determine which optional fields are present
     optional_cols = [
-        LakeCols.CABIN_DENSITY_SCORE,
-        LakeCols.ACCESSIBILITY_SCORE,
-        LakeCols.AR5_LAND_USE_SCORE,
         LakeCols.FISHING_SCORE,
-        LakeCols.TENTABILITY_SCORE,
         LakeCols.ROAD_DISTANCE_M,
         LakeCols.BUILDING_DENSITY,
         LakeCols.INDUSTRIAL_DISTANCE_M,
@@ -103,11 +93,7 @@ def build_lake_data(
             if val is None or (isinstance(val, float) and pd.isna(val)):
                 entry.append(None)
             elif col in (
-                LakeCols.CABIN_DENSITY_SCORE,
-                LakeCols.ACCESSIBILITY_SCORE,
-                LakeCols.AR5_LAND_USE_SCORE,
                 LakeCols.FISHING_SCORE,
-                LakeCols.TENTABILITY_SCORE,
                 LakeCols.FISH_SPECIES_COUNT,
             ):
                 entry.append(int(val))
@@ -250,20 +236,12 @@ def export_data(
     )
     config_block = build_config_block(config)
 
-    # Build popup field metadata for the frontend (which columns have score badges, etc.)
-    popup_meta: dict[str, Any] = {}
-    score_field_names = {col for col, _ in get_scoring_score_fields(lakes)}
-    detail_field_names = {col for col, _ in get_scoring_detail_fields(lakes)}
-    popup_meta["score_fields"] = list(score_field_names)
-    popup_meta["detail_fields"] = list(detail_field_names)
-
     data = {
         "meta": meta,
         "lake_fields": lake_fields,
         "lakes": lake_rows,
         "roads": road_data,
         "config": config_block,
-        "popup": popup_meta,
     }
 
     output_path.parent.mkdir(parents=True, exist_ok=True)

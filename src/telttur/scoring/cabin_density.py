@@ -16,22 +16,8 @@ from telttur.config import BBox, CabinDensityConfig
 from telttur.lakes import LakeCols
 from telttur.scoring.common import (
     CRS_UTM33,
-    LEVEL_NAMES,
-    PopupField,
-    TentabilityLevel,
     _bbox_to_utm33,
 )
-
-SCORE_COLUMN = LakeCols.CABIN_DENSITY_SCORE
-
-SCORE_FIELDS: list[PopupField] = [
-    (LakeCols.CABIN_DENSITY_LEVEL, "Cabin density"),
-]
-DETAIL_FIELDS: list[PopupField] = [
-    (LakeCols.BUILDING_COUNT, "Buildings within buffer"),
-    (LakeCols.BUILDING_DENSITY, "Building density (per \u221am\u00b2)"),
-]
-POPUP_FIELDS: list[PopupField] = SCORE_FIELDS + DETAIL_FIELDS
 
 # Norwegian building type codes (bygningstype) that indicate habitation:
 #   100–199: Residential buildings, including:
@@ -103,8 +89,6 @@ def score_cabin_density(
     Added columns:
       building_count       — number of buildings within the buffer
       building_density     — building_count / sqrt(area_m2), rounded to 4 dp
-      cabin_density_score  — TentabilityLevel integer (1 = Terrible … 5 = Excellent)
-      cabin_density_level  — human-readable level name
     """
     lakes = lakes.copy()
     lakes_utm = lakes.to_crs(CRS_UTM33).copy()
@@ -129,19 +113,4 @@ def score_cabin_density(
     sqrt_area = area_m2.apply(lambda a: math.sqrt(max(a, 1.0)))
     lakes[LakeCols.BUILDING_DENSITY] = (lakes[LakeCols.BUILDING_COUNT] / sqrt_area).round(4)
 
-    thresholds = config.thresholds
-
-    def _score(density: float) -> int:
-        if density <= thresholds.excellent:
-            return int(TentabilityLevel.EXCELLENT)
-        elif density <= thresholds.good:
-            return int(TentabilityLevel.GOOD)
-        elif density <= thresholds.fair:
-            return int(TentabilityLevel.FAIR)
-        elif density <= thresholds.poor:
-            return int(TentabilityLevel.POOR)
-        return int(TentabilityLevel.TERRIBLE)
-
-    lakes[SCORE_COLUMN] = lakes[LakeCols.BUILDING_DENSITY].apply(_score)
-    lakes[LakeCols.CABIN_DENSITY_LEVEL] = lakes[SCORE_COLUMN].map(LEVEL_NAMES)
     return lakes

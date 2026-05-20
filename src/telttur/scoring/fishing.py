@@ -49,20 +49,10 @@ from telttur.scoring.common import (
     CRS_UTM33,
     CRS_WGS84,
     LEVEL_NAMES,
-    PopupField,
     TentabilityLevel,
 )
 
 SCORE_COLUMN = LakeCols.FISHING_SCORE
-
-SCORE_FIELDS: list[PopupField] = [
-    (LakeCols.FISHING_LEVEL, "Fishing suitability"),
-]
-DETAIL_FIELDS: list[PopupField] = [
-    (LakeCols.FISH_SPECIES_COUNT, "Fish species observed (nearby)"),
-    (LakeCols.FISH_PRIZED_COUNT, "Prized game fish species"),
-]
-POPUP_FIELDS: list[PopupField] = SCORE_FIELDS + DETAIL_FIELDS
 
 _NINA_URL = "https://ipt.nina.no/archive.do?r=vanninfofisk"
 

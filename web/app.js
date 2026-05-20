@@ -132,76 +132,86 @@ function scoreAr5(indDist, resDist, indBuf, resBuf) {
 }
 
 // ---------------------------------------------------------------------------
+// Read current slider/toggle state
+// ---------------------------------------------------------------------------
+
+/** Read the current control panel state for scoring. */
+function readControlState(cfg) {
+  const ctrl = cfg.interactive;
+  const scoring = cfg.scoring;
+
+  const arCfg = ctrl.accessibility_range || {};
+  const ctCfg = ctrl.cabin_density_slider || {};
+  const ar5Cfg = ctrl.ar5_buffers || {};
+
+  return {
+    minArea: ctrl.min_lake_area
+      ? sliderVal("tt-min-area", cfg.min_lake_area_m2)
+      : cfg.min_lake_area_m2,
+    arMin: arCfg.enabled ? sliderVal("tt-ar-min", arCfg.min_m || 0) : 0,
+    arMax: arCfg.enabled ? sliderVal("tt-ar-max", arCfg.max_m || 5000) : 5000,
+    ctThreshold: ctCfg.enabled
+      ? sliderVal("tt-ct", ctCfg.value || 0.05)
+      : (scoring.cabin_density ? scoring.cabin_density.thresholds.good || 0.01 : 0.01),
+    ar5ResBuf: ar5Cfg.enabled
+      ? sliderVal("tt-ar5-res", (scoring.ar5_land_use || {}).residential_buffer_m || 1000)
+      : ((scoring.ar5_land_use || {}).residential_buffer_m || 1000),
+    ar5IndBuf: ar5Cfg.enabled
+      ? sliderVal("tt-ar5-ind", (scoring.ar5_land_use || {}).industrial_buffer_m || 2000)
+      : ((scoring.ar5_land_use || {}).industrial_buffer_m || 2000),
+    cabinOn: checkVal("tt-cabin", !!(scoring.cabin_density && scoring.cabin_density.enabled)),
+    accessOn: checkVal("tt-access", !!(scoring.accessibility && scoring.accessibility.enabled)),
+    ar5On: checkVal("tt-ar5", !!(scoring.ar5_land_use && scoring.ar5_land_use.enabled)),
+    fishingOn: checkVal("tt-fishing", !!(scoring.fishing && scoring.fishing.enabled)),
+  };
+}
+
+/** Compute per-dimension scores for a single lake given the current control state. */
+function computeScores(fields, cs) {
+  const live = {};
+  const scores = [];
+
+  if (cs.cabinOn && fields.building_density != null) {
+    live.cabin_density_score = scoreCabin(fields.building_density, cs.ctThreshold);
+    scores.push(live.cabin_density_score);
+  }
+
+  if (cs.accessOn && fields.road_distance_m != null) {
+    live.accessibility_score = scoreAccess(fields.road_distance_m, cs.arMin, cs.arMax);
+    scores.push(live.accessibility_score);
+  }
+
+  if (cs.ar5On && fields.industrial_distance_m != null && fields.residential_distance_m != null) {
+    live.ar5_land_use_score = scoreAr5(fields.industrial_distance_m, fields.residential_distance_m, cs.ar5IndBuf, cs.ar5ResBuf);
+    scores.push(live.ar5_land_use_score);
+  }
+
+  if (cs.fishingOn && fields.fishing_score != null) {
+    live.fishing_score = fields.fishing_score;
+    scores.push(live.fishing_score);
+  }
+
+  live.tentability_score = scores.length > 0 ? Math.min(...scores) : null;
+  return live;
+}
+
+// ---------------------------------------------------------------------------
 // Interactive update — called on every slider/checkbox change
 // ---------------------------------------------------------------------------
 
 function teltturUpdate(cfg, idx) {
-  const ctrl = cfg.interactive;
-  const scoring = cfg.scoring;
-
-  const minArea = ctrl.min_lake_area
-    ? sliderVal("tt-min-area", cfg.min_lake_area_m2)
-    : cfg.min_lake_area_m2;
-
-  // Accessibility slider values
-  const arCfg = ctrl.accessibility_range || {};
-  const arMin = arCfg.enabled ? sliderVal("tt-ar-min", arCfg.min_m || 0) : 0;
-  const arMax = arCfg.enabled ? sliderVal("tt-ar-max", arCfg.max_m || 5000) : 5000;
-
-  // Cabin density slider
-  const ctCfg = ctrl.cabin_density_slider || {};
-  const ctThreshold = ctCfg.enabled
-    ? sliderVal("tt-ct", ctCfg.value || 0.05)
-    : (scoring.cabin_density ? scoring.cabin_density.thresholds.good || 0.01 : 0.01);
-
-  // AR5 buffers
-  const ar5Cfg = ctrl.ar5_buffers || {};
-  const ar5ResBuf = ar5Cfg.enabled
-    ? sliderVal("tt-ar5-res", (scoring.ar5_land_use || {}).residential_buffer_m || 1000)
-    : ((scoring.ar5_land_use || {}).residential_buffer_m || 1000);
-  const ar5IndBuf = ar5Cfg.enabled
-    ? sliderVal("tt-ar5-ind", (scoring.ar5_land_use || {}).industrial_buffer_m || 2000)
-    : ((scoring.ar5_land_use || {}).industrial_buffer_m || 2000);
-
-  // Dimension toggles
-  const cabinOn = checkVal("tt-cabin", !!(scoring.cabin_density && scoring.cabin_density.enabled));
-  const accessOn = checkVal("tt-access", !!(scoring.accessibility && scoring.accessibility.enabled));
-  const ar5On = checkVal("tt-ar5", !!(scoring.ar5_land_use && scoring.ar5_land_use.enabled));
-  const fishingOn = checkVal("tt-fishing", !!(scoring.fishing && scoring.fishing.enabled));
+  const cs = readControlState(cfg);
 
   for (const { marker, fields } of allMarkers) {
     const area = fields.area || 0;
 
-    if (minArea > 0 && area < minArea) {
+    if (cs.minArea > 0 && area < cs.minArea) {
       marker.setStyle({ fillOpacity: 0, opacity: 0, weight: 0 });
       continue;
     }
 
-    const scores = [];
-
-    if (cabinOn && fields.building_density != null) {
-      scores.push(scoreCabin(fields.building_density, ctThreshold));
-    } else if (cabinOn && fields.cabin_density_score != null) {
-      scores.push(fields.cabin_density_score);
-    }
-
-    if (accessOn && fields.road_distance_m != null) {
-      scores.push(scoreAccess(fields.road_distance_m, arMin, arMax));
-    } else if (accessOn && fields.accessibility_score != null) {
-      scores.push(fields.accessibility_score);
-    }
-
-    if (ar5On && fields.industrial_distance_m != null && fields.residential_distance_m != null) {
-      scores.push(scoreAr5(fields.industrial_distance_m, fields.residential_distance_m, ar5IndBuf, ar5ResBuf));
-    } else if (ar5On && fields.ar5_land_use_score != null) {
-      scores.push(fields.ar5_land_use_score);
-    }
-
-    if (fishingOn && fields.fishing_score != null) {
-      scores.push(fields.fishing_score);
-    }
-
-    const score = scores.length > 0 ? Math.min(...scores) : 0;
+    const live = computeScores(fields, cs);
+    const score = live.tentability_score || 0;
     marker.setStyle({
       fillColor: LEVEL_COLORS[score] || DEFAULT_LAKE_COLOR,
       color: "#333333",
@@ -216,10 +226,12 @@ function teltturUpdate(cfg, idx) {
 // Popup builder
 // ---------------------------------------------------------------------------
 
-function buildPopup(fields, popupMeta) {
-  const scoreFieldSet = new Set(popupMeta.score_fields || []);
-  const detailFieldSet = new Set(popupMeta.detail_fields || []);
-
+/**
+ * Build popup HTML for a lake.
+ * @param {object} fields      - Raw data fields from the dataset.
+ * @param {object} liveScores  - Live-computed scores from computeScores().
+ */
+function buildPopup(fields, liveScores) {
   const rows = [];
 
   // Name
@@ -228,11 +240,11 @@ function buildPopup(fields, popupMeta) {
   }
 
   // Tentability composite
-  if (fields.tentability_score != null) {
-    rows.push(["Tentability", fields.tentability_score]);
+  if (liveScores.tentability_score != null) {
+    rows.push(["Tentability", liveScores.tentability_score]);
   }
 
-  // Score fields
+  // Per-dimension scores
   const scoreLabels = {
     cabin_density_score: "Cabin density",
     accessibility_score: "Accessibility",
@@ -240,8 +252,8 @@ function buildPopup(fields, popupMeta) {
     fishing_score: "Fishing",
   };
   for (const [col, label] of Object.entries(scoreLabels)) {
-    if (fields[col] != null) {
-      rows.push([label, fields[col]]);
+    if (liveScores[col] != null) {
+      rows.push([label, liveScores[col]]);
     }
   }
 
@@ -313,8 +325,6 @@ function initMap(data) {
   lakesLayer = L.layerGroup().addTo(map);
   allMarkers = [];
 
-  const popupMeta = data.popup || {};
-
   for (const row of data.lakes) {
     const lat = row[idx["lat"]];
     const lng = row[idx["lng"]];
@@ -325,23 +335,21 @@ function initMap(data) {
       f[key] = row[idx[key]];
     }
 
-    // Determine initial colour from pre-computed tentability score
-    const score = f.tentability_score;
-    const color =
-      score != null && LEVEL_COLORS[score]
-        ? LEVEL_COLORS[score]
-        : DEFAULT_LAKE_COLOR;
-
+    // Initial colour — will be set by teltturUpdate() shortly after init
     const marker = L.circleMarker([lat, lng], {
       radius: 8,
       color: "#333333",
       weight: 0.8,
-      fillColor: color,
+      fillColor: DEFAULT_LAKE_COLOR,
       fillOpacity: 0.65,
       opacity: 1,
     });
 
-    marker.bindPopup(buildPopup(f, popupMeta), { maxWidth: 300 });
+    marker.bindPopup("", { maxWidth: 300 });
+    marker.on("popupopen", () => {
+      const cs = readControlState(data.config);
+      marker.getPopup().setContent(buildPopup(f, computeScores(f, cs)));
+    });
     marker.addTo(lakesLayer);
     allMarkers.push({ marker, fields: f });
   }
@@ -384,7 +392,6 @@ function buildControls(cfg, lakeFields) {
   container.appendChild(body);
 
   const lakeFieldSet = new Set(lakeFields);
-  const hasScoring = lakeFieldSet.has("tentability_score");
 
   // Dimension toggles
   const dims = [
@@ -462,7 +469,9 @@ function buildControls(cfg, lakeFields) {
 // ---------------------------------------------------------------------------
 
 function buildLegend(data) {
-  const hasTentability = data.lake_fields.includes("tentability_score");
+  const hasTentability = data.lake_fields.includes("building_density") ||
+    data.lake_fields.includes("road_distance_m") ||
+    data.lake_fields.includes("fishing_score");
 
   const legend = document.createElement("div");
   legend.id = "tt-legend";

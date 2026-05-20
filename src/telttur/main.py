@@ -8,7 +8,7 @@ import click
 from telttur.config import BBox, build_profile_config, dump_config_yaml, load_config
 from telttur.data_export import export_data
 from telttur.download import download_n50
-from telttur.lakes import LakeCols, process_lakes
+from telttur.lakes import process_lakes
 from telttur.roads import process_roads
 from telttur.scoring import process_scoring
 
@@ -140,23 +140,6 @@ def generate(config_path: str | None, profile: str | None, skip_download: bool) 
             config.scoring,
         )
         print(f"  [scoring: {time.time() - t0:.1f}s]")
-
-    # Filter lakes by minimum tenting level
-    if (
-        config.min_lake_tenting_quality is not None
-        and not lakes.empty
-        and LakeCols.TENTABILITY_LEVEL in lakes.columns
-    ):
-        before = len(lakes)
-        from telttur.scoring import LEVEL_NAMES
-
-        _level_by_name = {v: k for k, v in LEVEL_NAMES.items()}
-        min_score = _level_by_name[config.min_lake_tenting_quality]
-        lakes = lakes[lakes[LakeCols.TENTABILITY_SCORE] >= min_score].reset_index(drop=True)
-        print(
-            f"  [lake filter: kept {len(lakes)}/{before} lakes"
-            f" with tenting level >= {config.min_lake_tenting_quality}]"
-        )
 
     # Step 5: Export data.json
     t0 = time.time()

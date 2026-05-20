@@ -17,22 +17,8 @@ from telttur.config import Ar5DataSource, Ar5LandUseConfig, BBox
 from telttur.lakes import LakeCols
 from telttur.scoring.common import (
     CRS_UTM33,
-    LEVEL_NAMES,
-    PopupField,
-    TentabilityLevel,
     _bbox_to_utm33,
 )
-
-SCORE_COLUMN = LakeCols.AR5_LAND_USE_SCORE
-
-SCORE_FIELDS: list[PopupField] = [
-    (LakeCols.AR5_LAND_USE_LEVEL, "AR5 land use"),
-]
-DETAIL_FIELDS: list[PopupField] = [
-    (LakeCols.INDUSTRIAL_DISTANCE_M, "Distance to industrial zone (m)"),
-    (LakeCols.RESIDENTIAL_DISTANCE_M, "Distance to residential zone (m)"),
-]
-POPUP_FIELDS: list[PopupField] = SCORE_FIELDS + DETAIL_FIELDS
 
 # NIBIO AR5 WFS endpoint — same server as the WMS, supports SERVICE=WFS
 _AR5_WFS_URL = "https://wms.nibio.no/cgi-bin/ar5"
@@ -236,8 +222,6 @@ def score_ar5_land_use(
     Added columns:
       industrial_distance_m  — metres to nearest industrial zone (inf if none)
       residential_distance_m — metres to nearest residential zone (inf if none)
-      ar5_land_use_score     — TentabilityLevel integer (1 = Terrible … 5 = Excellent)
-      ar5_land_use_level     — human-readable level name
     """
     lakes = lakes.copy()
     lakes_utm = lakes.to_crs(CRS_UTM33)
@@ -264,23 +248,4 @@ def score_ar5_land_use(
     lakes[LakeCols.INDUSTRIAL_DISTANCE_M] = lakes.index.map(ind_dist).fillna(float("inf")).round(1)
     lakes[LakeCols.RESIDENTIAL_DISTANCE_M] = lakes.index.map(res_dist).fillna(float("inf")).round(1)
 
-    def _score_proximity(dist_m: float, buffer_m: float) -> int:
-        if dist_m >= buffer_m:
-            return int(TentabilityLevel.EXCELLENT)
-        elif dist_m >= 0.75 * buffer_m:
-            return int(TentabilityLevel.GOOD)
-        elif dist_m >= 0.50 * buffer_m:
-            return int(TentabilityLevel.FAIR)
-        elif dist_m >= 0.25 * buffer_m:
-            return int(TentabilityLevel.POOR)
-        return int(TentabilityLevel.TERRIBLE)
-
-    ind_scores = lakes[LakeCols.INDUSTRIAL_DISTANCE_M].apply(
-        lambda d: _score_proximity(d, config.industrial_buffer_m)
-    )
-    res_scores = lakes[LakeCols.RESIDENTIAL_DISTANCE_M].apply(
-        lambda d: _score_proximity(d, config.residential_buffer_m)
-    )
-    lakes[SCORE_COLUMN] = gpd.pd.concat([ind_scores, res_scores], axis=1).min(axis=1).astype(int)
-    lakes[LakeCols.AR5_LAND_USE_LEVEL] = lakes[SCORE_COLUMN].map(LEVEL_NAMES)
     return lakes

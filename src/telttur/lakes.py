@@ -18,33 +18,22 @@ class LakeCols(StrEnum):
     AREA_M2 = "area_m2"
     AREA_DISPLAY = "area_display"
 
-    # Accessibility scoring
+    # Accessibility — raw data (score computed in JS)
     ROAD_DISTANCE_M = "road_distance_m"
-    ACCESSIBILITY_SCORE = "accessibility_score"
-    ACCESSIBILITY_LEVEL = "accessibility_level"
 
-    # Cabin density scoring
+    # Cabin density — raw data (score computed in JS)
     BUILDING_COUNT = "building_count"
     BUILDING_DENSITY = "building_density"
-    CABIN_DENSITY_SCORE = "cabin_density_score"
-    CABIN_DENSITY_LEVEL = "cabin_density_level"
 
-    # AR5 land use scoring
+    # AR5 land use — raw data (score computed in JS)
     INDUSTRIAL_DISTANCE_M = "industrial_distance_m"
     RESIDENTIAL_DISTANCE_M = "residential_distance_m"
-    AR5_LAND_USE_SCORE = "ar5_land_use_score"
-    AR5_LAND_USE_LEVEL = "ar5_land_use_level"
 
-    # Fishing scoring
+    # Fishing — score computed in Python (not recomputable in JS)
     FISH_SPECIES_COUNT = "fish_species_count"
     FISH_PRIZED_COUNT = "fish_prized_count"
     FISHING_SCORE = "fishing_score"
     FISHING_LEVEL = "fishing_level"
-
-    # Overall tentability
-    TENTABILITY_SCORE = "tentability_score"
-    TENTABILITY_LEVEL = "tentability_level"
-    TENTABILITY_COLOR = "tentability_color"
 
 
 def find_lake_layers(gdb_path: Path) -> list[str]:

@@ -53,12 +53,4 @@ This is starting to look good. I want to do some final polish and bug fixes:
 
 ### Known issues to fix later
 
-- Popup labels does not reflect interactively changed values. 
-- min lake size should probably be hidden? want to perhaps dynamically reduce the number of shown markers based on zoom level
-- When the final layout has been determined:
-  - Minimize the amount of javascript (for maintainability)
-    - I believe a lot of the scoring mechanisms can be handled differently. Ideally, no logic should be necessary in JavaScript. Threshold checks should suffice.
-  - But keep in mind performance
-  - Pre-compute data if possible
-  - But be wary of the national scale file size
-    - Perhaps necessary to split into a json file and an html file
+- "scoring" on the python side no longer make sense. However, each "scoring" submodule still is relevant for how javascript calculates the various scores. Should consider some refactoring to clarify responsibility
