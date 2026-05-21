@@ -2,12 +2,9 @@
 
 Each scoring dimension lives in its own module and is an equal citizen:
 all can be independently enabled/disabled via config. Each dimension module
-computes raw data columns (distances, densities). Threshold-based score
-conversion is handled by the JavaScript frontend, which allows interactive
-slider-driven recomputation.
-
-Exception: the fishing dimension computes its score in Python because the
-scoring logic requires species-level metadata that is not available in JS.
+computes raw data columns (distances, densities, bitmasks). Threshold-based
+score conversion is handled by the JavaScript frontend, which allows
+interactive slider-driven recomputation.
 
 Public API:
   process_scoring()            — full scoring pipeline (all enabled dimensions)
@@ -27,7 +24,6 @@ from telttur.scoring.common import (
     LEVEL_COLORS,
     LEVEL_NAMES,
     TentabilityLevel,
-    _print_distribution,
 )
 
 if TYPE_CHECKING:
@@ -51,11 +47,8 @@ def process_scoring(
     """Full scoring pipeline: run enabled dimensions to compute raw data columns.
 
     Each dimension is run only when its ``enabled`` flag is True. Raw data
-    columns (distances, densities) are computed here; threshold-based score
-    conversion is handled by the JavaScript frontend.
-
-    Exception: the fishing dimension computes its score in Python because
-    the scoring logic requires species-level metadata unavailable in JS.
+    columns (distances, densities, bitmasks) are computed here; threshold-based
+    score conversion is handled by the JavaScript frontend.
     """
 
     # --- Cabin density ---
@@ -96,7 +89,7 @@ def process_scoring(
     else:
         print("AR5 land use scoring disabled — skipping")
 
-    # --- Fishing suitability (score computed in Python — not recomputable in JS) ---
+    # --- Fishing suitability ---
     if config.fishing.enabled:
         print("Downloading NINA freshwater fish observations...")
         try:
@@ -104,7 +97,9 @@ def process_scoring(
             print(f"  Loaded {len(fish_obs)} fish occurrence records")
             print(f"Scoring fishing suitability ({config.fishing.buffer_m} m buffer)...")
             lakes = fishing.score_fishing(lakes, fish_obs, config.fishing)
-            _print_distribution("Fishing", lakes, fishing.SCORE_COLUMN)
+            total = len(lakes)
+            with_fish = (lakes[LakeCols.FISH_GENERA_MASK] > 0).sum()
+            print(f"  Lakes with at least one prized genus: {with_fish}/{total}")
         except RuntimeError as exc:
             print(f"  WARNING: Fishing scoring skipped — {exc}")
     else:

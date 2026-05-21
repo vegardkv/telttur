@@ -84,6 +84,17 @@ class InteractiveAr5Buffers(BaseModel):
     slider_max_m: float = 10000.0
 
 
+class InteractiveFishingGenera(BaseModel):
+    """Checkboxes to select which prized genera are desired for fishing scoring.
+
+    When enabled, one checkbox per prized genus is shown in the controls panel.
+    All genera are selected by default; deselecting one removes it from the
+    score calculation.
+    """
+
+    enabled: bool = True
+
+
 class InteractiveControlsConfig(BaseModel):
     """Configuration for the interactive scoring controls panel embedded in the map."""
 
@@ -99,6 +110,7 @@ class InteractiveControlsConfig(BaseModel):
         default_factory=InteractiveCabinDensitySlider
     )
     ar5_buffers: InteractiveAr5Buffers = Field(default_factory=InteractiveAr5Buffers)
+    fishing_genera: InteractiveFishingGenera = Field(default_factory=InteractiveFishingGenera)
 
 
 class MapConfig(BaseModel):

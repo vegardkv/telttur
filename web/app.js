@@ -131,6 +131,28 @@ function scoreAr5(indDist, resDist, indBuf, resBuf) {
   return Math.min(scoreAr5One(indDist, indBuf), scoreAr5One(resDist, resBuf));
 }
 
+function popcount(n) {
+  let count = 0;
+  while (n) { count += n & 1; n >>>= 1; }
+  return count;
+}
+
+/** Score fishing by fraction of desired prized genera present at the lake.
+ *  generaMask — bitmask of genera found near the lake (from data)
+ *  desiredMask — bitmask of genera the user wants (from checkboxes)
+ *  Returns null when desiredMask is 0 (no genera selected → skip dimension).
+ */
+function scoreFishing(generaMask, desiredMask) {
+  if (!desiredMask) return null;
+  const matched = popcount(generaMask & desiredMask);
+  const fraction = matched / popcount(desiredMask);
+  if (fraction <= 0) return 1;
+  if (fraction <= 0.25) return 2;
+  if (fraction <= 0.5) return 3;
+  if (fraction <= 0.75) return 4;
+  return 5;
+}
+
 // ---------------------------------------------------------------------------
 // Read current slider/toggle state
 // ---------------------------------------------------------------------------
@@ -143,6 +165,13 @@ function readControlState(cfg) {
   const arCfg = ctrl.accessibility_range || {};
   const ctCfg = ctrl.cabin_density_slider || {};
   const ar5Cfg = ctrl.ar5_buffers || {};
+
+  // Build fishing genera mask from checkboxes (default: all selected)
+  const fishingGenera = (scoring.fishing && scoring.fishing.genera) || [];
+  let fishingMask = 0;
+  for (const g of fishingGenera) {
+    if (checkVal(`tt-fg-${g.code}`, true)) fishingMask |= (1 << g.code);
+  }
 
   return {
     minArea: ctrl.min_lake_area
@@ -163,6 +192,7 @@ function readControlState(cfg) {
     accessOn: checkVal("tt-access", !!(scoring.accessibility && scoring.accessibility.enabled)),
     ar5On: checkVal("tt-ar5", !!(scoring.ar5_land_use && scoring.ar5_land_use.enabled)),
     fishingOn: checkVal("tt-fishing", !!(scoring.fishing && scoring.fishing.enabled)),
+    fishingMask,
   };
 }
 
@@ -186,9 +216,12 @@ function computeScores(fields, cs) {
     scores.push(live.ar5_land_use_score);
   }
 
-  if (cs.fishingOn && fields.fishing_score != null) {
-    live.fishing_score = fields.fishing_score;
-    scores.push(live.fishing_score);
+  if (cs.fishingOn && fields.fish_genera_mask != null && cs.fishingMask) {
+    const fs = scoreFishing(fields.fish_genera_mask, cs.fishingMask);
+    if (fs != null) {
+      live.fishing_score = fs;
+      scores.push(live.fishing_score);
+    }
   }
 
   live.tentability_score = scores.length > 0 ? Math.min(...scores) : null;
@@ -231,7 +264,7 @@ function teltturUpdate(cfg, idx) {
  * @param {object} fields      - Raw data fields from the dataset.
  * @param {object} liveScores  - Live-computed scores from computeScores().
  */
-function buildPopup(fields, liveScores) {
+function buildPopup(fields, liveScores, cfg) {
   const rows = [];
 
   // Name
@@ -273,6 +306,17 @@ function buildPopup(fields, liveScores) {
     if (fields[col] != null) {
       const val = col.endsWith("_m") ? formatDist(fields[col]) : fields[col];
       detailRows.push([label, val]);
+    }
+  }
+
+  // Prized genera present at this lake
+  if (cfg && fields.fish_genera_mask != null) {
+    const fishingGenera = (cfg.scoring && cfg.scoring.fishing && cfg.scoring.fishing.genera) || [];
+    const present = fishingGenera
+      .filter(g => (fields.fish_genera_mask & (1 << g.code)) !== 0)
+      .map(g => g.label);
+    if (present.length > 0) {
+      detailRows.push(["Fish genera", present.join(", ")]);
     }
   }
 
@@ -348,7 +392,7 @@ function initMap(data) {
     marker.bindPopup("", { maxWidth: 300 });
     marker.on("popupopen", () => {
       const cs = readControlState(data.config);
-      marker.getPopup().setContent(buildPopup(f, computeScores(f, cs)));
+      marker.getPopup().setContent(buildPopup(f, computeScores(f, cs), data.config));
     });
     marker.addTo(lakesLayer);
     allMarkers.push({ marker, fields: f });
@@ -461,6 +505,16 @@ function buildControls(cfg, lakeFields) {
       `oninput="document.getElementById('tt-ar5-ind-val').textContent=this.value;teltturUpdate(_ttCfg)">`;
   }
 
+  // Fishing genera toggles
+  const fgCfg = ctrl.fishing_genera;
+  const fishingGenera = (scoring.fishing && scoring.fishing.genera) || [];
+  if (fgCfg && fgCfg.enabled && scoring.fishing && fishingGenera.length > 0 && lakeFieldSet.has("fish_genera_mask")) {
+    body.innerHTML += '<div class="tt-spacer"></div><b>Fishing \u2013 desired genera:</b><br>';
+    for (const g of fishingGenera) {
+      body.innerHTML += `<label><input type="checkbox" id="tt-fg-${g.code}" checked onchange="teltturUpdate(_ttCfg)"> ${g.label}</label><br>`;
+    }
+  }
+
   document.body.appendChild(container);
 }
 
@@ -471,7 +525,7 @@ function buildControls(cfg, lakeFields) {
 function buildLegend(data) {
   const hasTentability = data.lake_fields.includes("building_density") ||
     data.lake_fields.includes("road_distance_m") ||
-    data.lake_fields.includes("fishing_score");
+    data.lake_fields.includes("fish_genera_mask");
 
   const legend = document.createElement("div");
   legend.id = "tt-legend";

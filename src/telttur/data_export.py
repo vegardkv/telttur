@@ -16,6 +16,7 @@ from telttur.scoring import (
     LEVEL_COLORS,
     LEVEL_NAMES,
 )
+from telttur.scoring.fishing import PRIZED_GENERA as _FISHING_PRIZED_GENERA
 
 # Coordinate precision: 6 decimals ≈ 0.1 m accuracy, sufficient for maps.
 _COORD_PRECISION = 6
@@ -32,7 +33,7 @@ def build_lake_data(
     """
     # Determine which optional fields are present
     optional_cols = [
-        LakeCols.FISHING_SCORE,
+        LakeCols.FISH_GENERA_MASK,
         LakeCols.ROAD_DISTANCE_M,
         LakeCols.BUILDING_DENSITY,
         LakeCols.INDUSTRIAL_DISTANCE_M,
@@ -69,7 +70,7 @@ def build_lake_data(
             if val is None or (isinstance(val, float) and pd.isna(val)):
                 entry.append(None)
             elif col in (
-                LakeCols.FISHING_SCORE,
+                LakeCols.FISH_GENERA_MASK,
                 LakeCols.FISH_SPECIES_COUNT,
             ):
                 entry.append(int(val))
@@ -145,7 +146,7 @@ def build_config_block(config: Config) -> dict[str, Any]:
         }
 
     if config.scoring.fishing.enabled:
-        scoring_cfg["fishing"] = {"enabled": True}
+        scoring_cfg["fishing"] = {"enabled": True, "genera": _FISHING_PRIZED_GENERA}
 
     interactive_cfg: dict[str, Any] = {}
     ctrl = config.map.interactive_controls
@@ -177,6 +178,8 @@ def build_config_block(config: Config) -> dict[str, Any]:
             "enabled": ar5b.enabled,
             "slider_max_m": ar5b.slider_max_m,
         }
+        fg = ctrl.fishing_genera
+        interactive_cfg["fishing_genera"] = {"enabled": fg.enabled}
     else:
         interactive_cfg["enabled"] = False
 

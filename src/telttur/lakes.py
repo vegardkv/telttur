@@ -29,11 +29,9 @@ class LakeCols(StrEnum):
     INDUSTRIAL_DISTANCE_M = "industrial_distance_m"
     RESIDENTIAL_DISTANCE_M = "residential_distance_m"
 
-    # Fishing — score computed in Python (not recomputable in JS)
+    # Fishing — raw data (score computed in JS)
     FISH_SPECIES_COUNT = "fish_species_count"
-    FISH_PRIZED_COUNT = "fish_prized_count"
-    FISHING_SCORE = "fishing_score"
-    FISHING_LEVEL = "fishing_level"
+    FISH_GENERA_MASK = "fish_genera_mask"
 
 
 def find_lake_layers(gdb_path: Path) -> list[str]:

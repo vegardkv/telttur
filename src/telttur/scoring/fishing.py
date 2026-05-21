@@ -13,24 +13,24 @@ Data source
 - **Top species**: Salmo trutta (trout), Perca fluviatilis (perch),
   Salvelinus alpinus (char), Esox lucius (pike), Abramis brama (bream)
 
-Scoring logic
--------------
-Each lake is scored on two components combined into a 1–5 scale:
+Output columns (raw data for JS-side scoring)
+---------------------------------------------
+fish_species_count  — total unique species observed within the buffer
+fish_genera_mask    — integer bitmask of which prized genera are present
+                      (bit ``i`` set when ``PRIZED_GENERA[i]`` is found nearby)
 
-1. **Species richness** — number of unique fish species observed within a
-   configurable buffer around the lake (default 500 m).  More species → higher
-   potential for varied fishing.
+JS-side scoring
+---------------
+The user toggles which prized genera they care about.  Score = fraction of
+desired genera that are present at the lake, mapped to a 1–5 TentabilityLevel:
+  0.00        → TERRIBLE
+  (0.00–0.25] → POOR
+  (0.25–0.50] → FAIR
+  (0.50–0.75] → GOOD
+  (0.75–1.00] → EXCELLENT
 
-2. **Prized species bonus** — presence of recognised game fish (trout, char,
-   pike, perch, grayling) boosts the score.  These are the species most valued
-   by recreational anglers in Norway.
-
-Score mapping (species_count + bonus points):
-  0 pts  → TERRIBLE (no fish data at all)
-  1–2    → POOR
-  3–4    → FAIR
-  5–7    → GOOD
-  8+     → EXCELLENT
+When no genera are selected the fishing dimension is excluded from the
+composite tentability score.
 """
 
 from __future__ import annotations
@@ -48,42 +48,41 @@ from telttur.lakes import LakeCols
 from telttur.scoring.common import (
     CRS_UTM33,
     CRS_WGS84,
-    LEVEL_NAMES,
-    TentabilityLevel,
 )
-
-SCORE_COLUMN = LakeCols.FISHING_SCORE
 
 _NINA_URL = "https://ipt.nina.no/archive.do?r=vanninfofisk"
 
-# Scientific names (genus-level prefix is enough for variants / subspecies)
-# of species most valued by Norwegian recreational anglers.
-_PRIZED_GENERA: frozenset[str] = frozenset(
-    {
-        "Salmo",  # trout, salmon
-        "Salvelinus",  # char (røye)
-        "Thymallus",  # grayling (harr)
-        "Esox",  # pike (gjedde)
-        "Perca",  # perch (abbor)
-        "Sander",  # pikeperch / zander (gjeddeabbor)
-        "Coregonus",  # whitefish (sik, lagesild)
-        "Hucho",  # huchen (not common, but prized)
-    }
-)
+# Ordered list of (genus, user-facing label) pairs for the prized game fish.
+# The list position is the bit index used in the fish_genera_mask column.
+_PRIZED_GENERA_LIST: list[tuple[str, str]] = [
+    ("Salmo", "Trout/Salmon"),    # bit 0
+    ("Salvelinus", "Char"),        # bit 1
+    ("Thymallus", "Grayling"),     # bit 2
+    ("Esox", "Pike"),              # bit 3
+    ("Perca", "Perch"),            # bit 4
+    ("Sander", "Pikeperch"),       # bit 5
+    ("Coregonus", "Whitefish"),    # bit 6
+    ("Hucho", "Huchen"),           # bit 7
+]
 
+# Exported to the frontend config block so JavaScript can render genus labels
+# and interpret the bitmask bits.
+PRIZED_GENERA: list[dict[str, object]] = [
+    {"code": i, "genus": genus, "label": label}
+    for i, (genus, label) in enumerate(_PRIZED_GENERA_LIST)
+]
 
-def _is_prized(scientific_name: str) -> bool:
-    genus = scientific_name.split()[0] if scientific_name else ""
-    return genus in _PRIZED_GENERA
+_GENUS_TO_BIT: dict[str, int] = {
+    genus: i for i, (genus, _) in enumerate(_PRIZED_GENERA_LIST)
+}
 
 
 def fetch_nina_fish_observations(timeout_s: float = 60.0) -> gpd.GeoDataFrame:
     """Download and parse the NINA freshwater fish occurrence archive.
 
-    Returns a GeoDataFrame (WGS84) with columns:
-      geometry           — Point from decimalLatitude / decimalLongitude
-      scientific_name    — species name
-      is_prized          — True if the species is a recognised game fish
+    Returns a GeoDataFrame (UTM33) with columns:
+      geometry           — Point
+      scientific_name    — species name string
 
     Raises ``RuntimeError`` on network or parsing errors.
     """
@@ -109,37 +108,29 @@ def fetch_nina_fish_observations(timeout_s: float = 60.0) -> gpd.GeoDataFrame:
     df["decimalLongitude"] = pd.to_numeric(df["decimalLongitude"], errors="coerce")
     df = df.dropna(subset=["decimalLatitude", "decimalLongitude"])
 
-    # Keep only the first word of the scientific name (genus) and the full name
     df["scientific_name"] = df["scientificName"].str.strip()
-    df["is_prized"] = df["scientific_name"].apply(_is_prized)
 
     geometry = [
         Point(lon, lat)
         for lon, lat in zip(df["decimalLongitude"], df["decimalLatitude"], strict=True)
     ]
     gdf = gpd.GeoDataFrame(
-        df[["scientific_name", "is_prized"]],
+        df[["scientific_name"]],
         geometry=geometry,
         crs=CRS_WGS84,
     )
     return gdf.to_crs(CRS_UTM33)
 
 
-def _compute_score(species_count: int, prized_count: int) -> int:
-    """Map species richness + prized bonus to a TentabilityLevel integer."""
-    if species_count == 0:
-        return int(TentabilityLevel.TERRIBLE)
-    points = species_count + prized_count
-    thresholds = [
-        (8, TentabilityLevel.EXCELLENT),
-        (5, TentabilityLevel.GOOD),
-        (3, TentabilityLevel.FAIR),
-        (1, TentabilityLevel.POOR),
-    ]
-    for threshold, level in thresholds:
-        if points >= threshold:
-            return int(level)
-    return int(TentabilityLevel.TERRIBLE)
+def _build_genera_mask(species_names: pd.Series) -> int:
+    """Build a bitmask of prized genera present in a collection of species names."""
+    mask = 0
+    for name in species_names:
+        genus = name.split()[0] if name else ""
+        bit = _GENUS_TO_BIT.get(genus)
+        if bit is not None:
+            mask |= 1 << bit
+    return mask
 
 
 def score_fishing(
@@ -150,13 +141,12 @@ def score_fishing(
     """Score each lake based on fish species observations within a buffer.
 
     Uses a spatial join between buffered lake polygons (UTM33) and fish
-    observation points to count unique species per lake.
+    observation points to count unique species per lake and record which
+    prized genera are present.
 
     Added columns:
-      fish_species_count  — unique fish species observed within buffer
-      fish_prized_count   — how many of those are prized game fish
-      fishing_score       — TentabilityLevel integer (1 = Terrible … 5 = Excellent)
-      fishing_level       — human-readable level name
+      fish_species_count  — total unique species observed within buffer
+      fish_genera_mask    — integer bitmask of which prized genera are present
     """
     lakes = lakes.copy()
 
@@ -174,38 +164,29 @@ def score_fishing(
         predicate="within",
     )
 
-    # Aggregate per lake: unique species count and prized count
     if not fish_in_buffer.empty:
         species_per_lake = (
             fish_in_buffer.groupby("lake_idx")["scientific_name"]
             .nunique()
             .rename(LakeCols.FISH_SPECIES_COUNT)
         )
-        prized_per_lake = (
-            fish_in_buffer[fish_in_buffer["is_prized"]]
-            .groupby("lake_idx")["scientific_name"]
-            .nunique()
-            .rename(LakeCols.FISH_PRIZED_COUNT)
+        genera_mask_per_lake = (
+            fish_in_buffer.groupby("lake_idx")["scientific_name"]
+            .apply(_build_genera_mask)
+            .rename(LakeCols.FISH_GENERA_MASK)
         )
-        agg = pd.concat([species_per_lake, prized_per_lake], axis=1).fillna(0).astype(int)
+        agg = pd.concat([species_per_lake, genera_mask_per_lake], axis=1)
     else:
         agg = pd.DataFrame(
-            columns=[LakeCols.FISH_SPECIES_COUNT, LakeCols.FISH_PRIZED_COUNT],
+            columns=[LakeCols.FISH_SPECIES_COUNT, LakeCols.FISH_GENERA_MASK],
             dtype=int,
         )
 
     lakes[LakeCols.FISH_SPECIES_COUNT] = (
         agg[LakeCols.FISH_SPECIES_COUNT].reindex(lakes.index).fillna(0).astype(int)
     )
-    lakes[LakeCols.FISH_PRIZED_COUNT] = (
-        agg[LakeCols.FISH_PRIZED_COUNT].reindex(lakes.index).fillna(0).astype(int)
+    lakes[LakeCols.FISH_GENERA_MASK] = (
+        agg[LakeCols.FISH_GENERA_MASK].reindex(lakes.index).fillna(0).astype(int)
     )
-    lakes[SCORE_COLUMN] = [
-        _compute_score(s, p)
-        for s, p in zip(
-            lakes[LakeCols.FISH_SPECIES_COUNT], lakes[LakeCols.FISH_PRIZED_COUNT], strict=True
-        )
-    ]
-    lakes[LakeCols.FISHING_LEVEL] = lakes[SCORE_COLUMN].map(LEVEL_NAMES)
 
     return lakes
