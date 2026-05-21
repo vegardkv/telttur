@@ -48,6 +48,38 @@ html, body {
   padding: 0;
 }
 
+/* ─── Language switcher ───────────────────────────────────────────────────── */
+
+#tt-lang-switcher {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 9999;
+  display: flex;
+  gap: 2px;
+}
+
+.tt-lang-btn {
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 1px 5px;
+  color: #555;
+  line-height: 1.4;
+}
+
+.tt-lang-btn:hover {
+  background: #f0f0f0;
+}
+
+.tt-lang-btn.tt-lang-active {
+  background: #444;
+  color: white;
+  border-color: #444;
+}
+
 #tt-body label {
   display: block;
   margin-bottom: 2px;

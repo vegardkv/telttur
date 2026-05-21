@@ -8,6 +8,130 @@
 "use strict";
 
 // ---------------------------------------------------------------------------
+// Internationalisation
+// ---------------------------------------------------------------------------
+
+const I18N = {
+  en: {
+    title: "Telttur – Norwegian Camping Suitability Map",
+    scoring: "Scoring",
+    min_lake_size: "Min lake size:",
+    cabin_density: "Cabin density",
+    cabin_density_info: "Density of buildings and cabins near the lake. Fewer nearby buildings means a quieter camping spot.",
+    cabin_density_threshold: "Threshold:",
+    accessibility: "Hiking distance",
+    accessibility_info: "How far you need to walk from the nearest road. Set your preferred hiking distance range.",
+    ar5_land_use: "Urbanization",
+    ar5_land_use_info: "Distance from residential and industrial zones. Farther from developed areas scores higher.",
+    ar5_residential: "Residential:",
+    ar5_industrial: "Industrial:",
+    fishing: "Fishing",
+    fishing_info: "Fishing opportunities based on known fish species in the lake.",
+    overall_score: "Overall score",
+    score_cabin_density: "Cabin density",
+    score_accessibility: "Hiking distance",
+    score_ar5: "Urbanization",
+    score_fishing: "Fishing",
+    area: "Area",
+    road_distance: "Distance to road",
+    building_density: "Cabin density",
+    industrial_distance: "Distance to industry",
+    residential_distance: "Distance to housing",
+    fish_species: "Fish species",
+    prized_fish: "Prized fish",
+    legend: "Legend",
+    legend_suitability: "Lakes \u2013 camping suitability:",
+    legend_lakes: "Lakes",
+    level_1: "Terrible",
+    level_2: "Poor",
+    level_3: "Fair",
+    level_4: "Good",
+    level_5: "Excellent",
+    error_no_data: "Could not load map data",
+    error_no_data_hint: "Run <code>uv run telttur generate</code> to produce <code>output/data.js</code>.",
+    genus_Salmo: "Trout/Salmon",
+    genus_Salvelinus: "Char",
+    genus_Thymallus: "Grayling",
+    genus_Esox: "Pike",
+    genus_Perca: "Perch",
+    genus_Sander: "Pikeperch",
+    genus_Coregonus: "Whitefish",
+    genus_Hucho: "Huchen",
+  },
+  no: {
+    title: "Telttur \u2013 Kart over teltturer i Norge",
+    scoring: "Poengberegning",
+    min_lake_size: "Min innsjøstørrelse:",
+    cabin_density: "Hyttetetthet",
+    cabin_density_info: "Tetthet av bygninger og hytter nær innsjøen. Færre nærliggende bygninger gir et roligere teltsted.",
+    cabin_density_threshold: "Terskelverdi:",
+    accessibility: "Turens lengde",
+    accessibility_info: "Hvor langt du må gå fra nærmeste vei. Sett ønsket rekkevidde.",
+    ar5_land_use: "Urbanisering",
+    ar5_land_use_info: "Avstand fra bolig- og industriområder. Lengre unna utbygde områder gir høyere score.",
+    ar5_residential: "Bolig:",
+    ar5_industrial: "Industri:",
+    fishing: "Fiske",
+    fishing_info: "Fiskemuligheter basert på kjente fiskearter i innsjøen.",
+    overall_score: "Total score",
+    score_cabin_density: "Hyttetetthet",
+    score_accessibility: "Turens lengde",
+    score_ar5: "Urbanisering",
+    score_fishing: "Fiske",
+    area: "Areal",
+    road_distance: "Avstand til vei",
+    building_density: "Hyttetetthet",
+    industrial_distance: "Avstand til industri",
+    residential_distance: "Avstand til bebyggelse",
+    fish_species: "Fiskearter",
+    prized_fish: "Sportsfisk",
+    legend: "Tegnforklaring",
+    legend_suitability: "Innsjøer \u2013 egnethet for telt:",
+    legend_lakes: "Innsjøer",
+    level_1: "Elendig",
+    level_2: "Dårlig",
+    level_3: "Middels",
+    level_4: "Bra",
+    level_5: "Utmerket",
+    error_no_data: "Klarte ikke å laste kartdata",
+    error_no_data_hint: "Kjør <code>uv run telttur generate</code> for å lage <code>output/data.js</code>.",
+    genus_Salmo: "Ørret/Laks",
+    genus_Salvelinus: "Røye",
+    genus_Thymallus: "Harr",
+    genus_Esox: "Gjedde",
+    genus_Perca: "Abbor",
+    genus_Sander: "Gjørs",
+    genus_Coregonus: "Sik",
+    genus_Hucho: "Donaulaks",
+  },
+};
+
+/** Detect initial language: stored preference → browser language → English fallback. */
+function _detectLang() {
+  const stored = localStorage.getItem("telttur-lang");
+  if (stored === "en" || stored === "no") return stored;
+  const nav = (navigator.language || "").toLowerCase();
+  return nav.startsWith("en") ? "en" : "no";
+}
+
+let _lang = _detectLang();
+
+/** Return the translated string for key in the current language. */
+function t(key) {
+  return (I18N[_lang] && I18N[_lang][key]) || I18N.en[key] || key;
+}
+
+/** Switch the UI language, persist it, and rebuild the controls and legend. */
+function setLang(lang) {
+  if (lang === _lang) return;
+  _lang = lang;
+  localStorage.setItem("telttur-lang", lang);
+  document.documentElement.lang = lang === "no" ? "nb" : "en";
+  document.title = t("title");
+  if (_ttData) rebuildUI();
+}
+
+// ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
 
@@ -26,13 +150,6 @@ const LEVEL_COLORS = {
   3: "#fee08b",
   4: "#91cf60",
   5: "#1a9850",
-};
-const LEVEL_NAMES = {
-  1: "Terrible",
-  2: "Poor",
-  3: "Fair",
-  4: "Good",
-  5: "Excellent",
 };
 const BADGE_CLASSES = {
   1: "tt-b1",
@@ -60,7 +177,7 @@ let _pendingArSlider = null;  // config awaiting DOM insertion
 /** Make a score badge <span> if v is 1–5, else return plain string. */
 function badge(v) {
   if (typeof v === "number" && v >= 1 && v <= 5) {
-    return `<span class="${BADGE_CLASSES[v]}">${LEVEL_NAMES[v]}</span>`;
+    return `<span class="${BADGE_CLASSES[v]}">${t(`level_${v}`)}</span>`;
   }
   return v != null ? String(v) : "";
 }
@@ -281,10 +398,10 @@ function buildPopup(fields, liveScores, cfg) {
 
   // Per-dimension scores
   const scoreLabels = {
-    cabin_density_score: "Cabin density",
-    accessibility_score: "Hiking distance",
-    ar5_land_use_score: "Urbanization",
-    fishing_score: "Fishing",
+    cabin_density_score: t("score_cabin_density"),
+    accessibility_score: t("score_accessibility"),
+    ar5_land_use_score: t("score_ar5"),
+    fishing_score: t("score_fishing"),
   };
   for (const [col, label] of Object.entries(scoreLabels)) {
     if (liveScores[col] != null) {
@@ -295,14 +412,14 @@ function buildPopup(fields, liveScores, cfg) {
   // Detail rows
   const detailRows = [];
   if (fields.area != null) {
-    detailRows.push(["Area", formatArea(fields.area)]);
+    detailRows.push([t("area"), formatArea(fields.area)]);
   }
   const detailLabels = {
-    road_distance_m: "Distance to road",
-    building_density: "Cabin density",
-    industrial_distance_m: "Distance to industry",
-    residential_distance_m: "Distance to housing",
-    fish_species_count: "Fish species",
+    road_distance_m: t("road_distance"),
+    building_density: t("building_density"),
+    industrial_distance_m: t("industrial_distance"),
+    residential_distance_m: t("residential_distance"),
+    fish_species_count: t("fish_species"),
   };
   for (const [col, label] of Object.entries(detailLabels)) {
     if (fields[col] != null) {
@@ -316,9 +433,9 @@ function buildPopup(fields, liveScores, cfg) {
     const fishingGenera = (cfg.scoring && cfg.scoring.fishing && cfg.scoring.fishing.genera) || [];
     const present = fishingGenera
       .filter(g => (fields.fish_genera_mask & (1 << g.code)) !== 0)
-      .map(g => g.label);
+      .map(g => t(`genus_${g.genus}`) || g.label);
     if (present.length > 0) {
-      detailRows.push(["Prized fish", present.join(", ")]);
+      detailRows.push([t("prized_fish"), present.join(", ")]);
     }
   }
 
@@ -334,7 +451,7 @@ function buildPopup(fields, liveScores, cfg) {
 
   html += "<table>";
   if (liveScores.tentability_score != null) {
-    html += `<tr><th class="tt-popup-overall-label">Overall score</th><td>${badge(liveScores.tentability_score)}</td></tr>`;
+    html += `<tr><th class="tt-popup-overall-label">${t("overall_score")}</th><td>${badge(liveScores.tentability_score)}</td></tr>`;
     html += "<tr><td colspan='2'><hr></td></tr>";
   }
   for (const [label, val] of scoreRows) {
@@ -472,7 +589,7 @@ function buildControls(cfg, lakeFields) {
   const header = document.createElement("div");
   header.id = "tt-controls-header";
   header.innerHTML =
-    '<b>⚙ Scoring</b>' +
+    `<b>⚙ ${t("scoring")}</b>` +
     '<button id="tt-toggle-btn" onclick="' +
     "var b=document.getElementById('tt-body'),s=b.style;" +
     "s.display=s.display==='none'?'block':'none'" +
@@ -489,7 +606,7 @@ function buildControls(cfg, lakeFields) {
     const areaDiv = document.createElement("div");
     areaDiv.className = "tt-section";
     areaDiv.innerHTML =
-      `<b>Min lake size:</b> <span id="tt-min-area-val" style="font-weight:bold">${minArea}</span> m²<br>` +
+      `<b>${t("min_lake_size")}</b> <span id="tt-min-area-val" style="font-weight:bold">${minArea}</span> m²<br>` +
       `<input type="range" id="tt-min-area" min="0" max="100000" step="500" value="${minArea}" ` +
       `oninput="document.getElementById('tt-min-area-val').textContent=this.value;teltturUpdate(_ttCfg)">`;
     body.appendChild(areaDiv);
@@ -503,14 +620,14 @@ function buildControls(cfg, lakeFields) {
       const val = cd.value.toFixed(3);
       bodyHtml =
         `<div class="tt-dim-body" id="tt-cabin-body">` +
-        `Threshold: <span id="tt-ct-val" style="font-weight:bold">${val}</span><br>` +
+        `${t("cabin_density_threshold")} <span id="tt-ct-val" style="font-weight:bold">${val}</span><br>` +
         `<input type="range" id="tt-ct" min="0" max="${cd.slider_max.toFixed(3)}" step="0.001" value="${val}" ` +
         `oninput="document.getElementById('tt-ct-val').textContent=parseFloat(this.value).toFixed(3);teltturUpdate(_ttCfg)">` +
         `</div>`;
     }
     body.appendChild(buildDimCard(
-      "tt-cabin", "Cabin density",
-      "Density of buildings and cabins near the lake. Fewer nearby buildings means a quieter camping spot.",
+      "tt-cabin", t("cabin_density"),
+      t("cabin_density_info"),
       bodyHtml,
     ));
   }
@@ -536,8 +653,8 @@ function buildControls(cfg, lakeFields) {
       _pendingArSlider = { min: arMin, max: arMax, sliderMax: arSliderMax };
     }
     body.appendChild(buildDimCard(
-      "tt-access", "Hiking distance",
-      "How far you need to walk from the nearest road. Set your preferred hiking distance range.",
+      "tt-access", t("accessibility"),
+      t("accessibility_info"),
       bodyHtml,
     ));
   }
@@ -553,17 +670,17 @@ function buildControls(cfg, lakeFields) {
       const ar5SliderMax = ar5b.slider_max_m | 0;
       bodyHtml =
         `<div class="tt-dim-body" id="tt-ar5-body">` +
-        `Residential: <span id="tt-ar5-res-val" style="font-weight:bold">${resVal}</span> m<br>` +
+        `${t("ar5_residential")} <span id="tt-ar5-res-val" style="font-weight:bold">${resVal}</span> m<br>` +
         `<input type="range" id="tt-ar5-res" min="0" max="${ar5SliderMax}" step="100" value="${resVal}" ` +
         `oninput="document.getElementById('tt-ar5-res-val').textContent=this.value;teltturUpdate(_ttCfg)"><br>` +
-        `Industrial: <span id="tt-ar5-ind-val" style="font-weight:bold">${indVal}</span> m<br>` +
+        `${t("ar5_industrial")} <span id="tt-ar5-ind-val" style="font-weight:bold">${indVal}</span> m<br>` +
         `<input type="range" id="tt-ar5-ind" min="0" max="${ar5SliderMax}" step="100" value="${indVal}" ` +
         `oninput="document.getElementById('tt-ar5-ind-val').textContent=this.value;teltturUpdate(_ttCfg)">` +
         `</div>`;
     }
     body.appendChild(buildDimCard(
-      "tt-ar5", "Urbanization",
-      "Distance from residential and industrial zones. Farther from developed areas scores higher.",
+      "tt-ar5", t("ar5_land_use"),
+      t("ar5_land_use_info"),
       bodyHtml,
     ));
   }
@@ -576,18 +693,26 @@ function buildControls(cfg, lakeFields) {
     if (fgCfg && fgCfg.enabled && fishingGenera.length > 0 && lakeFieldSet.has("fish_genera_mask")) {
       bodyHtml = `<div class="tt-dim-body" id="tt-fishing-body">`;
       for (const g of fishingGenera) {
-        bodyHtml += `<label><input type="checkbox" id="tt-fg-${g.code}" checked onchange="teltturUpdate(_ttCfg)"> ${g.label}</label><br>`;
+        bodyHtml += `<label><input type="checkbox" id="tt-fg-${g.code}" checked onchange="teltturUpdate(_ttCfg)"> ${t(`genus_${g.genus}`) || g.label}</label><br>`;
       }
       bodyHtml += `</div>`;
     }
     body.appendChild(buildDimCard(
-      "tt-fishing", "Fishing",
-      "Fishing opportunities based on known fish species in the lake.",
+      "tt-fishing", t("fishing"),
+      t("fishing_info"),
       bodyHtml,
     ));
   }
 
   document.body.appendChild(container);
+
+  // Language switcher (standalone fixed element)
+  const langSwitcher = document.createElement("div");
+  langSwitcher.id = "tt-lang-switcher";
+  langSwitcher.innerHTML =
+    `<button class="tt-lang-btn${_lang === 'en' ? ' tt-lang-active' : ''}" onclick="setLang('en')">EN</button>` +
+    `<button class="tt-lang-btn${_lang === 'no' ? ' tt-lang-active' : ''}" onclick="setLang('no')">NO</button>`;
+  document.body.appendChild(langSwitcher);
 
   // Initialise noUiSlider for accessibility range (needs the element in the DOM)
   if (_pendingArSlider) {
@@ -622,21 +747,21 @@ function buildLegend(data) {
   const legend = document.createElement("div");
   legend.id = "tt-legend";
 
-  let html = "<b>Legend</b>";
+  let html = `<b>${t("legend")}</b>`;
 
   if (hasTentability) {
-    html += "<b>Lakes – camping suitability:</b><br>";
+    html += `<b>${t("legend_suitability")}</b><br>`;
     for (let level = 5; level >= 1; level--) {
       html +=
         `<div class="tt-legend-row">` +
         `<span class="tt-legend-swatch" style="background:${LEVEL_COLORS[level]}"></span>` +
-        `${LEVEL_NAMES[level]}</div>`;
+        `${t(`level_${level}`)}</div>`;
     }
   } else {
     html +=
       '<div class="tt-legend-row">' +
       '<span class="tt-legend-swatch" style="background:#67a9cf"></span>' +
-      "Lakes</div>";
+      `${t("legend_lakes")}</div>`;
   }
 
   legend.innerHTML = html;
@@ -647,11 +772,28 @@ function buildLegend(data) {
 // Bootstrap
 // ---------------------------------------------------------------------------
 
-// Expose config globally so inline oninput handlers can call teltturUpdate.
+// Expose config and data globally so inline oninput handlers can call teltturUpdate.
 let _ttCfg = null;
+let _ttData = null;
+
+/** Tear down and rebuild the controls panel and legend (used on language switch). */
+function rebuildUI() {
+  const old = document.getElementById("tt-controls");
+  if (old) old.remove();
+  const oldLegend = document.getElementById("tt-legend");
+  if (oldLegend) oldLegend.remove();
+  _arSlider = null;
+  _pendingArSlider = null;
+  buildControls(_ttData.config, _ttData.lake_fields);
+  buildLegend(_ttData);
+  teltturUpdate(_ttData.config);
+}
 
 function _start(data) {
   _ttCfg = data.config;
+  _ttData = data;
+  document.title = t("title");
+  document.documentElement.lang = _lang === "no" ? "nb" : "en";
   initMap(data);
 }
 
@@ -660,7 +802,7 @@ if (window.TELTTUR_DATA) {
 } else {
   document.body.innerHTML =
     `<div style="padding:2em;font-family:sans-serif;color:#c00">` +
-    `<h2>Could not load map data</h2>` +
-    `<p>Run <code>uv run telttur generate</code> to produce <code>output/data.js</code>.</p>` +
+    `<h2>${t("error_no_data")}</h2>` +
+    `<p>${t("error_no_data_hint")}</p>` +
     `</div>`;
 }
