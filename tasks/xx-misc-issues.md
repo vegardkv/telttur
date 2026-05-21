@@ -51,12 +51,15 @@ This is starting to look good. I want to do some final polish and bug fixes:
 - Bug: The initial zoom should is currently south-east of norway (for the full map, not the akershus test). need to zoom out/pan to find the map.
 
 
-### Known issues to fix later
+### Round 4 - more polish
 
 - "info" box should be a bit more elaborate. at least have a brief note on how they are calculated. AR5 data can download in a couple of different ways, but i often get a 400 error, so i believe that in practice, only a single type of data is downloaded.
 - add a feature for embedding css and js into a single html file
   - update github action
 - range slider for accessbility seems to work, but the appearance is inconsistent with the other sliders
-- lake size should also be a range slider, and the upper bound should increase. might want to consider some super-linear scaling as well
+- lake size should also be a range slider, and the upper bound should increase. might want to consider some super-linear scaling as well. should make it clearer that this is a filter, as opposed to a scoring dimension
 - review js code for basic CS principles: dry, soc, kiss
-- attributions
+- attributions: github link, proper attributions to sources
+- check licenses and terms and conditions for data sources (double check that this web app can be published as a web site)
+- the fish type list has a lot of spacing. this should be reduced
+- consider using a light-weight ui library to make the appeareance more concise. i am open to a variety of suggestions, but i dont want a heavy framework that has a separate build/compilation step
