@@ -277,41 +277,31 @@ function teltturUpdate(cfg, idx) {
  * @param {object} liveScores  - Live-computed scores from computeScores().
  */
 function buildPopup(fields, liveScores, cfg) {
-  const rows = [];
-
-  // Name
-  if (fields.name) {
-    rows.push(["Name", fields.name]);
-  }
-
-  // Tentability composite
-  if (liveScores.tentability_score != null) {
-    rows.push(["Tentability", liveScores.tentability_score]);
-  }
+  const scoreRows = [];
 
   // Per-dimension scores
   const scoreLabels = {
     cabin_density_score: "Cabin density",
-    accessibility_score: "Accessibility",
-    ar5_land_use_score: "Land use (AR5)",
+    accessibility_score: "Hiking distance",
+    ar5_land_use_score: "Urbanization",
     fishing_score: "Fishing",
   };
   for (const [col, label] of Object.entries(scoreLabels)) {
     if (liveScores[col] != null) {
-      rows.push([label, liveScores[col]]);
+      scoreRows.push([label, liveScores[col]]);
     }
   }
 
-  // Separator before details
+  // Detail rows
   const detailRows = [];
   if (fields.area != null) {
     detailRows.push(["Area", formatArea(fields.area)]);
   }
   const detailLabels = {
-    road_distance_m: "Road distance",
-    building_density: "Building density",
-    industrial_distance_m: "Industrial dist.",
-    residential_distance_m: "Residential dist.",
+    road_distance_m: "Distance to road",
+    building_density: "Cabin density",
+    industrial_distance_m: "Distance to industry",
+    residential_distance_m: "Distance to housing",
     fish_species_count: "Fish species",
   };
   for (const [col, label] of Object.entries(detailLabels)) {
@@ -328,12 +318,26 @@ function buildPopup(fields, liveScores, cfg) {
       .filter(g => (fields.fish_genera_mask & (1 << g.code)) !== 0)
       .map(g => g.label);
     if (present.length > 0) {
-      detailRows.push(["Fish genera", present.join(", ")]);
+      detailRows.push(["Prized fish", present.join(", ")]);
     }
   }
 
-  let html = "<div class='tt-popup'><table>";
-  for (const [label, val] of rows) {
+  let html = "<div class='tt-popup'>";
+
+  // Lake name headline (only when present and non-null)
+  if (fields.name) {
+    html += `<div class='tt-popup-name'>${fields.name}</div>`;
+    html += "<hr class='tt-popup-divider'>";
+  }
+
+  // Overall score is the first table row (see below)
+
+  html += "<table>";
+  if (liveScores.tentability_score != null) {
+    html += `<tr><th class="tt-popup-overall-label">Overall score</th><td>${badge(liveScores.tentability_score)}</td></tr>`;
+    html += "<tr><td colspan='2'><hr></td></tr>";
+  }
+  for (const [label, val] of scoreRows) {
     html += `<tr><th>${label}</th><td>${badge(val)}</td></tr>`;
   }
   if (detailRows.length > 0) {
@@ -485,7 +489,7 @@ function buildControls(cfg, lakeFields) {
     const areaDiv = document.createElement("div");
     areaDiv.className = "tt-section";
     areaDiv.innerHTML =
-      `<b>Min lake area:</b> <span id="tt-min-area-val" style="font-weight:bold">${minArea}</span> m²<br>` +
+      `<b>Min lake size:</b> <span id="tt-min-area-val" style="font-weight:bold">${minArea}</span> m²<br>` +
       `<input type="range" id="tt-min-area" min="0" max="100000" step="500" value="${minArea}" ` +
       `oninput="document.getElementById('tt-min-area-val').textContent=this.value;teltturUpdate(_ttCfg)">`;
     body.appendChild(areaDiv);
@@ -506,7 +510,7 @@ function buildControls(cfg, lakeFields) {
     }
     body.appendChild(buildDimCard(
       "tt-cabin", "Cabin density",
-      "How isolated the area is from buildings and cabins. Lower density means a more secluded camping experience.",
+      "Density of buildings and cabins near the lake. Fewer nearby buildings means a quieter camping spot.",
       bodyHtml,
     ));
   }
@@ -532,7 +536,7 @@ function buildControls(cfg, lakeFields) {
       _pendingArSlider = { min: arMin, max: arMax, sliderMax: arSliderMax };
     }
     body.appendChild(buildDimCard(
-      "tt-access", "Accessibility",
+      "tt-access", "Hiking distance",
       "How far you need to walk from the nearest road. Set your preferred hiking distance range.",
       bodyHtml,
     ));
@@ -558,8 +562,8 @@ function buildControls(cfg, lakeFields) {
         `</div>`;
     }
     body.appendChild(buildDimCard(
-      "tt-ar5", "Land use (AR5)",
-      "Proximity to residential and industrial areas. Greater distance from developed areas is preferred.",
+      "tt-ar5", "Urbanization",
+      "Distance from residential and industrial zones. Farther from developed areas scores higher.",
       bodyHtml,
     ));
   }
@@ -621,7 +625,7 @@ function buildLegend(data) {
   let html = "<b>Legend</b>";
 
   if (hasTentability) {
-    html += "<b>Lakes – tentability:</b><br>";
+    html += "<b>Lakes – camping suitability:</b><br>";
     for (let level = 5; level >= 1; level--) {
       html +=
         `<div class="tt-legend-row">` +

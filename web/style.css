@@ -178,6 +178,22 @@ html, body {
 
 /* ─── Popups ──────────────────────────────────────────────────────────────── */
 
+.tt-popup-name {
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.tt-popup-divider {
+  margin: 4px 0 6px;
+  border: none;
+  border-top: 1px solid #ccc;
+}
+
+.tt-popup th.tt-popup-overall-label {
+  font-weight: bold;
+}
+
 .tt-popup table {
   font-size: 12px;
   border-collapse: collapse;

@@ -57,3 +57,4 @@ This is starting to look good. I want to do some final polish and bug fixes:
 - add a feature for embedding css and js into a single html file
   - update github action
 - range slider for accessbility seems to work, but the appearance is inconsistent with the other sliders
+- lake size should also be a range slider, and the upper bound should increase. might want to consider some super-linear scaling as well
