@@ -340,10 +340,10 @@ function buildPopup(fields, liveScores, cfg) {
 
 function initMap(data) {
   const bbox = data.meta.bbox; // [south, west, north, east]
-  const centerLat = (bbox[0] + bbox[2]) / 2;
-  const centerLng = (bbox[1] + bbox[3]) / 2;
+  const bounds = L.latLngBounds([bbox[0], bbox[1]], [bbox[2], bbox[3]]);
 
-  map = L.map("map", { preferCanvas: true }).setView([centerLat, centerLng], 10);
+  map = L.map("map", { preferCanvas: true });
+  map.fitBounds(bounds, { padding: [20, 20] });
 
   L.tileLayer(KARTVERKET_GRAY, {
     attribution: KARTVERKET_ATTR,
