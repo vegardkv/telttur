@@ -94,14 +94,13 @@ def fetch_nina_fish_observations(timeout_s: float = 60.0) -> gpd.GeoDataFrame:
         raise RuntimeError(f"Failed to download NINA fish data: {exc}") from exc
 
     try:
-        with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
-            with zf.open("occurrence.txt") as f:
-                df = pd.read_csv(
-                    f,
-                    sep="\t",
-                    usecols=["scientificName", "decimalLatitude", "decimalLongitude"],
-                    dtype=str,
-                )
+        with zipfile.ZipFile(io.BytesIO(resp.content)) as zf, zf.open("occurrence.txt") as f:
+            df = pd.read_csv(
+                f,
+                sep="\t",
+                usecols=["scientificName", "decimalLatitude", "decimalLongitude"],
+                dtype=str,
+            )
     except Exception as exc:
         raise RuntimeError(f"Failed to parse NINA fish archive: {exc}") from exc
 
@@ -114,7 +113,10 @@ def fetch_nina_fish_observations(timeout_s: float = 60.0) -> gpd.GeoDataFrame:
     df["scientific_name"] = df["scientificName"].str.strip()
     df["is_prized"] = df["scientific_name"].apply(_is_prized)
 
-    geometry = [Point(lon, lat) for lon, lat in zip(df["decimalLongitude"], df["decimalLatitude"])]
+    geometry = [
+        Point(lon, lat)
+        for lon, lat in zip(df["decimalLongitude"], df["decimalLatitude"], strict=True)
+    ]
     gdf = gpd.GeoDataFrame(
         df[["scientific_name", "is_prized"]],
         geometry=geometry,
@@ -128,14 +130,15 @@ def _compute_score(species_count: int, prized_count: int) -> int:
     if species_count == 0:
         return int(TentabilityLevel.TERRIBLE)
     points = species_count + prized_count
-    if points >= 8:
-        return int(TentabilityLevel.EXCELLENT)
-    if points >= 5:
-        return int(TentabilityLevel.GOOD)
-    if points >= 3:
-        return int(TentabilityLevel.FAIR)
-    if points >= 1:
-        return int(TentabilityLevel.POOR)
+    thresholds = [
+        (8, TentabilityLevel.EXCELLENT),
+        (5, TentabilityLevel.GOOD),
+        (3, TentabilityLevel.FAIR),
+        (1, TentabilityLevel.POOR),
+    ]
+    for threshold, level in thresholds:
+        if points >= threshold:
+            return int(level)
     return int(TentabilityLevel.TERRIBLE)
 
 
@@ -158,7 +161,8 @@ def score_fishing(
     lakes = lakes.copy()
 
     # Work in UTM33 for accurate buffering
-    lakes_utm = lakes.to_crs(CRS_UTM33) if lakes.crs.to_epsg() != 25833 else lakes
+    epsg_utm33_code = 25833
+    lakes_utm = lakes.to_crs(CRS_UTM33) if lakes.crs.to_epsg() != epsg_utm33_code else lakes
     buffered = lakes_utm.copy()
     buffered["geometry"] = buffered.geometry.buffer(config.buffer_m)
 
@@ -198,7 +202,9 @@ def score_fishing(
     )
     lakes[SCORE_COLUMN] = [
         _compute_score(s, p)
-        for s, p in zip(lakes[LakeCols.FISH_SPECIES_COUNT], lakes[LakeCols.FISH_PRIZED_COUNT])
+        for s, p in zip(
+            lakes[LakeCols.FISH_SPECIES_COUNT], lakes[LakeCols.FISH_PRIZED_COUNT], strict=True
+        )
     ]
     lakes[LakeCols.FISHING_LEVEL] = lakes[SCORE_COLUMN].map(LEVEL_NAMES)
 

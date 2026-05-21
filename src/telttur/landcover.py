@@ -49,7 +49,7 @@ def find_landcover_layers(gdb_path: Path) -> list[str]:
     return [
         layer
         for layer in all_layers
-        if any(kw in layer.lower() for kw in keywords) and "omrade" in layer.lower()
+        if any(kw in layer.lower() for kw in keywords) and "omrade" in layer.lower()  # noqa: PLR2004
     ]
 
 

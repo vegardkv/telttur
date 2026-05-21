@@ -17,6 +17,7 @@ from telttur.config import Ar5DataSource, Ar5LandUseConfig, BBox
 from telttur.lakes import LakeCols
 from telttur.scoring.common import (
     CRS_UTM33,
+    EPSG_CODE_UTM33,
     _bbox_to_utm33,
 )
 
@@ -50,8 +51,8 @@ def _fetch_ar5_wfs(bbox: BBox, timeout_s: float = 30.0) -> gpd.GeoDataFrame:
         "REQUEST": "GetFeature",
         "TYPENAMES": "Arealtype",
         "OUTPUTFORMAT": "application/json",
-        "SRSNAME": "EPSG:25833",
-        "BBOX": f"{minx:.1f},{miny:.1f},{maxx:.1f},{maxy:.1f},EPSG:25833",
+        "SRSNAME": CRS_UTM33,
+        "BBOX": f"{minx:.1f},{miny:.1f},{maxx:.1f},{maxy:.1f},{CRS_UTM33}",
         "COUNT": "50000",
     }
 
@@ -71,7 +72,7 @@ def _fetch_ar5_wfs(bbox: BBox, timeout_s: float = 30.0) -> gpd.GeoDataFrame:
 
     if gdf.crs is None:
         gdf = gdf.set_crs(CRS_UTM33)
-    elif gdf.crs.to_epsg() != 25833:
+    elif gdf.crs.to_epsg() != EPSG_CODE_UTM33:
         gdf = gdf.to_crs(CRS_UTM33)
 
     # Normalise the artype column — field may be named 'artype' or 'arealtype'
@@ -108,17 +109,18 @@ def _extract_n50_land_use_zones(
 
     for gdb_path in gdb_paths:
         all_layers = fiona.listlayers(str(gdb_path))
+        _AREA_LABEL = "omrade"
         area_layers = [
             ln
             for ln in all_layers
             if any(kw in ln.lower() for kw in ("arealdekke", "arealbruk", "markslag"))
-            and "omrade" in ln.lower()
+            and _AREA_LABEL in ln.lower()
         ]
         for layer_name in area_layers:
             gdf = gpd.read_file(str(gdb_path), layer=layer_name, bbox=utm_bounds)
             if gdf.crs is None:
                 gdf = gdf.set_crs(CRS_UTM33)
-            elif gdf.crs.to_epsg() != 25833:
+            elif gdf.crs.to_epsg() != EPSG_CODE_UTM33:
                 gdf = gdf.to_crs(CRS_UTM33)
             gdf = gdf[gdf.geometry.geom_type.isin(["Polygon", "MultiPolygon"])]
 
@@ -228,10 +230,10 @@ def score_ar5_land_use(
 
     def _distances_to(polygons: gpd.GeoDataFrame) -> gpd.GeoSeries:
         if polygons.empty:
-            return gpd.pd.Series(float("inf"), index=lakes.index)
+            return gpd.GeoSeries(float("inf"), index=lakes.index)
         polys_utm = (
             polygons
-            if polygons.crs is not None and polygons.crs.to_epsg() == 25833
+            if polygons.crs is not None and polygons.crs.to_epsg() == EPSG_CODE_UTM33
             else polygons.to_crs(CRS_UTM33)
         )
         joined = gpd.sjoin_nearest(

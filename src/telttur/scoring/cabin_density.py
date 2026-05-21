@@ -30,11 +30,12 @@ _RESIDENTIAL_MAX = 199
 def find_building_layers(gdb_path: Path) -> list[str]:
     """List layers in a .gdb that contain building point data."""
     all_layers = fiona.listlayers(str(gdb_path))
+    _BUILDING_POSITION_LABEL = "posisjon"
     return [
         layer
         for layer in all_layers
         if any(kw in layer.lower() for kw in ("bygning", "building"))
-        and "posisjon" in layer.lower()
+        and _BUILDING_POSITION_LABEL in layer.lower()
     ]
 
 
@@ -44,6 +45,10 @@ def extract_buildings(gdb_paths: list[Path], bbox: BBox) -> gpd.GeoDataFrame:
     Filters to objtype == 'Bygning' and bygningstype 100–199 (residential/cabins).
     This excludes masts, tanks, industrial buildings, barns, churches, etc.
     """
+    _BUILDING_TYPE_LABEL = "bygningstype"
+    _OBJECT_LABEL = "objtype"
+    _OBJECT_BUILDING_CODE = "Bygning"
+
     frames: list[gpd.GeoDataFrame] = []
     utm_bounds = _bbox_to_utm33(bbox)
 
@@ -57,10 +62,10 @@ def extract_buildings(gdb_paths: list[Path], bbox: BBox) -> gpd.GeoDataFrame:
             elif str(gdf.crs) != CRS_UTM33:
                 gdf = gdf.to_crs(CRS_UTM33)
 
-            if "objtype" in gdf.columns:
-                gdf = gdf[gdf["objtype"] == "Bygning"]
-            if "bygningstype" in gdf.columns:
-                gdf = gdf[gdf["bygningstype"].between(_RESIDENTIAL_MIN, _RESIDENTIAL_MAX)]
+            if _OBJECT_LABEL in gdf.columns:
+                gdf = gdf[gdf[_OBJECT_LABEL] == _OBJECT_BUILDING_CODE]
+            if _BUILDING_TYPE_LABEL in gdf.columns:
+                gdf = gdf[gdf[_BUILDING_TYPE_LABEL].between(_RESIDENTIAL_MIN, _RESIDENTIAL_MAX)]
 
             frames.append(gdf)
 

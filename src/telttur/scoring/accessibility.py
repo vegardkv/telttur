@@ -33,12 +33,13 @@ def score_accessibility(
     Added columns:
       road_distance_m      — metres to nearest drivable road (rounded to 1 dp)
     """
+    _CATEGORY_LABEL = "category"
     lakes = lakes.copy()
 
     excluded = set(excluded_road_types) if excluded_road_types is not None else _NON_MOTORIZED
     drivable = (
         road_lines[~road_lines["category"].isin(excluded)]
-        if "category" in road_lines.columns
+        if _CATEGORY_LABEL in road_lines.columns
         else road_lines
     )
 

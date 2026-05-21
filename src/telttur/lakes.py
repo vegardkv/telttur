@@ -43,7 +43,7 @@ def find_lake_layers(gdb_path: Path) -> list[str]:
     matches = [
         layer
         for layer in all_layers
-        if any(kw in layer.lower() for kw in water_keywords) and "omrade" in layer.lower()
+        if any(kw in layer.lower() for kw in water_keywords) and "omrade" in layer.lower()  # noqa: PLR2004
     ]
     if not matches:
         print(f"  Available layers in {gdb_path.name}: {all_layers}")
@@ -134,6 +134,7 @@ def process_lakes(
         before = len(lakes)
         lakes = lakes[lakes[LakeCols.AREA_M2] >= min_lake_area_m2].reset_index(drop=True)
         print(
-            f"  Removed {before - len(lakes)} lakes below {min_lake_area_m2:.0f} m² ({len(lakes)} remaining)"
+            f"  Removed {before - len(lakes)} lakes below {min_lake_area_m2:.0f} m²"
+            f"({len(lakes)} remaining)"
         )
     return lakes

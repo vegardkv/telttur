@@ -20,30 +20,6 @@ from telttur.scoring import (
 # Coordinate precision: 6 decimals ≈ 0.1 m accuracy, sufficient for maps.
 _COORD_PRECISION = 6
 
-# Field ordering for the compact lake array.  The order is fixed; the frontend
-# reads it from `lake_fields` in the JSON so it doesn't need to know the order
-# at build time.
-_LAKE_FIELDS: list[str] = [
-    "lat",
-    "lng",
-    "area",
-    LakeCols.FISHING_SCORE,
-    LakeCols.ROAD_DISTANCE_M,
-    LakeCols.BUILDING_DENSITY,
-    LakeCols.INDUSTRIAL_DISTANCE_M,
-    LakeCols.RESIDENTIAL_DISTANCE_M,
-    LakeCols.FISH_SPECIES_COUNT,
-    "name",
-]
-
-
-def _format_area(m2: float) -> str:
-    if m2 >= 1_000_000:
-        return f"{m2 / 1_000_000:.2f} km²"
-    if m2 >= 10_000:
-        return f"{m2 / 10_000:.1f} ha"
-    return f"{m2:.0f} m²"
-
 
 def build_lake_data(
     lakes: gpd.GeoDataFrame,

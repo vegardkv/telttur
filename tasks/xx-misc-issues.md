@@ -54,3 +54,6 @@ This is starting to look good. I want to do some final polish and bug fixes:
 ### Known issues to fix later
 
 - "scoring" on the python side no longer make sense. However, each "scoring" submodule still is relevant for how javascript calculates the various scores. Should consider some refactoring to clarify responsibility
+
+- epsg codes for utm33 is spread all over. might want to move to common.py
+- buffer_roads function uses hard-coded strings for column names. 

@@ -59,7 +59,7 @@ def get_fylke_bounds(
     Falls back to the hardcoded FYLKE_BOUNDS if the API is unavailable.
     Result format: {code: (name, (south, west, north, east))}
     """
-    if use_cache and "data" in _fylke_bounds_cache:
+    if use_cache and "data" in _fylke_bounds_cache:  # noqa: PLR2004
         return _fylke_bounds_cache["data"]
 
     try:
@@ -109,8 +109,9 @@ def get_available_areas(metadata_uuid: str = N50_METADATA_UUID) -> list[dict]:
 
 def _find_area_entry(areas: list[dict], fylke_code: str) -> dict | None:
     """Find the area entry matching a fylke code."""
+    _FYLKE_LABEL = "fylke"
     for area in areas:
-        if area.get("type") == "fylke" and area.get("code") == fylke_code:
+        if area.get("type") == _FYLKE_LABEL and area.get("code") == fylke_code:
             return area
     return None
 
@@ -169,7 +170,7 @@ def download_file(download_url: str, dest_path: Path) -> None:
     total = int(resp.headers.get("content-length", 0))
     dest_path.parent.mkdir(parents=True, exist_ok=True)
     with (
-        open(dest_path, "wb") as f,
+        dest_path.open("wb") as f,
         tqdm(total=total, unit="B", unit_scale=True, desc=dest_path.name) as pbar,
     ):
         for chunk in resp.iter_content(chunk_size=8192):
@@ -255,7 +256,7 @@ def _download_and_extract(
     n50_dir: Path, file_info: OrderFile, fylke_code: str, fylke_name: str
 ) -> Path | None:
     """Download a single file and extract its .gdb. Returns path or None on failure."""
-    if file_info.status != "ReadyForDownload":
+    if file_info.status != "ReadyForDownload":  # noqa: PLR2004
         print(f"    File not ready: {file_info.name}")
         return None
 

@@ -9,7 +9,8 @@ from shapely.geometry import box
 
 from telttur.config import BBox
 
-CRS_UTM33 = "EPSG:25833"
+EPSG_CODE_UTM33 = 25833
+CRS_UTM33 = f"EPSG:{EPSG_CODE_UTM33}"
 CRS_WGS84 = "EPSG:4326"
 
 

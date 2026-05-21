@@ -1,3 +1,4 @@
+# ruff: noqa: PLR2004
 """Road extraction and buffering from N50 Kartdata."""
 
 from pathlib import Path
@@ -97,80 +98,6 @@ def extract_roads(
     roads = roads[roads.geometry.geom_type.isin(["LineString", "MultiLineString"])]
 
     return roads
-
-
-def buffer_roads(
-    roads: gpd.GeoDataFrame,
-    buffer_distance_m: float,
-    simplify_tolerance_m: float = 0,
-    excluded_road_types: list[str] | None = None,
-) -> gpd.GeoDataFrame:
-    """Buffer road centerlines and dissolve by category.
-
-    Returns a GeoDataFrame with one row per road category,
-    with columns: category, label, color, geometry (polygon).
-    """
-    if roads.empty:
-        return gpd.GeoDataFrame(
-            columns=["category", "label", "color", "geometry"],
-            crs=CRS_WGS84,
-        )
-
-    roads = roads.copy()
-
-    # Filter out railways (Bane) — they are not roads
-    if "objtype" in roads.columns:
-        roads = roads[roads["objtype"] != "Bane"]
-
-    # Filter out ferry routes — water crossings, not land roads
-    if "typeveg" in roads.columns:
-        roads = roads[~roads["typeveg"].isin(_FERRY_TYPEVEG)]
-
-    if roads.empty:
-        return gpd.GeoDataFrame(
-            columns=["category", "label", "color", "geometry"],
-            crs=CRS_WGS84,
-        )
-
-    # Assign a unified category: vegkategori where set, otherwise typeveg
-    if "vegkategori" in roads.columns and "typeveg" in roads.columns:
-        roads["_category"] = roads["vegkategori"].where(
-            roads["vegkategori"].notna(), roads["typeveg"]
-        )
-    elif "vegkategori" in roads.columns:
-        roads["_category"] = roads["vegkategori"].fillna("other")
-    elif "typeveg" in roads.columns:
-        roads["_category"] = roads["typeveg"].fillna("other")
-    else:
-        roads["_category"] = "other"
-
-    results = []
-    for cat_value, group in roads.groupby("_category", dropna=False):
-        cat_key = str(cat_value).strip() if cat_value and str(cat_value) != "nan" else "other"
-        style = ROAD_CATEGORIES.get(cat_key, {"label": cat_key, "color": "#999999"})
-
-        cat_buffer = style.get("buffer_m", buffer_distance_m)
-        if cat_key in (excluded_road_types or []):
-            continue  # road type excluded from buffering
-
-        buffered = group.geometry.buffer(cat_buffer)
-
-        if simplify_tolerance_m > 0:
-            buffered = buffered.simplify(simplify_tolerance_m)
-
-        dissolved = buffered.union_all()
-
-        results.append(
-            {
-                "category": cat_key,
-                "label": style["label"],
-                "color": style["color"],
-                "geometry": dissolved,
-            }
-        )
-
-    result_gdf = gpd.GeoDataFrame(results, crs=CRS_UTM33)
-    return result_gdf.to_crs(CRS_WGS84)
 
 
 def _style_roads(roads: gpd.GeoDataFrame) -> gpd.GeoDataFrame:

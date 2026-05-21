@@ -5,7 +5,7 @@ import time
 
 import click
 
-from telttur.config import BBox, build_profile_config, dump_config_yaml, load_config
+from telttur.config import BBox, Profile, build_profile_config, dump_config_yaml, load_config
 from telttur.data_export import export_data
 from telttur.download import download_n50
 from telttur.lakes import process_lakes
@@ -13,7 +13,9 @@ from telttur.roads import process_roads
 from telttur.scoring import process_scoring
 
 
-def _adaptive_simplify_tolerance(bbox: BBox, configured: float) -> float:
+def _adaptive_simplify_tolerance(
+    bbox: BBox, configured: float, large_threshold: float = 15_000, small_threshold: float = 2_000
+) -> float:
     """Return an effective simplify tolerance based on bbox area.
 
     Thresholds (km²):
@@ -26,9 +28,9 @@ def _adaptive_simplify_tolerance(bbox: BBox, configured: float) -> float:
     lon_km = (bbox.east - bbox.west) * 111.0 * math.cos(mid_lat_rad)
     area_km2 = lat_km * lon_km
 
-    if area_km2 > 15_000:
+    if area_km2 > large_threshold:
         minimum = 200.0
-    elif area_km2 > 2_000:
+    elif area_km2 > small_threshold:
         minimum = 100.0
     else:
         minimum = configured
@@ -67,10 +69,12 @@ def generate(config_path: str | None, profile: str | None, skip_download: bool) 
     """Generate the camping suitability map."""
     if profile and config_path:
         raise click.UsageError("--profile and --config are mutually exclusive.")
-    if profile:
-        config = build_profile_config(profile)  # type: ignore[arg-type]
-    else:
-        config = load_config(config_path or "config.yaml")
+    config = (
+        build_profile_config(Profile(profile))
+        if profile
+        else load_config(config_path or "config.yaml")
+    )
+    assert config.bbox is not None  # guaranteed by Config.require_bbox validator
     pipeline_start = time.time()
 
     print(
@@ -167,7 +171,7 @@ def download(config_path: str | None) -> None:
     """Download N50 data only (no map generation)."""
     config = load_config(config_path or "config.yaml")
     config.data_path.mkdir(parents=True, exist_ok=True)
-
+    assert config.bbox is not None  # guaranteed by Config.require_bbox validator
     gdb_paths = download_n50(config.bbox, config.data_path)
     print(f"Downloaded {len(gdb_paths)} .gdb file(s)")
     for p in gdb_paths:
@@ -208,12 +212,14 @@ def sample(output: str, profile: str) -> None:
     """Generate a sample config YAML with all options filled in."""
     from pathlib import Path
 
-    config = build_profile_config(profile)  # type: ignore[arg-type]
-    yaml_text = dump_config_yaml(config, profile)  # type: ignore[arg-type]
+    profile_type = Profile(profile)
+
+    config = build_profile_config(profile_type)  # type: ignore[arg-type]
+    yaml_text = dump_config_yaml(config, profile_type)  # type: ignore[arg-type]
     Path(output).write_text(yaml_text, encoding="utf-8")
-    print(f"Sample config ({profile} profile) written to: {output}")
+    print(f"Sample config ({profile_type} profile) written to: {output}")
     print(f"Run with: uv run telttur generate --config {output}")
-    print(f"       or: uv run telttur generate --profile {profile}")
+    print(f"       or: uv run telttur generate --profile {profile_type}")
 
 
 if __name__ == "__main__":

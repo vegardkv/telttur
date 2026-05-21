@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, StrEnum
 from pathlib import Path
 from typing import Literal
 
@@ -127,7 +127,7 @@ class AccessibilityConfig(BaseModel):
     thresholds: AccessibilityThresholds = Field(default_factory=AccessibilityThresholds)
 
 
-class Ar5DataSource(str, Enum):
+class Ar5DataSource(StrEnum):
     """Data source to use for AR5 land use polygons."""
 
     AUTO = "auto"  # try WFS first, fall back to N50 on failure
@@ -181,13 +181,13 @@ class Config(BaseModel):
     def resolve_fylke(cls, data: object) -> object:
         if not isinstance(data, dict):
             return data
-        if "fylke" in data and "bbox" not in data:
-            name = str(data["fylke"]).strip().lower()
+        if "fylke" in data and "bbox" not in data:  # noqa: PLR2004
+            name = str(data["fylke"]).strip().lower()  # ty: ignore[invalid-argument-type]
             bbox = _FYLKE_BBOX.get(name)
             if bbox is None:
                 available = ", ".join(sorted(_FYLKE_BBOX.keys()))
                 raise ValueError(f"Unknown fylke '{name}'. Available: {available}")
-            data["bbox"] = bbox.model_dump()
+            data["bbox"] = bbox.model_dump()  # ty: ignore[invalid-assignment]
         return data
 
     @model_validator(mode="after")
@@ -232,8 +232,8 @@ _FYLKE_BBOX: dict[str, BBox] = {
 }
 
 
-def load_config(path: str | Path) -> Config:
-    with open(path) as f:
+def load_config(path: str) -> Config:
+    with Path(path).open() as f:
         raw = yaml.safe_load(f)
     return Config(**raw)
 
@@ -242,12 +242,16 @@ def load_config(path: str | Path) -> Config:
 # Profile system
 # ---------------------------------------------------------------------------
 
-Profile = Literal["local", "regional", "national"]
+
+class Profile(StrEnum):
+    local = "local"
+    regional = "regional"
+    national = "national"
 
 
 def build_profile_config(profile: Profile) -> Config:
     """Build a Config from a named profile with sensible scale-based defaults."""
-    if profile == "local":
+    if profile == Profile.local:
         return Config(
             fylke="oslo",
             min_lake_area_m2=1000.0,
@@ -262,7 +266,7 @@ def build_profile_config(profile: Profile) -> Config:
                 ar5_land_use=Ar5LandUseConfig(enabled=True),
             ),
         )
-    elif profile == "regional":
+    elif profile == Profile.regional:
         return Config(
             fylke="akershus",
             min_lake_area_m2=1000.0,
