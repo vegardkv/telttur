@@ -50,6 +50,8 @@ const DEFAULT_LAKE_COLOR = "#67a9cf";
 let map;
 let lakesLayer;     // L.LayerGroup containing all CircleMarker instances
 let allMarkers = []; // { marker, fields } — kept for re-filtering
+let _arSlider = null;         // noUiSlider instance for accessibility range
+let _pendingArSlider = null;  // config awaiting DOM insertion
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -75,6 +77,16 @@ function formatDist(m) {
   if (m == null) return "–";
   if (m >= 1000) return (m / 1000).toFixed(1) + " km";
   return Math.round(m) + " m";
+}
+
+/** Return the low handle value of the accessibility range slider (or default 0). */
+function _arSliderMin() {
+  return _arSlider ? parseFloat(_arSlider.get()[0]) : 0;
+}
+
+/** Return the high handle value of the accessibility range slider (or default 5000). */
+function _arSliderMax() {
+  return _arSlider ? parseFloat(_arSlider.get()[1]) : 5000;
 }
 
 /** Return the current value of a slider element (or a default). */
@@ -177,8 +189,8 @@ function readControlState(cfg) {
     minArea: ctrl.min_lake_area
       ? sliderVal("tt-min-area", cfg.min_lake_area_m2)
       : cfg.min_lake_area_m2,
-    arMin: arCfg.enabled ? sliderVal("tt-ar-min", arCfg.min_m || 0) : 0,
-    arMax: arCfg.enabled ? sliderVal("tt-ar-max", arCfg.max_m || 5000) : 5000,
+    arMin: arCfg.enabled ? _arSliderMin() : 0,
+    arMax: arCfg.enabled ? _arSliderMax() : 5000,
     ctThreshold: ctCfg.enabled
       ? sliderVal("tt-ct", ctCfg.value || 0.05)
       : (scoring.cabin_density ? scoring.cabin_density.thresholds.good || 0.01 : 0.01),
@@ -509,13 +521,15 @@ function buildControls(cfg, lakeFields) {
       const arSliderMax = ar.slider_max_m | 0;
       bodyHtml =
         `<div class="tt-dim-body" id="tt-access-body">` +
-        `Min: <span id="tt-ar-min-val" style="font-weight:bold">${arMin}</span> m<br>` +
-        `<input type="range" id="tt-ar-min" min="0" max="${arSliderMax}" step="100" value="${arMin}" ` +
-        `oninput="document.getElementById('tt-ar-min-val').textContent=this.value;teltturUpdate(_ttCfg)"><br>` +
-        `Max: <span id="tt-ar-max-val" style="font-weight:bold">${arMax}</span> m<br>` +
-        `<input type="range" id="tt-ar-max" min="0" max="${arSliderMax}" step="100" value="${arMax}" ` +
-        `oninput="document.getElementById('tt-ar-max-val').textContent=this.value;teltturUpdate(_ttCfg)">` +
+        `<div id="tt-ar-range-label" style="margin-bottom:6px">` +
+        `<span id="tt-ar-min-val" style="font-weight:bold">${arMin}</span> m` +
+        ` – ` +
+        `<span id="tt-ar-max-val" style="font-weight:bold">${arMax}</span> m` +
+        `</div>` +
+        `<div id="tt-ar-slider"></div>` +
         `</div>`;
+      // Schedule slider init after DOM insertion
+      _pendingArSlider = { min: arMin, max: arMax, sliderMax: arSliderMax };
     }
     body.appendChild(buildDimCard(
       "tt-access", "Accessibility",
@@ -570,6 +584,26 @@ function buildControls(cfg, lakeFields) {
   }
 
   document.body.appendChild(container);
+
+  // Initialise noUiSlider for accessibility range (needs the element in the DOM)
+  if (_pendingArSlider) {
+    const { min, max, sliderMax } = _pendingArSlider;
+    _pendingArSlider = null;
+    const el = document.getElementById("tt-ar-slider");
+    if (el && typeof noUiSlider !== "undefined") {
+      _arSlider = noUiSlider.create(el, {
+        start: [min, max],
+        connect: true,
+        step: 100,
+        range: { min: 0, max: sliderMax },
+      });
+      _arSlider.on("update", (values) => {
+        document.getElementById("tt-ar-min-val").textContent = Math.round(values[0]);
+        document.getElementById("tt-ar-max-val").textContent = Math.round(values[1]);
+        teltturUpdate(_ttCfg);
+      });
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -53,7 +53,7 @@ This is starting to look good. I want to do some final polish and bug fixes:
 
 ### Known issues to fix later
 
-- "scoring" on the python side no longer make sense. However, each "scoring" submodule still is relevant for how javascript calculates the various scores. Should consider some refactoring to clarify responsibility
-
-- epsg codes for utm33 is spread all over. might want to move to common.py
-- buffer_roads function uses hard-coded strings for column names. 
+- "info" box should be a bit more elaborate. at least have a brief note on how they are calculated. AR5 data can download in a couple of different ways, but i often get a 400 error, so i believe that in practice, only a single type of data is downloaded.
+- add a feature for embedding css and js into a single html file
+  - update github action
+- range slider for accessbility seems to work, but the appearance is inconsistent with the other sliders

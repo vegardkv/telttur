@@ -95,6 +95,16 @@ html, body {
   margin-top: 5px;
 }
 
+/* noUiSlider accessibility range */
+#tt-ar-slider {
+  margin: 10px 4px 6px;
+}
+
+#tt-ar-range-label {
+  font-size: 13px;
+  color: #555;
+}
+
 /* ─── Info button & tooltip ───────────────────────────────────────────────── */
 
 .tt-info-btn {
