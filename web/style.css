@@ -66,6 +66,70 @@ html, body {
   height: 6px;
 }
 
+/* ─── Dimension cards ─────────────────────────────────────────────────────── */
+
+.tt-dim-card {
+  background: #f5f7fa;
+  border: 1px solid #d0d0d0;
+  border-radius: 5px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+}
+
+.tt-dim-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#tt-body .tt-dim-header label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: bold;
+  margin-bottom: 0;
+  cursor: pointer;
+}
+
+.tt-dim-body {
+  margin-top: 5px;
+}
+
+/* ─── Info button & tooltip ───────────────────────────────────────────────── */
+
+.tt-info-btn {
+  position: relative;
+  cursor: pointer;
+  color: #888;
+  font-size: 14px;
+  line-height: 1;
+  user-select: none;
+  flex-shrink: 0;
+  outline: none;
+}
+
+.tt-info-tip {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 120%;
+  background: #333;
+  color: #fff;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  width: 180px;
+  z-index: 10000;
+  line-height: 1.4;
+  white-space: normal;
+  font-weight: normal;
+}
+
+.tt-info-btn:hover .tt-info-tip,
+.tt-info-btn.tt-info-open .tt-info-tip {
+  display: block;
+}
+
 /* ─── Legend ──────────────────────────────────────────────────────────────── */
 
 #tt-legend {

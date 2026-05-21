@@ -410,12 +410,44 @@ function initMap(data) {
 // Controls panel
 // ---------------------------------------------------------------------------
 
+/** Toggle a scoring dimension card body on/off and trigger a map update. */
+function ttToggleDim(id) {
+  const cb = document.getElementById(id);
+  const cardBody = document.getElementById(id + "-body");
+  if (cardBody) cardBody.style.display = (cb && cb.checked) ? "" : "none";
+  teltturUpdate(_ttCfg);
+}
+
+/**
+ * Build a scoring dimension card element.
+ * @param {string} id       - Checkbox element id (e.g. "tt-cabin").
+ * @param {string} label    - Display label.
+ * @param {string} infoText - Tooltip description text.
+ * @param {string} bodyHtml - Inner HTML for the card body (sliders etc.).
+ */
+function buildDimCard(id, label, infoText, bodyHtml) {
+  const card = document.createElement("div");
+  card.className = "tt-dim-card";
+  card.innerHTML =
+    `<div class="tt-dim-header">` +
+    `<label><input type="checkbox" id="${id}" checked ` +
+    `onchange="ttToggleDim('${id}')"> ${label}</label>` +
+    `<span class="tt-info-btn" tabindex="0" ` +
+    `onclick="this.classList.toggle('tt-info-open')">ⓘ` +
+    `<span class="tt-info-tip">${infoText}</span>` +
+    `</span>` +
+    `</div>` +
+    bodyHtml;
+  return card;
+}
+
 function buildControls(cfg, lakeFields) {
   const ctrl = cfg.interactive;
   if (!ctrl || !ctrl.enabled) return;
 
   const scoring = cfg.scoring || {};
   const dt = ctrl.dimension_toggles || {};
+  const lakeFieldSet = new Set(lakeFields);
 
   const container = document.createElement("div");
   container.id = "tt-controls";
@@ -435,84 +467,106 @@ function buildControls(cfg, lakeFields) {
   body.id = "tt-body";
   container.appendChild(body);
 
-  const lakeFieldSet = new Set(lakeFields);
-
-  // Dimension toggles
-  const dims = [
-    [dt.cabin_density && scoring.cabin_density, "tt-cabin", "Cabin density"],
-    [dt.accessibility && scoring.accessibility, "tt-access", "Accessibility"],
-    [dt.ar5_land_use && scoring.ar5_land_use, "tt-ar5", "Land use (AR5)"],
-    [dt.fishing && scoring.fishing, "tt-fishing", "Fishing"],
-  ].filter(([show]) => show);
-
-  if (dims.length > 0) {
-    body.innerHTML += "<b>Dimensions:</b><br>";
-    for (const [, id, label] of dims) {
-      body.innerHTML += `<label><input type="checkbox" id="${id}" checked onchange="teltturUpdate(_ttCfg)"> ${label}</label><br>`;
-    }
-    body.innerHTML += '<div class="tt-spacer"></div>';
-  }
-
-  // Min lake area
+  // Min lake area (not a scoring dimension — rendered outside cards)
   const minArea = cfg.min_lake_area_m2 || 0;
   if (ctrl.min_lake_area) {
-    body.innerHTML +=
+    const areaDiv = document.createElement("div");
+    areaDiv.className = "tt-section";
+    areaDiv.innerHTML =
       `<b>Min lake area:</b> <span id="tt-min-area-val" style="font-weight:bold">${minArea}</span> m²<br>` +
       `<input type="range" id="tt-min-area" min="0" max="100000" step="500" value="${minArea}" ` +
       `oninput="document.getElementById('tt-min-area-val').textContent=this.value;teltturUpdate(_ttCfg)">`;
+    body.appendChild(areaDiv);
   }
 
-  // Accessibility range
-  const ar = ctrl.accessibility_range;
-  if (ar && ar.enabled && lakeFieldSet.has("road_distance_m")) {
-    const arMin = ar.min_m | 0;
-    const arMax = ar.max_m | 0;
-    const arSliderMax = ar.slider_max_m | 0;
-    body.innerHTML +=
-      `<b>Accessibility distance:</b><br>` +
-      `Min: <span id="tt-ar-min-val" style="font-weight:bold">${arMin}</span> m<br>` +
-      `<input type="range" id="tt-ar-min" min="0" max="${arSliderMax}" step="100" value="${arMin}" ` +
-      `oninput="document.getElementById('tt-ar-min-val').textContent=this.value;teltturUpdate(_ttCfg)"><br>` +
-      `Max: <span id="tt-ar-max-val" style="font-weight:bold">${arMax}</span> m<br>` +
-      `<input type="range" id="tt-ar-max" min="0" max="${arSliderMax}" step="100" value="${arMax}" ` +
-      `oninput="document.getElementById('tt-ar-max-val').textContent=this.value;teltturUpdate(_ttCfg)">`;
-  }
-
-  // Cabin density slider
-  const cd = ctrl.cabin_density_slider;
-  if (cd && cd.enabled && lakeFieldSet.has("building_density")) {
-    const val = cd.value.toFixed(3);
-    body.innerHTML +=
-      `<b>Cabin density threshold:</b> <span id="tt-ct-val" style="font-weight:bold">${val}</span><br>` +
-      `<input type="range" id="tt-ct" min="0" max="${cd.slider_max.toFixed(3)}" step="0.001" value="${val}" ` +
-      `oninput="document.getElementById('tt-ct-val').textContent=parseFloat(this.value).toFixed(3);teltturUpdate(_ttCfg)">`;
-  }
-
-  // AR5 buffers
-  const ar5b = ctrl.ar5_buffers;
-  const ar5s = scoring.ar5_land_use;
-  if (ar5b && ar5b.enabled && ar5s && lakeFieldSet.has("industrial_distance_m")) {
-    const resVal = ar5s.residential_buffer_m | 0;
-    const indVal = ar5s.industrial_buffer_m | 0;
-    const ar5SliderMax = ar5b.slider_max_m | 0;
-    body.innerHTML +=
-      `<b>AR5 buffers:</b><br>` +
-      `Residential: <span id="tt-ar5-res-val" style="font-weight:bold">${resVal}</span> m<br>` +
-      `<input type="range" id="tt-ar5-res" min="0" max="${ar5SliderMax}" step="100" value="${resVal}" ` +
-      `oninput="document.getElementById('tt-ar5-res-val').textContent=this.value;teltturUpdate(_ttCfg)"><br>` +
-      `Industrial: <span id="tt-ar5-ind-val" style="font-weight:bold">${indVal}</span> m<br>` +
-      `<input type="range" id="tt-ar5-ind" min="0" max="${ar5SliderMax}" step="100" value="${indVal}" ` +
-      `oninput="document.getElementById('tt-ar5-ind-val').textContent=this.value;teltturUpdate(_ttCfg)">`;
-  }
-
-  // Fishing genera toggles
-  const fgCfg = ctrl.fishing_genera;
-  const fishingGenera = (scoring.fishing && scoring.fishing.genera) || [];
-  if (fgCfg && fgCfg.enabled && scoring.fishing && fishingGenera.length > 0 && lakeFieldSet.has("fish_genera_mask")) {
-    body.innerHTML += '<div class="tt-spacer"></div><b>Fishing \u2013 desired genera:</b><br>';
-    for (const g of fishingGenera) {
-      body.innerHTML += `<label><input type="checkbox" id="tt-fg-${g.code}" checked onchange="teltturUpdate(_ttCfg)"> ${g.label}</label><br>`;
+  // Cabin density card
+  if (dt.cabin_density && scoring.cabin_density) {
+    const cd = ctrl.cabin_density_slider;
+    let bodyHtml = "";
+    if (cd && cd.enabled && lakeFieldSet.has("building_density")) {
+      const val = cd.value.toFixed(3);
+      bodyHtml =
+        `<div class="tt-dim-body" id="tt-cabin-body">` +
+        `Threshold: <span id="tt-ct-val" style="font-weight:bold">${val}</span><br>` +
+        `<input type="range" id="tt-ct" min="0" max="${cd.slider_max.toFixed(3)}" step="0.001" value="${val}" ` +
+        `oninput="document.getElementById('tt-ct-val').textContent=parseFloat(this.value).toFixed(3);teltturUpdate(_ttCfg)">` +
+        `</div>`;
     }
+    body.appendChild(buildDimCard(
+      "tt-cabin", "Cabin density",
+      "How isolated the area is from buildings and cabins. Lower density means a more secluded camping experience.",
+      bodyHtml,
+    ));
+  }
+
+  // Accessibility card
+  if (dt.accessibility && scoring.accessibility) {
+    const ar = ctrl.accessibility_range;
+    let bodyHtml = "";
+    if (ar && ar.enabled && lakeFieldSet.has("road_distance_m")) {
+      const arMin = ar.min_m | 0;
+      const arMax = ar.max_m | 0;
+      const arSliderMax = ar.slider_max_m | 0;
+      bodyHtml =
+        `<div class="tt-dim-body" id="tt-access-body">` +
+        `Min: <span id="tt-ar-min-val" style="font-weight:bold">${arMin}</span> m<br>` +
+        `<input type="range" id="tt-ar-min" min="0" max="${arSliderMax}" step="100" value="${arMin}" ` +
+        `oninput="document.getElementById('tt-ar-min-val').textContent=this.value;teltturUpdate(_ttCfg)"><br>` +
+        `Max: <span id="tt-ar-max-val" style="font-weight:bold">${arMax}</span> m<br>` +
+        `<input type="range" id="tt-ar-max" min="0" max="${arSliderMax}" step="100" value="${arMax}" ` +
+        `oninput="document.getElementById('tt-ar-max-val').textContent=this.value;teltturUpdate(_ttCfg)">` +
+        `</div>`;
+    }
+    body.appendChild(buildDimCard(
+      "tt-access", "Accessibility",
+      "How far you need to walk from the nearest road. Set your preferred hiking distance range.",
+      bodyHtml,
+    ));
+  }
+
+  // Land use (AR5) card
+  if (dt.ar5_land_use && scoring.ar5_land_use) {
+    const ar5b = ctrl.ar5_buffers;
+    const ar5s = scoring.ar5_land_use;
+    let bodyHtml = "";
+    if (ar5b && ar5b.enabled && ar5s && lakeFieldSet.has("industrial_distance_m")) {
+      const resVal = ar5s.residential_buffer_m | 0;
+      const indVal = ar5s.industrial_buffer_m | 0;
+      const ar5SliderMax = ar5b.slider_max_m | 0;
+      bodyHtml =
+        `<div class="tt-dim-body" id="tt-ar5-body">` +
+        `Residential: <span id="tt-ar5-res-val" style="font-weight:bold">${resVal}</span> m<br>` +
+        `<input type="range" id="tt-ar5-res" min="0" max="${ar5SliderMax}" step="100" value="${resVal}" ` +
+        `oninput="document.getElementById('tt-ar5-res-val').textContent=this.value;teltturUpdate(_ttCfg)"><br>` +
+        `Industrial: <span id="tt-ar5-ind-val" style="font-weight:bold">${indVal}</span> m<br>` +
+        `<input type="range" id="tt-ar5-ind" min="0" max="${ar5SliderMax}" step="100" value="${indVal}" ` +
+        `oninput="document.getElementById('tt-ar5-ind-val').textContent=this.value;teltturUpdate(_ttCfg)">` +
+        `</div>`;
+    }
+    body.appendChild(buildDimCard(
+      "tt-ar5", "Land use (AR5)",
+      "Proximity to residential and industrial areas. Greater distance from developed areas is preferred.",
+      bodyHtml,
+    ));
+  }
+
+  // Fishing card
+  if (dt.fishing && scoring.fishing) {
+    const fgCfg = ctrl.fishing_genera;
+    const fishingGenera = (scoring.fishing && scoring.fishing.genera) || [];
+    let bodyHtml = "";
+    if (fgCfg && fgCfg.enabled && fishingGenera.length > 0 && lakeFieldSet.has("fish_genera_mask")) {
+      bodyHtml = `<div class="tt-dim-body" id="tt-fishing-body">`;
+      for (const g of fishingGenera) {
+        bodyHtml += `<label><input type="checkbox" id="tt-fg-${g.code}" checked onchange="teltturUpdate(_ttCfg)"> ${g.label}</label><br>`;
+      }
+      bodyHtml += `</div>`;
+    }
+    body.appendChild(buildDimCard(
+      "tt-fishing", "Fishing",
+      "Fishing opportunities based on known fish species in the lake.",
+      bodyHtml,
+    ));
   }
 
   document.body.appendChild(container);
