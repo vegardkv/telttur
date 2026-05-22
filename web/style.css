@@ -132,14 +132,107 @@ html, body {
   line-height: 1.3;
 }
 
-/* noUiSlider accessibility range */
-#tt-ar-slider {
-  margin: 10px 4px 6px;
+/* ─── noUiSlider overrides (match native range input appearance) ──────────── */
+
+/* Style native range inputs consistently across browsers */
+#tt-body input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: #ddd;
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
 }
 
-#tt-ar-range-label {
+#tt-body input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #555;
+  cursor: pointer;
+}
+
+#tt-body input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #555;
+  cursor: pointer;
+  border: none;
+}
+
+/* noUiSlider: match the same track + handle style */
+.noUi-target {
+  background: #ddd;
+  border: none;
+  box-shadow: none;
+  border-radius: 4px;
+  height: 4px;
+  margin: 8px 4px 12px;
+}
+
+.noUi-horizontal {
+  height: 4px;
+}
+
+.noUi-base,
+.noUi-connects {
+  border-radius: 4px;
+}
+
+.noUi-connect {
+  background: #888;
+}
+
+.noUi-horizontal .noUi-handle {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #555;
+  border: none;
+  box-shadow: none;
+  top: -5px;
+  right: -7px;
+  cursor: pointer;
+}
+
+.noUi-handle::before,
+.noUi-handle::after {
+  display: none;
+}
+
+.noUi-handle:focus {
+  outline: none;
+}
+
+/* noUiSlider range label */
+#tt-ar-range-label,
+#tt-ls-range-label {
   font-size: 13px;
   color: #555;
+}
+
+/* ─── Lake size filter section ────────────────────────────────────────────── */
+
+.tt-filter-section {
+  background: #fff8e7;
+  border: 1px solid #e0c97f;
+  border-radius: 5px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+}
+
+.tt-filter-header {
+  font-weight: bold;
+  margin-bottom: 1px;
+}
+
+.tt-filter-hint {
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 4px;
 }
 
 /* ─── Info button & tooltip ───────────────────────────────────────────────── */

@@ -47,6 +47,8 @@ const I18N = {
     level_3: "Fair",
     level_4: "Good",
     level_5: "Excellent",
+    lake_size_filter: "Lake size filter",
+    lake_size_filter_hint: "Hide lakes outside this size range",
     error_no_data: "Could not load map data",
     error_no_data_hint: "Run <code>uv run telttur generate</code> to produce <code>output/data.js</code>.",
     genus_Salmo: "Trout/Salmon",
@@ -93,6 +95,8 @@ const I18N = {
     level_3: "Middels",
     level_4: "Bra",
     level_5: "Utmerket",
+    lake_size_filter: "Innsjøstørrelse (filter)",
+    lake_size_filter_hint: "Skjul innsjøer utenfor dette størrelsesintervallet",
     error_no_data: "Klarte ikke å laste kartdata",
     error_no_data_hint: "Kjør <code>uv run telttur generate</code> for å lage <code>output/data.js</code>.",
     genus_Salmo: "Ørret/Laks",
@@ -167,8 +171,10 @@ const DEFAULT_LAKE_COLOR = "#67a9cf";
 let map;
 let lakesLayer;     // L.LayerGroup containing all CircleMarker instances
 let allMarkers = []; // { marker, fields } — kept for re-filtering
-let _arSlider = null;         // noUiSlider instance for accessibility range
-let _pendingArSlider = null;  // config awaiting DOM insertion
+let _arSlider = null;             // noUiSlider instance for accessibility range
+let _pendingArSlider = null;      // config awaiting DOM insertion
+let _lakeSizeSlider = null;       // noUiSlider instance for lake size range
+let _pendingLakeSizeSlider = null; // config awaiting DOM insertion
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -204,6 +210,16 @@ function _arSliderMin() {
 /** Return the high handle value of the accessibility range slider (or default 5000). */
 function _arSliderMax() {
   return _arSlider ? parseFloat(_arSlider.get()[1]) : 5000;
+}
+
+/** Return the low handle value of the lake size slider (or default 0). */
+function _lsMin() {
+  return _lakeSizeSlider ? parseFloat(_lakeSizeSlider.get()[0]) : 0;
+}
+
+/** Return the high handle value of the lake size slider (or default 10 km²). */
+function _lsMax() {
+  return _lakeSizeSlider ? parseFloat(_lakeSizeSlider.get()[1]) : 10000000;
 }
 
 /** Return the current value of a slider element (or a default). */
@@ -303,9 +319,8 @@ function readControlState(cfg) {
   }
 
   return {
-    minArea: ctrl.min_lake_area
-      ? sliderVal("tt-min-area", cfg.min_lake_area_m2)
-      : cfg.min_lake_area_m2,
+    minArea: ctrl.min_lake_area ? _lsMin() : cfg.min_lake_area_m2,
+    maxArea: ctrl.min_lake_area ? _lsMax() : Infinity,
     arMin: arCfg.enabled ? _arSliderMin() : 0,
     arMax: arCfg.enabled ? _arSliderMax() : 5000,
     ctThreshold: ctCfg.enabled
@@ -367,7 +382,7 @@ function teltturUpdate(cfg, idx) {
   for (const { marker, fields } of allMarkers) {
     const area = fields.area || 0;
 
-    if (cs.minArea > 0 && area < cs.minArea) {
+    if (area < cs.minArea || area > cs.maxArea) {
       marker.setStyle({ fillOpacity: 0, opacity: 0, weight: 0 });
       continue;
     }
@@ -600,16 +615,22 @@ function buildControls(cfg, lakeFields) {
   body.id = "tt-body";
   container.appendChild(body);
 
-  // Min lake area (not a scoring dimension — rendered outside cards)
+  // Lake size filter — rendered as a distinct filter section (not a scoring dimension)
   const minArea = cfg.min_lake_area_m2 || 0;
   if (ctrl.min_lake_area) {
-    const areaDiv = document.createElement("div");
-    areaDiv.className = "tt-section";
-    areaDiv.innerHTML =
-      `<b>${t("min_lake_size")}</b> <span id="tt-min-area-val" style="font-weight:bold">${minArea}</span> m²<br>` +
-      `<input type="range" id="tt-min-area" min="0" max="100000" step="500" value="${minArea}" ` +
-      `oninput="document.getElementById('tt-min-area-val').textContent=this.value;teltturUpdate(_ttCfg)">`;
-    body.appendChild(areaDiv);
+    const filterDiv = document.createElement("div");
+    filterDiv.className = "tt-filter-section";
+    filterDiv.innerHTML =
+      `<div class="tt-filter-header">${t("lake_size_filter")}</div>` +
+      `<div class="tt-filter-hint">${t("lake_size_filter_hint")}</div>` +
+      `<div id="tt-ls-range-label" style="margin-bottom:2px">` +
+      `<span id="tt-ls-min-val" style="font-weight:bold">${formatArea(minArea)}</span>` +
+      ` – ` +
+      `<span id="tt-ls-max-val" style="font-weight:bold">${formatArea(10000000)}</span>` +
+      `</div>` +
+      `<div id="tt-ls-slider"></div>`;
+    body.appendChild(filterDiv);
+    _pendingLakeSizeSlider = { min: minArea, max: 10000000 };
   }
 
   // Cabin density card
@@ -733,6 +754,32 @@ function buildControls(cfg, lakeFields) {
       });
     }
   }
+
+  // Initialise noUiSlider for lake size range (needs the element in the DOM)
+  if (_pendingLakeSizeSlider) {
+    const { min, max } = _pendingLakeSizeSlider;
+    _pendingLakeSizeSlider = null;
+    const el = document.getElementById("tt-ls-slider");
+    if (el && typeof noUiSlider !== "undefined") {
+      _lakeSizeSlider = noUiSlider.create(el, {
+        start: [min, max],
+        connect: true,
+        range: {
+          "min": [0, 100],
+          "15%": [1000, 500],
+          "35%": [10000, 2500],
+          "55%": [100000, 25000],
+          "75%": [1000000, 250000],
+          "max": [10000000],
+        },
+      });
+      _lakeSizeSlider.on("update", (values) => {
+        document.getElementById("tt-ls-min-val").textContent = formatArea(parseFloat(values[0]));
+        document.getElementById("tt-ls-max-val").textContent = formatArea(parseFloat(values[1]));
+        teltturUpdate(_ttCfg);
+      });
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -784,6 +831,8 @@ function rebuildUI() {
   if (oldLegend) oldLegend.remove();
   _arSlider = null;
   _pendingArSlider = null;
+  _lakeSizeSlider = null;
+  _pendingLakeSizeSlider = null;
   buildControls(_ttData.config, _ttData.lake_fields);
   buildLegend(_ttData);
   teltturUpdate(_ttData.config);

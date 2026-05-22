@@ -5,6 +5,8 @@
 1. Make the **accessibility range slider** (noUiSlider) visually consistent with the native `<input type="range">` sliders used elsewhere
 2. Convert the **lake size filter** from a single min-value slider into a **range slider** (min + max), increase the upper bound, apply super-linear scaling, and make it clearer that this is a **filter** (not a scoring dimension)
 
+Regarding 1: Note that task 31 will look into ui libraries. If this step significantly complicates the code, just skip it for now. The second goal in this task is more important.
+
 ## Problem
 
 ### Accessibility slider appearance

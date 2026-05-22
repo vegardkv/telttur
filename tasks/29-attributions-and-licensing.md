@@ -14,7 +14,9 @@ Add an attribution/credits area to the map (e.g. in the legend panel, a footer b
 - **Kartverket / NIBIO** — AR5 land use data
 - **Artsdatabanken / Lakseregisteret** — fish species data (if applicable)
 - **Leaflet** — map library
-- **GitHub link** — link to the project repository (`https://github.com/<owner>/telttur`)
+- **GitHub link** — link to the project repository (`https://github.com/vegardkv/telttur`)
+
+Note that task 27 added a data source section to the "info" hover for each scoring dimension. If this is sufficient wrt to attribution, no need to have this in the map attribution footer.
 
 ### 2. License & terms verification
 
