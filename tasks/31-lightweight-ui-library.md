@@ -40,6 +40,7 @@ For each candidate, assess:
 4. **Compatibility** with Leaflet and noUiSlider
 5. **File size**
 6. **Ease of adoption** — how much existing HTML/CSS needs to change
+7. **Code reduction** — how much custom CSS and inline JS can be eliminated by leveraging the library's built-in styling and components. Assess the impact on readability and ease of maintenance.
 
 ## Output
 

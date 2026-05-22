@@ -127,6 +127,11 @@ html, body {
   margin-top: 5px;
 }
 
+.tt-fish-list label {
+  margin-bottom: 2px;
+  line-height: 1.3;
+}
+
 /* noUiSlider accessibility range */
 #tt-ar-slider {
   margin: 10px 4px 6px;

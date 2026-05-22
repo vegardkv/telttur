@@ -691,9 +691,9 @@ function buildControls(cfg, lakeFields) {
     const fishingGenera = (scoring.fishing && scoring.fishing.genera) || [];
     let bodyHtml = "";
     if (fgCfg && fgCfg.enabled && fishingGenera.length > 0 && lakeFieldSet.has("fish_genera_mask")) {
-      bodyHtml = `<div class="tt-dim-body" id="tt-fishing-body">`;
+      bodyHtml = `<div class="tt-dim-body tt-fish-list" id="tt-fishing-body">`;
       for (const g of fishingGenera) {
-        bodyHtml += `<label><input type="checkbox" id="tt-fg-${g.code}" checked onchange="teltturUpdate(_ttCfg)"> ${t(`genus_${g.genus}`) || g.label}</label><br>`;
+        bodyHtml += `<label><input type="checkbox" id="tt-fg-${g.code}" checked onchange="teltturUpdate(_ttCfg)"> ${t(`genus_${g.genus}`) || g.label}</label>`;
       }
       bodyHtml += `</div>`;
     }
