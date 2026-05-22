@@ -26,7 +26,7 @@ const I18N = {
     ar5_residential: "Residential:",
     ar5_industrial: "Industrial:",
     fishing: "Fishing",
-    fishing_info: "Fishing opportunities based on known fish species in the lake. Score is based on the fraction of your selected fish genera that are present. Data source: Fiskeregisteret (Miljødirektoratet).",
+    fishing_info: "Fishing opportunities based on known fish species in the lake. Score is based on the fraction of your selected fish genera that are present. Data source: NINA Vanndata fisk (NINA).",
     overall_score: "Overall score",
     score_cabin_density: "Cabin density",
     score_accessibility: "Hiking distance",
@@ -59,6 +59,14 @@ const I18N = {
     genus_Sander: "Pikeperch",
     genus_Coregonus: "Whitefish",
     genus_Hucho: "Huchen",
+    credits: "Credits",
+    credits_data: "Data sources",
+    credits_n50: "N50 map data (roads, lakes, buildings)",
+    credits_ar5: "AR5 land use classification",
+    credits_nina: "Fish species observations",
+    credits_basemap: "Base map tiles",
+    credits_library: "Map library",
+    credits_source_code: "Source code",
   },
   no: {
     title: "Telttur \u2013 Kart over teltturer i Norge",
@@ -74,7 +82,7 @@ const I18N = {
     ar5_residential: "Bolig:",
     ar5_industrial: "Industri:",
     fishing: "Fiske",
-    fishing_info: "Fiskemuligheter basert på kjente fiskearter i innsjøen. Scoren er basert på andelen av dine valgte fiskeslekter som er til stede. Datakilde: Fiskeregisteret (Miljødirektoratet).",
+    fishing_info: "Fiskemuligheter basert på kjente fiskearter i innsjøen. Scoren er basert på andelen av dine valgte fiskeslekter som er til stede. Datakilde: NINA Vanndata fisk (NINA).",
     overall_score: "Total score",
     score_cabin_density: "Hyttetetthet",
     score_accessibility: "Turens lengde",
@@ -107,6 +115,14 @@ const I18N = {
     genus_Sander: "Gjørs",
     genus_Coregonus: "Sik",
     genus_Hucho: "Donaulaks",
+    credits: "Kildehenvisninger",
+    credits_data: "Datakilder",
+    credits_n50: "N50 kartdata (veier, innsjøer, bygninger)",
+    credits_ar5: "AR5 arealbruksklassifisering",
+    credits_nina: "Fiskeartsobservasjoner",
+    credits_basemap: "Bakgrunnskartfliser",
+    credits_library: "Kartbibliotek",
+    credits_source_code: "Kildekode",
   },
 };
 
@@ -549,6 +565,7 @@ function initMap(data) {
   // Build UI
   buildControls(data.config, data.lake_fields);
   buildLegend(data);
+  buildFooter();
 
   // Initial filter pass
   setTimeout(() => teltturUpdate(data.config, idx), 100);
@@ -816,6 +833,40 @@ function buildLegend(data) {
 }
 
 // ---------------------------------------------------------------------------
+// Footer bar + credits dialog
+// ---------------------------------------------------------------------------
+
+function buildFooter() {
+  const footer = document.createElement("div");
+  footer.id = "tt-footer";
+  footer.innerHTML =
+    `<a href="https://github.com/vegardkv/telttur" target="_blank" rel="noopener">GitHub</a>` +
+    `<span class="tt-footer-sep">·</span>` +
+    `<button id="tt-credits-btn" onclick="document.getElementById('tt-credits-dialog').showModal()">${t("credits")}</button>`;
+  document.body.appendChild(footer);
+
+  const dialog = document.createElement("dialog");
+  dialog.id = "tt-credits-dialog";
+  dialog.innerHTML =
+    `<div class="tt-credits-body">` +
+    `<b>${t("credits_data")}</b>` +
+    `<ul>` +
+    `<li><a href="https://kartkatalog.geonorge.no/metadata/n50-kartdata/ea192681-d039-42ec-b1bc-f3ce04c189ac" target="_blank" rel="noopener">Kartverket</a> — ${t("credits_n50")}</li>` +
+    `<li><a href="https://www.nibio.no/tema/jord/arealressurser/arealressurskart-ar5" target="_blank" rel="noopener">NIBIO</a> — ${t("credits_ar5")}</li>` +
+    `<li><a href="https://ipt.nina.no/resource?r=vanninfofisk" target="_blank" rel="noopener">NINA</a> — ${t("credits_nina")}</li>` +
+    `<li><a href="https://www.kartverket.no/" target="_blank" rel="noopener">Kartverket</a> — ${t("credits_basemap")}</li>` +
+    `</ul>` +
+    `<b>${t("credits_library")}</b>` +
+    `<ul><li><a href="https://leafletjs.com/" target="_blank" rel="noopener">Leaflet</a></li></ul>` +
+    `<b>${t("credits_source_code")}</b>` +
+    `<ul><li><a href="https://github.com/vegardkv/telttur" target="_blank" rel="noopener">github.com/vegardkv/telttur</a></li></ul>` +
+    `</div>` +
+    `<button class="tt-credits-close" onclick="this.closest('dialog').close()">✕</button>`;
+  dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
+  document.body.appendChild(dialog);
+}
+
+// ---------------------------------------------------------------------------
 // Bootstrap
 // ---------------------------------------------------------------------------
 
@@ -829,12 +880,17 @@ function rebuildUI() {
   if (old) old.remove();
   const oldLegend = document.getElementById("tt-legend");
   if (oldLegend) oldLegend.remove();
+  const oldFooter = document.getElementById("tt-footer");
+  if (oldFooter) oldFooter.remove();
+  const oldDialog = document.getElementById("tt-credits-dialog");
+  if (oldDialog) oldDialog.remove();
   _arSlider = null;
   _pendingArSlider = null;
   _lakeSizeSlider = null;
   _pendingLakeSizeSlider = null;
   buildControls(_ttData.config, _ttData.lake_fields);
   buildLegend(_ttData);
+  buildFooter();
   teltturUpdate(_ttData.config);
 }
 

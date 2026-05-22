@@ -352,3 +352,99 @@ html, body {
 .tt-b3 { background: #fee08b; color: #333;  padding: 1px 5px; border-radius: 3px; }
 .tt-b4 { background: #91cf60; color: #333;  padding: 1px 5px; border-radius: 3px; }
 .tt-b5 { background: #1a9850; color: white; padding: 1px 5px; border-radius: 3px; }
+
+/* ─── Footer bar ──────────────────────────────────────────────────────────── */
+
+#tt-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  background: rgba(255, 255, 255, 0.9);
+  border-top: 1px solid #ccc;
+  padding: 3px 12px;
+  font-size: 11px;
+  text-align: center;
+}
+
+#tt-footer a {
+  color: #0066cc;
+  text-decoration: none;
+}
+
+#tt-footer a:hover {
+  text-decoration: underline;
+}
+
+.tt-footer-sep {
+  margin: 0 6px;
+  color: #aaa;
+}
+
+#tt-credits-btn {
+  background: none;
+  border: none;
+  color: #0066cc;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 0;
+}
+
+#tt-credits-btn:hover {
+  text-decoration: underline;
+}
+
+/* ─── Credits dialog ──────────────────────────────────────────────────────── */
+
+#tt-credits-dialog {
+  border: none;
+  border-radius: 8px;
+  padding: 20px 24px;
+  max-width: 380px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  font-size: 13px;
+}
+
+#tt-credits-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.tt-credits-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #666;
+  line-height: 1;
+}
+
+.tt-credits-close:hover {
+  color: #000;
+}
+
+.tt-credits-body b {
+  display: block;
+  margin: 8px 0 2px;
+  font-size: 12px;
+}
+
+.tt-credits-body b:first-child {
+  margin-top: 0;
+}
+
+.tt-credits-body ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.tt-credits-body li {
+  margin-bottom: 2px;
+}
+
+.tt-credits-body a {
+  color: #0066cc;
+}
