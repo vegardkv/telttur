@@ -214,6 +214,15 @@ html, body {
 
 /* ─── noUiSlider ─────────────────────────────────────────────────────────── */
 
+/* Low/High range labels flanking slider */
+.tt-slider-range-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75em;
+  color: #888;
+  margin-bottom: 2px;
+}
+
 /* noUiSlider track + handle style */
 .noUi-target {
   background: #ddd;

@@ -62,15 +62,17 @@ class InteractiveAccessibilityRange(BaseModel):
 
 
 class InteractiveCabinDensitySlider(BaseModel):
-    """Single slider for cabin density threshold interpretation.
+    """Discrete stepped slider for cabin density tolerance.
 
-    The slider value is the building-density threshold below which a lake is
-    scored Excellent.  Scores degrade linearly up to 2× the threshold (Terrible).
+    The slider has *steps* discrete positions whose thresholds are derived from
+    the quantile distribution of ``building_density`` across all lakes in the
+    export.  This gives users an intuitive "Low → High" tolerance control
+    rather than a raw density number.
     """
 
     enabled: bool = True
-    value: float = 0.05  # density threshold at which Excellent begins
-    slider_max: float = 0.15  # upper bound of the slider
+    steps: int = 5  # number of discrete slider positions
+    default_step: int = 3  # 1-indexed default position
 
 
 class InteractiveAr5Buffers(BaseModel):

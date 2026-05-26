@@ -72,3 +72,8 @@ This is starting to look good. I want to do some final polish and bug fixes:
 - "cabin density" can have a maximum value of 0.15. 
 - accessbility distance should have its minium value set to 0 instead of 200m
 - selection of fish species should be a multi-select dropdown instead of individual boxes.
+
+### Misc.
+
+- Use a UI component framework to reduce the amount of javascript code. For ease of maintainence and readability
+- Assess performance of app.js when changing scoring parameters. Is there any low-hanging fruit here. Try the in-browser profiler first, and consider node with direct profiling of a function invocation if a more consistent approach is needed.

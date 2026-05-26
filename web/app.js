@@ -17,8 +17,11 @@ const I18N = {
     scoring: "Scoring",
     min_lake_size: "Min lake size:",
     cabin_density: "Cabin density",
-    cabin_density_info: "Density of buildings and cabins near the lake. Fewer nearby buildings means a quieter camping spot. Score is based on building density within a buffer zone: below your threshold = Excellent; degrades as density increases beyond it. Data source: N50 building layer (Kartverket).",
-    cabin_density_threshold: "Threshold:",
+    cabin_density_info: "Density of buildings and cabins near the lake. Fewer nearby buildings means a quieter camping spot. Use the slider to set your tolerance for nearby buildings: \"Very low\" accepts only pristine lakes, \"Very high\" accepts densely built areas. Data source: N50 building layer (Kartverket).",
+    cabin_density_tolerance: "Tolerance:",
+    cabin_density_levels: ["Very low", "Low", "Medium", "High", "Very high"],
+    cabin_density_level_low: "Low",
+    cabin_density_level_high: "High",
     accessibility: "Hiking distance",
     accessibility_info: "How far you need to walk from the nearest road. Set your preferred hiking distance range. Lakes within your preferred range score Excellent; scores degrade symmetrically beyond the range. Data source: N50 road network (Kartverket).",
     ar5_land_use: "Urbanization",
@@ -77,8 +80,11 @@ const I18N = {
     scoring: "Poengberegning",
     min_lake_size: "Min innsjøstørrelse:",
     cabin_density: "Hyttetetthet",
-    cabin_density_info: "Tetthet av bygninger og hytter nær innsjøen. Færre nærliggende bygninger gir et roligere teltsted. Scoren er basert på bygningstettheten i en buffersone: under din terskelverdi = Utmerket; synker etterhvert som tettheten øker utover den. Datakilde: N50 bygningslag (Kartverket).",
-    cabin_density_threshold: "Terskelverdi:",
+    cabin_density_info: "Tetthet av bygninger og hytter nær innsjøen. Færre nærliggende bygninger gir et roligere teltsted. Bruk glidebryteren til å stille toleransen for nærliggende bygninger: \"Svært lav\" godtar kun urørte innsjøer, \"Svært høy\" godtar tett bebygde områder. Datakilde: N50 bygningslag (Kartverket).",
+    cabin_density_tolerance: "Toleranse:",
+    cabin_density_levels: ["Svært lav", "Lav", "Middels", "Høy", "Svært høy"],
+    cabin_density_level_low: "Lav",
+    cabin_density_level_high: "Høy",
     accessibility: "Turens lengde",
     accessibility_info: "Hvor langt du må gå fra nærmeste vei. Sett ønsket rekkevidde. Innsjøer innenfor ønsket rekkevidde får Utmerket; scoren synker symmetrisk utenfor rekkevidden. Datakilde: N50 vegnett (Kartverket).",
     ar5_land_use: "Urbanisering",
@@ -342,9 +348,12 @@ function readControlState(cfg) {
     maxArea: ctrl.min_lake_area ? _lsMax() : Infinity,
     arMin: arCfg.enabled ? _arSliderMin() : 0,
     arMax: arCfg.enabled ? _arSliderMax() : 5000,
-    ctThreshold: ctCfg.enabled
-      ? (_ctSlider ? parseFloat(_ctSlider.get()) : (ctCfg.value ?? 0.05))
-      : (scoring.cabin_density?.thresholds.good ?? 0.01),
+    ctThreshold: (() => {
+      const quantiles = ctCfg.quantiles ?? [];
+      if (!ctCfg.enabled || !quantiles.length) return quantiles[Math.floor(quantiles.length / 2)] ?? 0.05;
+      const step = _ctSlider ? Math.round(parseFloat(_ctSlider.get())) : (ctCfg.default_step ?? 3);
+      return quantiles[step - 1] ?? quantiles[quantiles.length - 1] ?? 0.05;
+    })(),
     ar5ResBuf: ar5Cfg.enabled
       ? (_ar5ResSlider ? parseFloat(_ar5ResSlider.get()) : (scoring.ar5_land_use?.residential_buffer_m ?? 1000))
       : (scoring.ar5_land_use?.residential_buffer_m ?? 1000),
@@ -660,10 +669,13 @@ function buildControls(cfg, lakeFields) {
     const cd = ctrl.cabin_density_slider;
     let bodyHtml = "";
     if (cd && cd.enabled && lakeFieldSet.has("building_density")) {
-      const val = cd.value.toFixed(3);
+      const defaultLabel = (t("cabin_density_levels") ?? [])[cd.default_step - 1] ?? cd.default_step;
       bodyHtml =
         `<div class="tt-dim-body" id="tt-cabin-body">` +
-        `${t("cabin_density_threshold")} <span id="tt-ct-val" style="font-weight:bold">${val}</span><br>` +
+        `${t("cabin_density_tolerance")} <span id="tt-ct-val" style="font-weight:bold">${defaultLabel}</span>` +
+        `<div class="tt-slider-range-labels">` +
+        `<span>${t("cabin_density_level_low")}</span><span>${t("cabin_density_level_high")}</span>` +
+        `</div>` +
         `<div id="tt-ct-slider"></div>` +
         `</div>`;
     }
@@ -764,18 +776,21 @@ function buildControls(cfg, lakeFields) {
   langSwitcher.children[1].addEventListener("click", () => setLang("no"));
   document.body.appendChild(langSwitcher);
 
-  // Initialise noUiSlider for cabin density
+  // Initialise noUiSlider for cabin density (discrete steps mapped to quantiles)
   const ctSliderEl = document.getElementById("tt-ct-slider");
   if (ctSliderEl && typeof noUiSlider !== "undefined") {
     const cd = ctrl.cabin_density_slider;
+    const levels = t("cabin_density_levels") ?? [];
     _ctSlider = noUiSlider.create(ctSliderEl, {
-      start: [cd.value],
+      start: [cd.default_step],
       connect: [true, false],
-      step: 0.001,
-      range: { min: 0, max: cd.slider_max },
+      step: 1,
+      range: { min: 1, max: cd.steps },
     });
     _ctSlider.on("update", (values) => {
-      document.getElementById("tt-ct-val").textContent = parseFloat(values[0]).toFixed(3);
+      const step = Math.round(parseFloat(values[0]));
+      const label = levels[step - 1] ?? step;
+      document.getElementById("tt-ct-val").textContent = label;
       teltturUpdate(_ttCfg);
     });
   }

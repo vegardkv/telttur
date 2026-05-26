@@ -110,21 +110,45 @@ def build_road_data(roads: gpd.GeoDataFrame) -> dict[str, Any]:
     return json.loads(roads_wgs84.to_json())
 
 
-def build_config_block(config: Config) -> dict[str, Any]:
+def _compute_density_quantiles(lakes: gpd.GeoDataFrame, steps: int) -> list[float]:
+    """Compute evenly-spaced quantile boundaries for building_density.
+
+    Returns *steps* values at percentiles (100/steps, 200/steps, …, 100).  If
+    the column is absent or has no positive values, falls back to a simple
+    linear range ending at 0.15.
+    """
+    col = LakeCols.BUILDING_DENSITY
+    if col not in lakes.columns:
+        step_size = 0.15 / steps
+        return [round(step_size * (i + 1), 4) for i in range(steps)]
+
+    values = lakes[col].dropna()
+    values = values[values > 0]
+    if values.empty:
+        step_size = 0.15 / steps
+        return [round(step_size * (i + 1), 4) for i in range(steps)]
+
+    quantiles = [
+        round(float(values.quantile((i + 1) / steps)), 4)
+        for i in range(steps)
+    ]
+    # Ensure the list is strictly non-decreasing and deduplicated
+    seen: set[float] = set()
+    result: list[float] = []
+    for q in quantiles:
+        while q in seen:
+            q = round(q + 0.0001, 4)
+        seen.add(q)
+        result.append(q)
+    return result
+
+
+def build_config_block(config: Config, lakes: gpd.GeoDataFrame) -> dict[str, Any]:
     """Extract scoring thresholds and interactive control defaults for the frontend."""
     scoring_cfg: dict[str, Any] = {}
 
     if config.scoring.cabin_density.enabled:
-        t = config.scoring.cabin_density.thresholds
-        scoring_cfg["cabin_density"] = {
-            "enabled": True,
-            "thresholds": {
-                "excellent": t.excellent,
-                "good": t.good,
-                "fair": t.fair,
-                "poor": t.poor,
-            },
-        }
+        scoring_cfg["cabin_density"] = {"enabled": True}
 
     if config.scoring.accessibility.enabled:
         t2 = config.scoring.accessibility.thresholds
@@ -168,10 +192,12 @@ def build_config_block(config: Config) -> dict[str, Any]:
             "slider_max_m": ar.slider_max_m,
         }
         cd = ctrl.cabin_density_slider
+        quantiles = _compute_density_quantiles(lakes, cd.steps)
         interactive_cfg["cabin_density_slider"] = {
             "enabled": cd.enabled,
-            "value": cd.value,
-            "slider_max": cd.slider_max,
+            "steps": cd.steps,
+            "default_step": cd.default_step,
+            "quantiles": quantiles,
         }
         ar5b = ctrl.ar5_buffers
         interactive_cfg["ar5_buffers"] = {
@@ -213,7 +239,7 @@ def export_data(
         if config.show_roads
         else {"type": "FeatureCollection", "features": []}
     )
-    config_block = build_config_block(config)
+    config_block = build_config_block(config, lakes)
 
     data = {
         "meta": meta,
