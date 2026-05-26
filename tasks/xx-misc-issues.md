@@ -77,3 +77,5 @@ This is starting to look good. I want to do some final polish and bug fixes:
 
 - Use a UI component framework to reduce the amount of javascript code. For ease of maintainence and readability
 - Assess performance of app.js when changing scoring parameters. Is there any low-hanging fruit here. Try the in-browser profiler first, and consider node with direct profiling of a function invocation if a more consistent approach is needed.
+- Accessbility: distance from publid transportation
+- "debug-buildings" should be a config option. since it is only for debugging, it should probably be left out of app.js. Leave it for now, though.

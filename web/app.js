@@ -201,6 +201,7 @@ const DEFAULT_LAKE_COLOR = "#67a9cf";
 let map;
 let lakesLayer;     // L.LayerGroup containing all CircleMarker instances
 let allMarkers = []; // { marker, fields } — kept for re-filtering
+let _debugBldgLayer = null; // LayerGroup for debug building points (optional)
 let _arSlider = null;             // noUiSlider instance for accessibility range
 let _lakeSizeSlider = null;       // noUiSlider instance for lake size range
 let _ctSlider = null;             // noUiSlider instance for cabin density threshold
@@ -578,6 +579,46 @@ function initMap(data) {
   buildControls(data.config, data.lake_fields);
   buildLegend(data);
   buildFooter();
+
+  // Debug building layer (only present when generated with --debug-buildings)
+  if (data.debug_buildings) {
+    _debugBldgLayer = L.layerGroup().addTo(map);
+    const RESIDENTIAL_MIN = 100;
+    const RESIDENTIAL_MAX = 199;
+    for (const row of data.debug_buildings.rows) {
+      const [lat, lng, typeCode] = row;
+      const isResidential = typeCode != null && typeCode >= RESIDENTIAL_MIN && typeCode <= RESIDENTIAL_MAX;
+      L.circleMarker([lat, lng], {
+        radius: 4,
+        color: isResidential ? "#c0392b" : "#7f8c8d",
+        weight: 1,
+        fillColor: isResidential ? "#e74c3c" : "#bdc3c7",
+        fillOpacity: 0.8,
+        opacity: 1,
+      }).bindTooltip(
+        typeCode != null ? `bygningstype ${typeCode}${isResidential ? " ✓" : ""}` : "unknown type",
+        { sticky: true }
+      ).addTo(_debugBldgLayer);
+    }
+    // Add a toggle button to the map
+    const debugBtn = L.control({ position: "topright" });
+    debugBtn.onAdd = () => {
+      const div = L.DomUtil.create("div", "tt-debug-btn");
+      div.innerHTML = `<button id="tt-debug-bldg-btn">Buildings: ON</button>`;
+      L.DomEvent.disableClickPropagation(div);
+      div.querySelector("button").addEventListener("click", () => {
+        if (map.hasLayer(_debugBldgLayer)) {
+          map.removeLayer(_debugBldgLayer);
+          div.querySelector("button").textContent = "Buildings: OFF";
+        } else {
+          map.addLayer(_debugBldgLayer);
+          div.querySelector("button").textContent = "Buildings: ON";
+        }
+      });
+      return div;
+    };
+    debugBtn.addTo(map);
+  }
 
   // Initial filter pass
   setTimeout(() => teltturUpdate(data.config, idx), 100);

@@ -76,6 +76,49 @@ def extract_buildings(gdb_paths: list[Path], bbox: BBox) -> gpd.GeoDataFrame:
     return buildings.clip(box(*utm_bounds))
 
 
+def extract_buildings_all(gdb_paths: list[Path], bbox: BBox) -> gpd.GeoDataFrame:
+    """Extract ALL building points from N50 FGDB files (no type filter), clipped to bbox.
+
+    Keeps the ``bygningstype`` column so callers can inspect which types are
+    present and whether the residential filter (100–199) is correct.  Only
+    rows with ``objtype == 'Bygning'`` are kept; non-building point features
+    (masts, tanks, etc.) are excluded.
+
+    Used for debugging only — not called in the normal pipeline.
+    """
+    _BUILDING_TYPE_LABEL = "bygningstype"
+    _OBJECT_LABEL = "objtype"
+    _OBJECT_BUILDING_CODE = "Bygning"
+
+    frames: list[gpd.GeoDataFrame] = []
+    utm_bounds = _bbox_to_utm33(bbox)
+
+    for gdb_path in gdb_paths:
+        for layer_name in find_building_layers(gdb_path):
+            print(f"  Reading {layer_name} from {gdb_path.name} (debug)...")
+            gdf = gpd.read_file(str(gdb_path), layer=layer_name, bbox=utm_bounds)
+
+            if gdf.crs is None:
+                gdf = gdf.set_crs(CRS_UTM33)
+            elif str(gdf.crs) != CRS_UTM33:
+                gdf = gdf.to_crs(CRS_UTM33)
+
+            if _OBJECT_LABEL in gdf.columns:
+                gdf = gdf[gdf[_OBJECT_LABEL] == _OBJECT_BUILDING_CODE]
+
+            # Keep only geometry + type code — everything else is noise for debugging
+            keep = ["geometry"]
+            if _BUILDING_TYPE_LABEL in gdf.columns:
+                keep.append(_BUILDING_TYPE_LABEL)
+            frames.append(gdf[keep])
+
+    if not frames:
+        return gpd.GeoDataFrame(columns=["geometry", "bygningstype"], crs=CRS_UTM33)
+
+    buildings = gpd.GeoDataFrame(gpd.pd.concat(frames, ignore_index=True), crs=CRS_UTM33)
+    return buildings.clip(box(*utm_bounds))
+
+
 def score_cabin_density(
     lakes: gpd.GeoDataFrame,
     buildings: gpd.GeoDataFrame,
@@ -116,6 +159,7 @@ def score_cabin_density(
         area_m2 = lakes.to_crs(CRS_UTM33).geometry.area
 
     sqrt_area = area_m2.apply(lambda a: math.sqrt(max(a, 1.0)))
-    lakes[LakeCols.BUILDING_DENSITY] = (lakes[LakeCols.BUILDING_COUNT] / sqrt_area).round(4)
+    # Multiply by 10000 to get buildings per ha
+    lakes[LakeCols.BUILDING_DENSITY] = (10_000 * lakes[LakeCols.BUILDING_COUNT] / sqrt_area).round(4)
 
     return lakes

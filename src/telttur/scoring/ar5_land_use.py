@@ -229,8 +229,6 @@ def score_ar5_land_use(
     lakes_utm = lakes.to_crs(CRS_UTM33)
 
     def _distances_to(polygons: gpd.GeoDataFrame) -> gpd.GeoSeries:
-        if polygons.empty:
-            return gpd.GeoSeries(float("inf"), index=lakes.index)
         polys_utm = (
             polygons
             if polygons.crs is not None and polygons.crs.to_epsg() == EPSG_CODE_UTM33
@@ -244,10 +242,15 @@ def score_ar5_land_use(
         )
         return joined.groupby(joined.index)["_dist"].min()
 
-    ind_dist = _distances_to(industrial_polygons)
-    res_dist = _distances_to(residential_polygons)
-
-    lakes[LakeCols.INDUSTRIAL_DISTANCE_M] = lakes.index.map(ind_dist).fillna(float("inf")).round(1)
-    lakes[LakeCols.RESIDENTIAL_DISTANCE_M] = lakes.index.map(res_dist).fillna(float("inf")).round(1)
+    if industrial_polygons.empty:
+        lakes[LakeCols.INDUSTRIAL_DISTANCE_M] = float("inf")
+    else:
+        ind_dist = _distances_to(industrial_polygons)
+        lakes[LakeCols.INDUSTRIAL_DISTANCE_M] = lakes.index.map(ind_dist).fillna(float("inf")).round(1)
+    if residential_polygons.empty:
+        lakes[LakeCols.RESIDENTIAL_DISTANCE_M] = float("inf")
+    else:
+        res_dist = _distances_to(residential_polygons)
+        lakes[LakeCols.RESIDENTIAL_DISTANCE_M] = lakes.index.map(res_dist).fillna(float("inf")).round(1)
 
     return lakes

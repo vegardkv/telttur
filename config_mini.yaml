@@ -1,0 +1,16 @@
+bbox:
+  north: 59.9793330
+  south: 59.9658132
+  east: 10.1507785
+  west: 10.1302667
+
+output_filename: data.js
+
+
+lake_display_mode: marker
+show_roads: false
+landcover_mode: disabled
+
+map:
+  interactive_controls:
+    enabled: true

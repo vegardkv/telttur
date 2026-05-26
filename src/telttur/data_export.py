@@ -123,7 +123,6 @@ def _compute_density_quantiles(lakes: gpd.GeoDataFrame, steps: int) -> list[floa
         return [round(step_size * (i + 1), 4) for i in range(steps)]
 
     values = lakes[col].dropna()
-    values = values[values > 0]
     if values.empty:
         step_size = 0.15 / steps
         return [round(step_size * (i + 1), 4) for i in range(steps)]
@@ -193,6 +192,7 @@ def build_config_block(config: Config, lakes: gpd.GeoDataFrame) -> dict[str, Any
         }
         cd = ctrl.cabin_density_slider
         quantiles = _compute_density_quantiles(lakes, cd.steps)
+        print("Cabin density quantiles for slider steps:", quantiles)
         interactive_cfg["cabin_density_slider"] = {
             "enabled": cd.enabled,
             "steps": cd.steps,
@@ -218,11 +218,37 @@ def build_config_block(config: Config, lakes: gpd.GeoDataFrame) -> dict[str, Any
     }
 
 
+def build_debug_buildings(buildings: gpd.GeoDataFrame) -> dict[str, Any]:
+    """Convert debug building points to a compact JSON structure.
+
+    Returns a dict with:
+      ``fields``  — ["lat", "lng", "type"]
+      ``rows``    — [[lat, lng, type_code], ...]
+
+    Points where ``bygningstype`` is absent are exported with type_code ``null``.
+    """
+    bldgs_wgs84 = buildings.to_crs("EPSG:4326")
+    rows: list[list[Any]] = []
+    for _, row in bldgs_wgs84.iterrows():
+        geom = row.geometry
+        if geom is None or geom.is_empty:
+            continue
+        lat = round(float(geom.y), _COORD_PRECISION)
+        lng = round(float(geom.x), _COORD_PRECISION)
+        type_code = row.get("bygningstype")
+        is_missing = type_code is None or (isinstance(type_code, float) and pd.isna(type_code))
+        type_val: int | None = None if is_missing else int(type_code)
+        rows.append([lat, lng, type_val])
+    return {"fields": ["lat", "lng", "type"], "rows": rows}
+
+
 def export_data(
     lakes: gpd.GeoDataFrame,
     roads: gpd.GeoDataFrame,
     config: Config,
     output_path: Path,
+    *,
+    debug_buildings: gpd.GeoDataFrame | None = None,
 ) -> None:
     """Assemble and write data.json for the static Leaflet frontend."""
     bbox = config.bbox
@@ -241,13 +267,15 @@ def export_data(
     )
     config_block = build_config_block(config, lakes)
 
-    data = {
+    data: dict[str, Any] = {
         "meta": meta,
         "lake_fields": lake_fields,
         "lakes": lake_rows,
         "roads": road_data,
         "config": config_block,
     }
+    if debug_buildings is not None and not debug_buildings.empty:
+        data["debug_buildings"] = build_debug_buildings(debug_buildings)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     json_str = json.dumps(data, separators=(",", ":"), ensure_ascii=False)

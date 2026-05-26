@@ -11,6 +11,7 @@ from telttur.download import download_n50
 from telttur.lakes import process_lakes
 from telttur.roads import process_roads
 from telttur.scoring import process_scoring
+from telttur.scoring.cabin_density import extract_buildings_all
 
 
 def _adaptive_simplify_tolerance(
@@ -65,7 +66,15 @@ def cli() -> None:
     help="Use a built-in scale profile instead of a config file.",
 )
 @click.option("--skip-download", is_flag=True, help="Skip data download, use existing files.")
-def generate(config_path: str | None, profile: str | None, skip_download: bool) -> None:
+@click.option("--debug-buildings", is_flag=True, help=(
+    "Export all raw building points for debugging. Not suitable for large regions."
+))
+def generate(
+    config_path: str | None,
+    profile: str | None,
+    skip_download: bool,
+    debug_buildings: bool,
+) -> None:
     """Generate the camping suitability map."""
     if profile and config_path:
         raise click.UsageError("--profile and --config are mutually exclusive.")
@@ -151,7 +160,14 @@ def generate(config_path: str | None, profile: str | None, skip_download: bool) 
     output_dir = config.output_path
     output_dir.mkdir(parents=True, exist_ok=True)
     output_file = output_dir / config.output_filename
-    export_data(lakes, road_lines, config, output_file)
+
+    debug_bldgs = None
+    if debug_buildings:
+        print("  Extracting all buildings for debug layer...")
+        debug_bldgs = extract_buildings_all(gdb_paths, config.bbox)
+        print(f"  Found {len(debug_bldgs)} building features")
+
+    export_data(lakes, road_lines, config, output_file, debug_buildings=debug_bldgs)
     js_file = output_file.with_suffix(".js")
     js_kb = js_file.stat().st_size / 1024
     print(f"  [export: {time.time() - t0:.1f}s]")
