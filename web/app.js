@@ -130,7 +130,7 @@ const I18N = {
 function _detectLang() {
   const stored = localStorage.getItem("telttur-lang");
   if (stored === "en" || stored === "no") return stored;
-  const nav = (navigator.language || "").toLowerCase();
+  const nav = navigator.language?.toLowerCase() ?? "";
   return nav.startsWith("en") ? "en" : "no";
 }
 
@@ -138,7 +138,7 @@ let _lang = _detectLang();
 
 /** Return the translated string for key in the current language. */
 function t(key) {
-  return (I18N[_lang] && I18N[_lang][key]) || I18N.en[key] || key;
+  return I18N[_lang]?.[key] ?? I18N.en[key] ?? key;
 }
 
 /** Switch the UI language, persist it, and rebuild the controls and legend. */
@@ -188,9 +188,7 @@ let map;
 let lakesLayer;     // L.LayerGroup containing all CircleMarker instances
 let allMarkers = []; // { marker, fields } — kept for re-filtering
 let _arSlider = null;             // noUiSlider instance for accessibility range
-let _pendingArSlider = null;      // config awaiting DOM insertion
 let _lakeSizeSlider = null;       // noUiSlider instance for lake size range
-let _pendingLakeSizeSlider = null; // config awaiting DOM insertion
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -328,7 +326,7 @@ function readControlState(cfg) {
   const ar5Cfg = ctrl.ar5_buffers || {};
 
   // Build fishing genera mask from checkboxes (default: all selected)
-  const fishingGenera = (scoring.fishing && scoring.fishing.genera) || [];
+  const fishingGenera = scoring.fishing?.genera ?? [];
   let fishingMask = 0;
   for (const g of fishingGenera) {
     if (checkVal(`tt-fg-${g.code}`, true)) fishingMask |= (1 << g.code);
@@ -341,17 +339,17 @@ function readControlState(cfg) {
     arMax: arCfg.enabled ? _arSliderMax() : 5000,
     ctThreshold: ctCfg.enabled
       ? sliderVal("tt-ct", ctCfg.value || 0.05)
-      : (scoring.cabin_density ? scoring.cabin_density.thresholds.good || 0.01 : 0.01),
+      : (scoring.cabin_density?.thresholds.good ?? 0.01),
     ar5ResBuf: ar5Cfg.enabled
-      ? sliderVal("tt-ar5-res", (scoring.ar5_land_use || {}).residential_buffer_m || 1000)
-      : ((scoring.ar5_land_use || {}).residential_buffer_m || 1000),
+      ? sliderVal("tt-ar5-res", scoring.ar5_land_use?.residential_buffer_m ?? 1000)
+      : (scoring.ar5_land_use?.residential_buffer_m ?? 1000),
     ar5IndBuf: ar5Cfg.enabled
-      ? sliderVal("tt-ar5-ind", (scoring.ar5_land_use || {}).industrial_buffer_m || 2000)
-      : ((scoring.ar5_land_use || {}).industrial_buffer_m || 2000),
-    cabinOn: checkVal("tt-cabin", !!(scoring.cabin_density && scoring.cabin_density.enabled)),
-    accessOn: checkVal("tt-access", !!(scoring.accessibility && scoring.accessibility.enabled)),
-    ar5On: checkVal("tt-ar5", !!(scoring.ar5_land_use && scoring.ar5_land_use.enabled)),
-    fishingOn: checkVal("tt-fishing", !!(scoring.fishing && scoring.fishing.enabled)),
+      ? sliderVal("tt-ar5-ind", scoring.ar5_land_use?.industrial_buffer_m ?? 2000)
+      : (scoring.ar5_land_use?.industrial_buffer_m ?? 2000),
+    cabinOn: checkVal("tt-cabin", !!scoring.cabin_density?.enabled),
+    accessOn: checkVal("tt-access", !!scoring.accessibility?.enabled),
+    ar5On: checkVal("tt-ar5", !!scoring.ar5_land_use?.enabled),
+    fishingOn: checkVal("tt-fishing", !!scoring.fishing?.enabled),
     fishingMask,
   };
 }
@@ -461,7 +459,7 @@ function buildPopup(fields, liveScores, cfg) {
 
   // Prized genera present at this lake
   if (cfg && fields.fish_genera_mask != null) {
-    const fishingGenera = (cfg.scoring && cfg.scoring.fishing && cfg.scoring.fishing.genera) || [];
+    const fishingGenera = cfg.scoring?.fishing?.genera ?? [];
     const present = fishingGenera
       .filter(g => (fields.fish_genera_mask & (1 << g.code)) !== 0)
       .map(g => t(`genus_${g.genus}`) || g.label);
@@ -518,7 +516,7 @@ function initMap(data) {
   if (data.roads && data.roads.features && data.roads.features.length > 0) {
     L.geoJSON(data.roads, {
       style: (feature) => ({
-        color: (feature.properties && feature.properties.color) || "#999999",
+        color: feature.properties?.color ?? "#999999",
         weight: 2,
         opacity: 0.8,
       }),
@@ -595,14 +593,16 @@ function buildDimCard(id, label, infoText, bodyHtml) {
   card.className = "tt-dim-card";
   card.innerHTML =
     `<div class="tt-dim-header">` +
-    `<label><input type="checkbox" id="${id}" checked ` +
-    `onchange="ttToggleDim('${id}')"> ${label}</label>` +
-    `<span class="tt-info-btn" tabindex="0" ` +
-    `onclick="this.classList.toggle('tt-info-open')">ⓘ` +
+    `<label><input type="checkbox" id="${id}" checked> ${label}</label>` +
+    `<span class="tt-info-btn" tabindex="0">ⓘ` +
     `<span class="tt-info-tip">${infoText}</span>` +
     `</span>` +
     `</div>` +
     bodyHtml;
+  card.querySelector(`#${id}`).addEventListener("change", () => ttToggleDim(id));
+  card.querySelector(".tt-info-btn").addEventListener("click", function () {
+    this.classList.toggle("tt-info-open");
+  });
   return card;
 }
 
@@ -622,15 +622,16 @@ function buildControls(cfg, lakeFields) {
   header.id = "tt-controls-header";
   header.innerHTML =
     `<b>⚙ ${t("scoring")}</b>` +
-    '<button id="tt-toggle-btn" onclick="' +
-    "var b=document.getElementById('tt-body'),s=b.style;" +
-    "s.display=s.display==='none'?'block':'none'" +
-    '">▼</button>';
+    `<button id="tt-toggle-btn">▼</button>`;
   container.appendChild(header);
 
   const body = document.createElement("div");
   body.id = "tt-body";
   container.appendChild(body);
+
+  header.querySelector("#tt-toggle-btn").addEventListener("click", () => {
+    body.style.display = body.style.display === "none" ? "block" : "none";
+  });
 
   // Lake size filter — rendered as a distinct filter section (not a scoring dimension)
   const minArea = cfg.min_lake_area_m2 || 0;
@@ -647,7 +648,6 @@ function buildControls(cfg, lakeFields) {
       `</div>` +
       `<div id="tt-ls-slider"></div>`;
     body.appendChild(filterDiv);
-    _pendingLakeSizeSlider = { min: minArea, max: 10000000 };
   }
 
   // Cabin density card
@@ -659,8 +659,7 @@ function buildControls(cfg, lakeFields) {
       bodyHtml =
         `<div class="tt-dim-body" id="tt-cabin-body">` +
         `${t("cabin_density_threshold")} <span id="tt-ct-val" style="font-weight:bold">${val}</span><br>` +
-        `<input type="range" id="tt-ct" min="0" max="${cd.slider_max.toFixed(3)}" step="0.001" value="${val}" ` +
-        `oninput="document.getElementById('tt-ct-val').textContent=parseFloat(this.value).toFixed(3);teltturUpdate(_ttCfg)">` +
+        `<input type="range" id="tt-ct" min="0" max="${cd.slider_max.toFixed(3)}" step="0.001" value="${val}">` +
         `</div>`;
     }
     body.appendChild(buildDimCard(
@@ -687,8 +686,6 @@ function buildControls(cfg, lakeFields) {
         `</div>` +
         `<div id="tt-ar-slider"></div>` +
         `</div>`;
-      // Schedule slider init after DOM insertion
-      _pendingArSlider = { min: arMin, max: arMax, sliderMax: arSliderMax };
     }
     body.appendChild(buildDimCard(
       "tt-access", t("accessibility"),
@@ -709,11 +706,9 @@ function buildControls(cfg, lakeFields) {
       bodyHtml =
         `<div class="tt-dim-body" id="tt-ar5-body">` +
         `${t("ar5_residential")} <span id="tt-ar5-res-val" style="font-weight:bold">${resVal}</span> m<br>` +
-        `<input type="range" id="tt-ar5-res" min="0" max="${ar5SliderMax}" step="100" value="${resVal}" ` +
-        `oninput="document.getElementById('tt-ar5-res-val').textContent=this.value;teltturUpdate(_ttCfg)"><br>` +
+        `<input type="range" id="tt-ar5-res" min="0" max="${ar5SliderMax}" step="100" value="${resVal}"><br>` +
         `${t("ar5_industrial")} <span id="tt-ar5-ind-val" style="font-weight:bold">${indVal}</span> m<br>` +
-        `<input type="range" id="tt-ar5-ind" min="0" max="${ar5SliderMax}" step="100" value="${indVal}" ` +
-        `oninput="document.getElementById('tt-ar5-ind-val').textContent=this.value;teltturUpdate(_ttCfg)">` +
+        `<input type="range" id="tt-ar5-ind" min="0" max="${ar5SliderMax}" step="100" value="${indVal}">` +
         `</div>`;
     }
     body.appendChild(buildDimCard(
@@ -726,12 +721,12 @@ function buildControls(cfg, lakeFields) {
   // Fishing card
   if (dt.fishing && scoring.fishing) {
     const fgCfg = ctrl.fishing_genera;
-    const fishingGenera = (scoring.fishing && scoring.fishing.genera) || [];
+    const fishingGenera = scoring.fishing?.genera ?? [];
     let bodyHtml = "";
     if (fgCfg && fgCfg.enabled && fishingGenera.length > 0 && lakeFieldSet.has("fish_genera_mask")) {
       bodyHtml = `<div class="tt-dim-body tt-fish-list" id="tt-fishing-body">`;
       for (const g of fishingGenera) {
-        bodyHtml += `<label><input type="checkbox" id="tt-fg-${g.code}" checked onchange="teltturUpdate(_ttCfg)"> ${t(`genus_${g.genus}`) || g.label}</label>`;
+        bodyHtml += `<label><input type="checkbox" id="tt-fg-${g.code}" checked> ${t(`genus_${g.genus}`) || g.label}</label>`;
       }
       bodyHtml += `</div>`;
     }
@@ -748,54 +743,77 @@ function buildControls(cfg, lakeFields) {
   const langSwitcher = document.createElement("div");
   langSwitcher.id = "tt-lang-switcher";
   langSwitcher.innerHTML =
-    `<button class="tt-lang-btn${_lang === 'en' ? ' tt-lang-active' : ''}" onclick="setLang('en')">EN</button>` +
-    `<button class="tt-lang-btn${_lang === 'no' ? ' tt-lang-active' : ''}" onclick="setLang('no')">NO</button>`;
+    `<button class="tt-lang-btn${_lang === 'en' ? ' tt-lang-active' : ''}">EN</button>` +
+    `<button class="tt-lang-btn${_lang === 'no' ? ' tt-lang-active' : ''}">NO</button>`;
+  langSwitcher.children[0].addEventListener("click", () => setLang("en"));
+  langSwitcher.children[1].addEventListener("click", () => setLang("no"));
   document.body.appendChild(langSwitcher);
 
-  // Initialise noUiSlider for accessibility range (needs the element in the DOM)
-  if (_pendingArSlider) {
-    const { min, max, sliderMax } = _pendingArSlider;
-    _pendingArSlider = null;
-    const el = document.getElementById("tt-ar-slider");
-    if (el && typeof noUiSlider !== "undefined") {
-      _arSlider = noUiSlider.create(el, {
-        start: [min, max],
-        connect: true,
-        step: 100,
-        range: { min: 0, max: sliderMax },
-      });
-      _arSlider.on("update", (values) => {
-        document.getElementById("tt-ar-min-val").textContent = Math.round(values[0]);
-        document.getElementById("tt-ar-max-val").textContent = Math.round(values[1]);
-        teltturUpdate(_ttCfg);
-      });
-    }
+  // Attach event listeners for range inputs
+  const ctEl = document.getElementById("tt-ct");
+  if (ctEl) {
+    ctEl.addEventListener("input", function () {
+      document.getElementById("tt-ct-val").textContent = parseFloat(this.value).toFixed(3);
+      teltturUpdate(_ttCfg);
+    });
+  }
+  const ar5ResEl = document.getElementById("tt-ar5-res");
+  if (ar5ResEl) {
+    ar5ResEl.addEventListener("input", function () {
+      document.getElementById("tt-ar5-res-val").textContent = this.value;
+      teltturUpdate(_ttCfg);
+    });
+  }
+  const ar5IndEl = document.getElementById("tt-ar5-ind");
+  if (ar5IndEl) {
+    ar5IndEl.addEventListener("input", function () {
+      document.getElementById("tt-ar5-ind-val").textContent = this.value;
+      teltturUpdate(_ttCfg);
+    });
+  }
+  const fishGenera = scoring.fishing?.genera ?? [];
+  for (const g of fishGenera) {
+    const cb = document.getElementById(`tt-fg-${g.code}`);
+    if (cb) cb.addEventListener("change", () => teltturUpdate(_ttCfg));
   }
 
-  // Initialise noUiSlider for lake size range (needs the element in the DOM)
-  if (_pendingLakeSizeSlider) {
-    const { min, max } = _pendingLakeSizeSlider;
-    _pendingLakeSizeSlider = null;
-    const el = document.getElementById("tt-ls-slider");
-    if (el && typeof noUiSlider !== "undefined") {
-      _lakeSizeSlider = noUiSlider.create(el, {
-        start: [min, max],
-        connect: true,
-        range: {
-          "min": [0, 100],
-          "15%": [1000, 500],
-          "35%": [10000, 2500],
-          "55%": [100000, 25000],
-          "75%": [1000000, 250000],
-          "max": [10000000],
-        },
-      });
-      _lakeSizeSlider.on("update", (values) => {
-        document.getElementById("tt-ls-min-val").textContent = formatArea(parseFloat(values[0]));
-        document.getElementById("tt-ls-max-val").textContent = formatArea(parseFloat(values[1]));
-        teltturUpdate(_ttCfg);
-      });
-    }
+  // Initialise noUiSlider for accessibility range
+  const arSliderEl = document.getElementById("tt-ar-slider");
+  if (arSliderEl && typeof noUiSlider !== "undefined") {
+    const ar = ctrl.accessibility_range;
+    _arSlider = noUiSlider.create(arSliderEl, {
+      start: [ar.min_m | 0, ar.max_m | 0],
+      connect: true,
+      step: 100,
+      range: { min: 0, max: ar.slider_max_m | 0 },
+    });
+    _arSlider.on("update", (values) => {
+      document.getElementById("tt-ar-min-val").textContent = Math.round(values[0]);
+      document.getElementById("tt-ar-max-val").textContent = Math.round(values[1]);
+      teltturUpdate(_ttCfg);
+    });
+  }
+
+  // Initialise noUiSlider for lake size range
+  const lsSliderEl = document.getElementById("tt-ls-slider");
+  if (lsSliderEl && typeof noUiSlider !== "undefined") {
+    _lakeSizeSlider = noUiSlider.create(lsSliderEl, {
+      start: [cfg.min_lake_area_m2 || 0, 10000000],
+      connect: true,
+      range: {
+        "min": [0, 100],
+        "15%": [1000, 500],
+        "35%": [10000, 2500],
+        "55%": [100000, 25000],
+        "75%": [1000000, 250000],
+        "max": [10000000],
+      },
+    });
+    _lakeSizeSlider.on("update", (values) => {
+      document.getElementById("tt-ls-min-val").textContent = formatArea(parseFloat(values[0]));
+      document.getElementById("tt-ls-max-val").textContent = formatArea(parseFloat(values[1]));
+      teltturUpdate(_ttCfg);
+    });
   }
 }
 
@@ -842,7 +860,7 @@ function buildFooter() {
   footer.innerHTML =
     `<a href="https://github.com/vegardkv/telttur" target="_blank" rel="noopener">GitHub</a>` +
     `<span class="tt-footer-sep">·</span>` +
-    `<button id="tt-credits-btn" onclick="document.getElementById('tt-credits-dialog').showModal()">${t("credits")}</button>`;
+    `<button id="tt-credits-btn">${t("credits")}</button>`;
   document.body.appendChild(footer);
 
   const dialog = document.createElement("dialog");
@@ -861,7 +879,9 @@ function buildFooter() {
     `<b>${t("credits_source_code")}</b>` +
     `<ul><li><a href="https://github.com/vegardkv/telttur" target="_blank" rel="noopener">github.com/vegardkv/telttur</a></li></ul>` +
     `</div>` +
-    `<button class="tt-credits-close" onclick="this.closest('dialog').close()">✕</button>`;
+    `<button class="tt-credits-close">✕</button>`;
+  footer.querySelector("#tt-credits-btn").addEventListener("click", () => dialog.showModal());
+  dialog.querySelector(".tt-credits-close").addEventListener("click", () => dialog.close());
   dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
   document.body.appendChild(dialog);
 }
@@ -870,7 +890,6 @@ function buildFooter() {
 // Bootstrap
 // ---------------------------------------------------------------------------
 
-// Expose config and data globally so inline oninput handlers can call teltturUpdate.
 let _ttCfg = null;
 let _ttData = null;
 
@@ -884,10 +903,10 @@ function rebuildUI() {
   if (oldFooter) oldFooter.remove();
   const oldDialog = document.getElementById("tt-credits-dialog");
   if (oldDialog) oldDialog.remove();
+  const oldLang = document.getElementById("tt-lang-switcher");
+  if (oldLang) oldLang.remove();
   _arSlider = null;
-  _pendingArSlider = null;
   _lakeSizeSlider = null;
-  _pendingLakeSizeSlider = null;
   buildControls(_ttData.config, _ttData.lake_fields);
   buildLegend(_ttData);
   buildFooter();

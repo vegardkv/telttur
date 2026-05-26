@@ -136,7 +136,6 @@ html, body {
 
 /* Style native range inputs consistently across browsers */
 #tt-body input[type="range"] {
-  -webkit-appearance: none;
   appearance: none;
   height: 4px;
   background: #ddd;
@@ -145,16 +144,8 @@ html, body {
   cursor: pointer;
 }
 
-#tt-body input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #555;
-  cursor: pointer;
-}
-
-#tt-body input[type="range"]::-moz-range-thumb {
+#tt-body input[type="range"]::slider-thumb {
+  appearance: none;
   width: 14px;
   height: 14px;
   border-radius: 50%;
@@ -347,11 +338,12 @@ html, body {
 }
 
 /* Score badge colours — TentabilityLevel 1–5 */
-.tt-b1 { background: #d73027; color: white; padding: 1px 5px; border-radius: 3px; }
-.tt-b2 { background: #fc8d59; color: white; padding: 1px 5px; border-radius: 3px; }
-.tt-b3 { background: #fee08b; color: #333;  padding: 1px 5px; border-radius: 3px; }
-.tt-b4 { background: #91cf60; color: #333;  padding: 1px 5px; border-radius: 3px; }
-.tt-b5 { background: #1a9850; color: white; padding: 1px 5px; border-radius: 3px; }
+.tt-b1, .tt-b2, .tt-b3, .tt-b4, .tt-b5 { padding: 1px 5px; border-radius: 3px; }
+.tt-b1 { background: #d73027; color: white; }
+.tt-b2 { background: #fc8d59; color: white; }
+.tt-b3 { background: #fee08b; color: #333; }
+.tt-b4 { background: #91cf60; color: #333; }
+.tt-b5 { background: #1a9850; color: white; }
 
 /* ─── Footer bar ──────────────────────────────────────────────────────────── */
 

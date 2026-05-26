@@ -48,3 +48,14 @@ After completing a task, the implementer should **step back and review** that th
 - **Minimal interface** — expose only what's necessary.
 - **DRY** — don't repeat yourself.
 - **KISS** — keep it simple; avoid over-engineering.
+
+## JavaScript Guidelines
+
+The frontend (`web/`) is a single-file vanilla JS app with no build step or module system.
+
+- **No inline event handlers** — use `addEventListener`, never `onclick`/`oninput`/`onchange` attributes in generated HTML.
+- **No build step or framework** — the app must work when opened via `file://` (no server required), so ES modules (`type="module"`) are not an option.
+- **Single file is fine** — at the current scale (~900 lines), splitting into modules adds CORS complexity without meaningful benefit. Revisit if the file grows significantly.
+- **Bitmasks are acceptable** for compact per-lake flags (e.g. fishing genera). They're efficient for data storage and set operations on small domains.
+- **Prefer optional chaining** (`a?.b ?? default`) over verbose `&&` chains where browser support allows.
+- **Modern browsers only** — no need for vendor prefixes or legacy polyfills. Use standard CSS (e.g. `appearance`, `::slider-thumb`) and modern JS features (`?.`, `??`, `structuredClone`, etc.) freely.
