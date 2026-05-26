@@ -56,7 +56,7 @@ class InteractiveAccessibilityRange(BaseModel):
     """Range slider config for interactive accessibility scoring."""
 
     enabled: bool = True
-    min_m: float = 200.0  # default preferred minimum distance
+    min_m: float = 0.0  # default preferred minimum distance
     max_m: float = 2000.0  # default preferred maximum distance
     slider_max_m: float = 10000.0  # upper bound of the slider
 
@@ -70,7 +70,7 @@ class InteractiveCabinDensitySlider(BaseModel):
 
     enabled: bool = True
     value: float = 0.05  # density threshold at which Excellent begins
-    slider_max: float = 0.5  # upper bound of the slider
+    slider_max: float = 0.15  # upper bound of the slider
 
 
 class InteractiveAr5Buffers(BaseModel):

@@ -59,6 +59,10 @@ const I18N = {
     genus_Sander: "Pikeperch",
     genus_Coregonus: "Whitefish",
     genus_Hucho: "Huchen",
+    fish_select_all: "Select all",
+    fish_deselect_all: "Deselect all",
+    fish_selected_all: "All selected",
+    fish_selected_none: "None selected",
     credits: "Credits",
     credits_data: "Data sources",
     credits_n50: "N50 map data (roads, lakes, buildings)",
@@ -115,6 +119,10 @@ const I18N = {
     genus_Sander: "Gjørs",
     genus_Coregonus: "Sik",
     genus_Hucho: "Donaulaks",
+    fish_select_all: "Velg alle",
+    fish_deselect_all: "Fjern alle",
+    fish_selected_all: "Alle valgt",
+    fish_selected_none: "Ingen valgt",
     credits: "Kildehenvisninger",
     credits_data: "Datakilder",
     credits_n50: "N50 kartdata (veier, innsjøer, bygninger)",
@@ -189,6 +197,9 @@ let lakesLayer;     // L.LayerGroup containing all CircleMarker instances
 let allMarkers = []; // { marker, fields } — kept for re-filtering
 let _arSlider = null;             // noUiSlider instance for accessibility range
 let _lakeSizeSlider = null;       // noUiSlider instance for lake size range
+let _ctSlider = null;             // noUiSlider instance for cabin density threshold
+let _ar5ResSlider = null;         // noUiSlider instance for AR5 residential buffer
+let _ar5IndSlider = null;         // noUiSlider instance for AR5 industrial buffer
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -231,15 +242,9 @@ function _lsMin() {
   return _lakeSizeSlider ? parseFloat(_lakeSizeSlider.get()[0]) : 0;
 }
 
-/** Return the high handle value of the lake size slider (or default 10 km²). */
+/** Return the high handle value of the lake size slider (or default 50 km²). */
 function _lsMax() {
-  return _lakeSizeSlider ? parseFloat(_lakeSizeSlider.get()[1]) : 10000000;
-}
-
-/** Return the current value of a slider element (or a default). */
-function sliderVal(id, def) {
-  const el = document.getElementById(id);
-  return el ? parseFloat(el.value) : def;
+  return _lakeSizeSlider ? parseFloat(_lakeSizeSlider.get()[1]) : 50000000;
 }
 
 /** Return checked state of a checkbox (or a default). */
@@ -338,13 +343,13 @@ function readControlState(cfg) {
     arMin: arCfg.enabled ? _arSliderMin() : 0,
     arMax: arCfg.enabled ? _arSliderMax() : 5000,
     ctThreshold: ctCfg.enabled
-      ? sliderVal("tt-ct", ctCfg.value || 0.05)
+      ? (_ctSlider ? parseFloat(_ctSlider.get()) : (ctCfg.value ?? 0.05))
       : (scoring.cabin_density?.thresholds.good ?? 0.01),
     ar5ResBuf: ar5Cfg.enabled
-      ? sliderVal("tt-ar5-res", scoring.ar5_land_use?.residential_buffer_m ?? 1000)
+      ? (_ar5ResSlider ? parseFloat(_ar5ResSlider.get()) : (scoring.ar5_land_use?.residential_buffer_m ?? 1000))
       : (scoring.ar5_land_use?.residential_buffer_m ?? 1000),
     ar5IndBuf: ar5Cfg.enabled
-      ? sliderVal("tt-ar5-ind", scoring.ar5_land_use?.industrial_buffer_m ?? 2000)
+      ? (_ar5IndSlider ? parseFloat(_ar5IndSlider.get()) : (scoring.ar5_land_use?.industrial_buffer_m ?? 2000))
       : (scoring.ar5_land_use?.industrial_buffer_m ?? 2000),
     cabinOn: checkVal("tt-cabin", !!scoring.cabin_density?.enabled),
     accessOn: checkVal("tt-access", !!scoring.accessibility?.enabled),
@@ -644,7 +649,7 @@ function buildControls(cfg, lakeFields) {
       `<div id="tt-ls-range-label" style="margin-bottom:2px">` +
       `<span id="tt-ls-min-val" style="font-weight:bold">${formatArea(minArea)}</span>` +
       ` – ` +
-      `<span id="tt-ls-max-val" style="font-weight:bold">${formatArea(10000000)}</span>` +
+      `<span id="tt-ls-max-val" style="font-weight:bold">${formatArea(50000000)}</span>` +
       `</div>` +
       `<div id="tt-ls-slider"></div>`;
     body.appendChild(filterDiv);
@@ -659,7 +664,7 @@ function buildControls(cfg, lakeFields) {
       bodyHtml =
         `<div class="tt-dim-body" id="tt-cabin-body">` +
         `${t("cabin_density_threshold")} <span id="tt-ct-val" style="font-weight:bold">${val}</span><br>` +
-        `<input type="range" id="tt-ct" min="0" max="${cd.slider_max.toFixed(3)}" step="0.001" value="${val}">` +
+        `<div id="tt-ct-slider"></div>` +
         `</div>`;
     }
     body.appendChild(buildDimCard(
@@ -706,9 +711,9 @@ function buildControls(cfg, lakeFields) {
       bodyHtml =
         `<div class="tt-dim-body" id="tt-ar5-body">` +
         `${t("ar5_residential")} <span id="tt-ar5-res-val" style="font-weight:bold">${resVal}</span> m<br>` +
-        `<input type="range" id="tt-ar5-res" min="0" max="${ar5SliderMax}" step="100" value="${resVal}"><br>` +
+        `<div id="tt-ar5-res-slider"></div>` +
         `${t("ar5_industrial")} <span id="tt-ar5-ind-val" style="font-weight:bold">${indVal}</span> m<br>` +
-        `<input type="range" id="tt-ar5-ind" min="0" max="${ar5SliderMax}" step="100" value="${indVal}">` +
+        `<div id="tt-ar5-ind-slider"></div>` +
         `</div>`;
     }
     body.appendChild(buildDimCard(
@@ -724,11 +729,21 @@ function buildControls(cfg, lakeFields) {
     const fishingGenera = scoring.fishing?.genera ?? [];
     let bodyHtml = "";
     if (fgCfg && fgCfg.enabled && fishingGenera.length > 0 && lakeFieldSet.has("fish_genera_mask")) {
-      bodyHtml = `<div class="tt-dim-body tt-fish-list" id="tt-fishing-body">`;
-      for (const g of fishingGenera) {
-        bodyHtml += `<label><input type="checkbox" id="tt-fg-${g.code}" checked> ${t(`genus_${g.genus}`) || g.label}</label>`;
-      }
-      bodyHtml += `</div>`;
+      bodyHtml =
+        `<div class="tt-dim-body" id="tt-fishing-body">` +
+        `<div class="tt-fish-dropdown">` +
+        `<button class="tt-fish-btn" id="tt-fish-btn" type="button">` +
+        `<span id="tt-fish-summary">${t("fish_selected_all")}</span>` +
+        `<span class="tt-fish-arrow">▾</span>` +
+        `</button>` +
+        `<div class="tt-fish-panel" id="tt-fish-panel" hidden>` +
+        `<button class="tt-fish-toggle-all" id="tt-fish-toggle-all" type="button">${t("fish_deselect_all")}</button>` +
+        fishingGenera.map(g =>
+          `<label><input type="checkbox" id="tt-fg-${g.code}" checked> ${t(`genus_${g.genus}`) || g.label}</label>`
+        ).join("") +
+        `</div>` +
+        `</div>` +
+        `</div>`;
     }
     body.appendChild(buildDimCard(
       "tt-fishing", t("fishing"),
@@ -749,32 +764,106 @@ function buildControls(cfg, lakeFields) {
   langSwitcher.children[1].addEventListener("click", () => setLang("no"));
   document.body.appendChild(langSwitcher);
 
-  // Attach event listeners for range inputs
-  const ctEl = document.getElementById("tt-ct");
-  if (ctEl) {
-    ctEl.addEventListener("input", function () {
-      document.getElementById("tt-ct-val").textContent = parseFloat(this.value).toFixed(3);
+  // Initialise noUiSlider for cabin density
+  const ctSliderEl = document.getElementById("tt-ct-slider");
+  if (ctSliderEl && typeof noUiSlider !== "undefined") {
+    const cd = ctrl.cabin_density_slider;
+    _ctSlider = noUiSlider.create(ctSliderEl, {
+      start: [cd.value],
+      connect: [true, false],
+      step: 0.001,
+      range: { min: 0, max: cd.slider_max },
+    });
+    _ctSlider.on("update", (values) => {
+      document.getElementById("tt-ct-val").textContent = parseFloat(values[0]).toFixed(3);
       teltturUpdate(_ttCfg);
     });
   }
-  const ar5ResEl = document.getElementById("tt-ar5-res");
-  if (ar5ResEl) {
-    ar5ResEl.addEventListener("input", function () {
-      document.getElementById("tt-ar5-res-val").textContent = this.value;
+
+  // Initialise noUiSlider for AR5 residential buffer
+  const ar5ResSliderEl = document.getElementById("tt-ar5-res-slider");
+  if (ar5ResSliderEl && typeof noUiSlider !== "undefined") {
+    const ar5b = ctrl.ar5_buffers;
+    const ar5s = scoring.ar5_land_use;
+    _ar5ResSlider = noUiSlider.create(ar5ResSliderEl, {
+      start: [ar5s.residential_buffer_m | 0],
+      connect: [true, false],
+      step: 100,
+      range: { min: 0, max: ar5b.slider_max_m | 0 },
+    });
+    _ar5ResSlider.on("update", (values) => {
+      document.getElementById("tt-ar5-res-val").textContent = Math.round(values[0]);
       teltturUpdate(_ttCfg);
     });
   }
-  const ar5IndEl = document.getElementById("tt-ar5-ind");
-  if (ar5IndEl) {
-    ar5IndEl.addEventListener("input", function () {
-      document.getElementById("tt-ar5-ind-val").textContent = this.value;
+
+  // Initialise noUiSlider for AR5 industrial buffer
+  const ar5IndSliderEl = document.getElementById("tt-ar5-ind-slider");
+  if (ar5IndSliderEl && typeof noUiSlider !== "undefined") {
+    const ar5b = ctrl.ar5_buffers;
+    const ar5s = scoring.ar5_land_use;
+    _ar5IndSlider = noUiSlider.create(ar5IndSliderEl, {
+      start: [ar5s.industrial_buffer_m | 0],
+      connect: [true, false],
+      step: 100,
+      range: { min: 0, max: ar5b.slider_max_m | 0 },
+    });
+    _ar5IndSlider.on("update", (values) => {
+      document.getElementById("tt-ar5-ind-val").textContent = Math.round(values[0]);
       teltturUpdate(_ttCfg);
     });
   }
-  const fishGenera = scoring.fishing?.genera ?? [];
-  for (const g of fishGenera) {
+
+  // Fish genera dropdown events
+  const fishingGeneraArr = scoring.fishing?.genera ?? [];
+  const fishBtnEl = document.getElementById("tt-fish-btn");
+  const fishPanelEl = document.getElementById("tt-fish-panel");
+  const fishToggleEl = document.getElementById("tt-fish-toggle-all");
+
+  function _updateFishSummary() {
+    let sel = 0;
+    for (const g of fishingGeneraArr) {
+      if (checkVal(`tt-fg-${g.code}`, true)) sel++;
+    }
+    const sumEl = document.getElementById("tt-fish-summary");
+    if (sumEl) {
+      if (sel === fishingGeneraArr.length) sumEl.textContent = t("fish_selected_all");
+      else if (sel === 0) sumEl.textContent = t("fish_selected_none");
+      else sumEl.textContent = `${sel} / ${fishingGeneraArr.length}`;
+    }
+    if (fishToggleEl) {
+      fishToggleEl.textContent = sel === fishingGeneraArr.length ? t("fish_deselect_all") : t("fish_select_all");
+    }
+  }
+
+  if (fishBtnEl && fishPanelEl) {
+    fishBtnEl.addEventListener("click", () => {
+      const nowHidden = !fishPanelEl.hidden;
+      fishPanelEl.hidden = nowHidden;
+      fishBtnEl.closest(".tt-fish-dropdown").classList.toggle("open", !nowHidden);
+    });
+  }
+
+  if (fishToggleEl) {
+    fishToggleEl.addEventListener("click", () => {
+      const anyUnchecked = fishingGeneraArr.some(g => !checkVal(`tt-fg-${g.code}`, true));
+      for (const g of fishingGeneraArr) {
+        const cb = document.getElementById(`tt-fg-${g.code}`);
+        if (cb) cb.checked = anyUnchecked;
+      }
+      _updateFishSummary();
+      teltturUpdate(_ttCfg);
+    });
+  }
+
+  for (const g of fishingGeneraArr) {
     const cb = document.getElementById(`tt-fg-${g.code}`);
-    if (cb) cb.addEventListener("change", () => teltturUpdate(_ttCfg));
+    if (cb) {
+      cb.addEventListener("change", () => {
+        _updateFishSummary();
+        teltturUpdate(_ttCfg);
+      });
+    }
   }
 
   // Initialise noUiSlider for accessibility range
@@ -798,15 +887,16 @@ function buildControls(cfg, lakeFields) {
   const lsSliderEl = document.getElementById("tt-ls-slider");
   if (lsSliderEl && typeof noUiSlider !== "undefined") {
     _lakeSizeSlider = noUiSlider.create(lsSliderEl, {
-      start: [cfg.min_lake_area_m2 || 0, 10000000],
+      start: [100000, 50000000],
       connect: true,
       range: {
         "min": [0, 100],
         "15%": [1000, 500],
         "35%": [10000, 2500],
         "55%": [100000, 25000],
-        "75%": [1000000, 250000],
-        "max": [10000000],
+        "70%": [1000000, 250000],
+        "85%": [10000000, 5000000],
+        "max": [50000000],
       },
     });
     _lakeSizeSlider.on("update", (values) => {
@@ -907,6 +997,9 @@ function rebuildUI() {
   if (oldLang) oldLang.remove();
   _arSlider = null;
   _lakeSizeSlider = null;
+  _ctSlider = null;
+  _ar5ResSlider = null;
+  _ar5IndSlider = null;
   buildControls(_ttData.config, _ttData.lake_fields);
   buildLegend(_ttData);
   buildFooter();

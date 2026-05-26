@@ -63,3 +63,12 @@ This is starting to look good. I want to do some final polish and bug fixes:
 - check licenses and terms and conditions for data sources (double check that this web app can be published as a web site)
 - the fish type list has a lot of spacing. this should be reduced
 - consider using a light-weight ui library to make the appeareance more concise. i am open to a variety of suggestions, but i dont want a heavy framework that has a separate build/compilation step
+
+
+### Round 5 - polish
+
+- the range slider and "normal" sliders have different styles. their style should be unified.
+- the upper bound on lake size needs to be increased. Also, the initial minimum size should be lower so that initial performance is better
+- "cabin density" can have a maximum value of 0.15. 
+- accessbility distance should have its minium value set to 0 instead of 200m
+- selection of fish species should be a multi-select dropdown instead of individual boxes.
