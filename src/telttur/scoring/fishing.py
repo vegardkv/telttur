@@ -60,9 +60,7 @@ _PRIZED_GENERA_LIST: list[tuple[str, str]] = [
     ("Thymallus", "Grayling"),     # bit 2
     ("Esox", "Pike"),              # bit 3
     ("Perca", "Perch"),            # bit 4
-    ("Sander", "Pikeperch"),       # bit 5
-    ("Coregonus", "Whitefish"),    # bit 6
-    ("Hucho", "Huchen"),           # bit 7
+    ("Coregonus", "Whitefish"),    # bit 5
 ]
 
 # Exported to the frontend config block so JavaScript can render genus labels
