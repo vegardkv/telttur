@@ -2,6 +2,7 @@
 fylke: Akershus
 
 output_filename: data_akershus.js
+embed: true
 
 min_lake_area_m2: 1000  # exclude lakes smaller than 0.1 ha
 

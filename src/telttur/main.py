@@ -172,6 +172,17 @@ def generate(
     js_kb = js_file.stat().st_size / 1024
     print(f"  [export: {time.time() - t0:.1f}s]")
     print(f"Data saved to: {js_file}  ({js_kb:.0f} KB)")
+
+    if config.embed:
+        from pathlib import Path
+
+        from telttur.embed import embed_html
+
+        stem = Path(config.output_filename).stem
+        html_out = config.output_path / (stem.replace("data", "map", 1) + ".html")
+        embed_html(Path("web"), js_file, html_out)
+        print(f"Embedded HTML: {html_out}  ({html_out.stat().st_size / 1024:.0f} KB)")
+
     print(f"Total time: {time.time() - pipeline_start:.1f}s")
 
 

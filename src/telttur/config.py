@@ -184,6 +184,7 @@ class Config(BaseModel):
     data_dir: str = "data"
     output_dir: str = "output"
     output_filename: str = "data.js"
+    embed: bool = False
     landcover_mode: Literal["wms", "vector", "disabled"] = "wms"
     map: MapConfig = MapConfig()
     scoring: ScoringConfig = ScoringConfig()
