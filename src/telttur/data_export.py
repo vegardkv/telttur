@@ -111,35 +111,28 @@ def build_road_data(roads: gpd.GeoDataFrame) -> dict[str, Any]:
 
 
 def _compute_density_quantiles(lakes: gpd.GeoDataFrame, steps: int) -> list[float]:
-    """Compute evenly-spaced quantile boundaries for building_density.
+    """Compute quantile boundaries for the building_density slider.
 
-    Returns *steps* values at percentiles (100/steps, 200/steps, …, 100).  If
-    the column is absent or has no positive values, falls back to a simple
-    linear range ending at 0.15.
+    Step 1 is always 0.0 (pristine lakes with no buildings nearby).
+    Steps 2..N are evenly-spaced quantiles of the non-zero density values,
+    so the slider range is informative rather than dominated by the zero mass.
+    Falls back to a linear range ending at 0.15 when data is absent.
     """
     col = LakeCols.BUILDING_DENSITY
+    fallback = [round(0.15 / steps * (i + 1), 4) for i in range(steps)]
+
     if col not in lakes.columns:
-        step_size = 0.15 / steps
-        return [round(step_size * (i + 1), 4) for i in range(steps)]
+        return fallback
 
-    values = lakes[col].dropna()
-    if values.empty:
-        step_size = 0.15 / steps
-        return [round(step_size * (i + 1), 4) for i in range(steps)]
+    nonzero = lakes[col].dropna()
+    nonzero = nonzero[nonzero > 0]
+    if nonzero.empty:
+        return fallback
 
-    quantiles = [
-        round(float(values.quantile((i + 1) / steps)), 4)
-        for i in range(steps)
-    ]
-    # Ensure the list is strictly non-decreasing and deduplicated
-    seen: set[float] = set()
-    result: list[float] = []
-    for q in quantiles:
-        while q in seen:
-            q = round(q + 0.0001, 4)
-        seen.add(q)
-        result.append(q)
-    return result
+    remaining = steps - 1
+    percentiles = [(i + 1) / remaining for i in range(remaining)]
+    qs = nonzero.quantile(percentiles)
+    return [0.0] + [round(float(v), 4) for v in qs]
 
 
 def build_config_block(config: Config, lakes: gpd.GeoDataFrame) -> dict[str, Any]:
