@@ -73,6 +73,34 @@ This is starting to look good. I want to do some final polish and bug fixes:
 - accessbility distance should have its minium value set to 0 instead of 200m
 - selection of fish species should be a multi-select dropdown instead of individual boxes.
 
+### Round 6 - terminology++
+
+- Config.yaml for norway should ideally have a lower minimum lake size. Some small (but relevant) lakes are being excluded. This probably requires performance improvements, so consider if it is worth it for the MVP
+- Legend:
+  - No need for both title and subtitle. "Tegnforklaring" is a given
+- "Poengberegning"
+  - Re-order: accessbility -> urbanization -> cabin density -> fishing
+  - Wording:
+    - "Hyttetetthet" -> "Bygninger", and make it clear that this is a threshold concerning the number of buildings around a lake.
+    - "Turens lengde" -> "tilgjengelighet", and add a label to the slider instead (i might want to extend this accessbility score later)
+    - "Urbanisering" -> Something else. Perhaps "Bebyggelse".
+    - Note that "hyttetetthet" and "urbanisering" are based on quite different data sources, and it needs to be clear that these are different scores.
+    - "Innsjøstørrelse (filter)" - no need for "(filter)", i think it is clear that this is a filter. However, might want to move it to the bottom, and perhaps separate it from the scoring settings
+    - "Poengberegning" is fine, but a bit long and wordy. "Scoring" on english is fine. Perhaps some other word is possible?
+- Re-check "kildehenvisninger"
+- Title
+
+### Round 7 - polish
+
+- Merge legend into "criteria" pane
+- Use other defaults:
+  - lake size filter maxed out (0-50km2)
+  - cabin density and fishing toggled off
+- reduce min lake size for norway by 50% (generate step)
+- remove english in the web app
+- re-color after slider has moved, and not while it is moving (current performance is not good enough for continuous update)
+- 
+
 ### Misc.
 
 - Use a UI component framework to reduce the amount of javascript code. For ease of maintainence and readability

@@ -14,26 +14,26 @@
 const I18N = {
   en: {
     title: "Telttur – Norwegian Camping Suitability Map",
-    scoring: "Scoring",
+    scoring: "Criteria",
     min_lake_size: "Min lake size:",
     cabin_density: "Cabin density",
-    cabin_density_info: "Density of buildings and cabins near the lake. Fewer nearby buildings means a quieter camping spot. Use the slider to set your tolerance for nearby buildings: \"Very low\" accepts only pristine lakes, \"Very high\" accepts densely built areas. Data source: N50 building layer (Kartverket).",
+    cabin_density_info: "Density of buildings and cabins within a set radius of the lake. Fewer nearby buildings means a quieter camping spot. Use the slider to set your tolerance. Data source: N50 building layer (Kartverket). Note: this differs from the Buildings score, which uses AR5 land-use classification data.",
     cabin_density_tolerance: "Tolerance:",
     cabin_density_levels: ["Very low", "Low", "Medium", "High", "Very high"],
     cabin_density_level_low: "Low",
     cabin_density_level_high: "High",
-    accessibility: "Hiking distance",
-    accessibility_info: "How far you need to walk from the nearest road. Set your preferred hiking distance range. Lakes within your preferred range score Excellent; scores degrade symmetrically beyond the range. Data source: N50 road network (Kartverket).",
-    ar5_land_use: "Urbanization",
-    ar5_land_use_info: "Distance from residential and industrial zones. Farther from developed areas scores higher. Score is based on distance to residential and industrial zones: beyond 2× the buffer distance = Excellent. Data source: AR5 land use classification (Kartverket).",
+    accessibility: "Accessibility",
+    accessibility_info: "How far you need to walk from the nearest road (as-the-crow-flies). Set your preferred walking distance range. Lakes within your preferred range score Excellent; scores degrade symmetrically beyond the range. Data source: N50 road network (Kartverket).",
+    ar5_land_use: "Buildings",
+    ar5_land_use_info: "Distance from residential and industrial zones according to AR5 land-use data. Farther from developed areas scores higher: beyond 2× the buffer distance = Excellent. Note: this differs from the cabin density score, which counts individual buildings from N50 data. Data source: AR5 land use classification (Kartverket).",
     ar5_residential: "Residential:",
     ar5_industrial: "Industrial:",
     fishing: "Fishing",
     fishing_info: "Fishing opportunities based on known fish species in the lake. Score is based on the fraction of your selected fish genera that are present. Data source: NINA Vanndata fisk (NINA).",
     overall_score: "Overall score",
     score_cabin_density: "Cabin density",
-    score_accessibility: "Hiking distance",
-    score_ar5: "Urbanization",
+    score_accessibility: "Accessibility",
+    score_ar5: "Buildings",
     score_fishing: "Fishing",
     area: "Area",
     road_distance: "Distance to road",
@@ -43,14 +43,14 @@ const I18N = {
     fish_species: "Fish species",
     prized_fish: "Prized fish",
     legend: "Legend",
-    legend_suitability: "Lakes \u2013 camping suitability:",
+    legend_suitability: "Suitability",
     legend_lakes: "Lakes",
     level_1: "Terrible",
     level_2: "Poor",
     level_3: "Fair",
     level_4: "Good",
     level_5: "Excellent",
-    lake_size_filter: "Lake size filter",
+    lake_size_filter: "Lake size",
     lake_size_filter_hint: "Hide lakes outside this size range",
     error_no_data: "Could not load map data",
     error_no_data_hint: "Run <code>uv run telttur generate</code> to produce <code>output/data.js</code>.",
@@ -75,26 +75,26 @@ const I18N = {
   },
   no: {
     title: "Telttur \u2013 Kart over teltturer i Norge",
-    scoring: "Poengberegning",
+    scoring: "Kriterier",
     min_lake_size: "Min innsjøstørrelse:",
     cabin_density: "Hyttetetthet",
-    cabin_density_info: "Tetthet av bygninger og hytter nær innsjøen. Færre nærliggende bygninger gir et roligere teltsted. Bruk glidebryteren til å stille toleransen for nærliggende bygninger: \"Svært lav\" godtar kun urørte innsjøer, \"Svært høy\" godtar tett bebygde områder. Datakilde: N50 bygningslag (Kartverket).",
+    cabin_density_info: "Tetthet av enkeltbygninger og hytter innenfor en kort avstand fra innsjøen. 'Lav terskel' betyr at det kun er det mest avsidesliggende vannene som markeres som 'Utmerket'. Datakilde: N50 bygningslag (Kartverket). Merk: dette er et annet mål enn 'Avstand fra bebyggelse', som bruker AR5-arealklassifiseringsdata.",
     cabin_density_tolerance: "Toleranse:",
     cabin_density_levels: ["Svært lav", "Lav", "Middels", "Høy", "Svært høy"],
     cabin_density_level_low: "Lav",
     cabin_density_level_high: "Høy",
-    accessibility: "Turens lengde",
-    accessibility_info: "Hvor langt du må gå fra nærmeste vei. Sett ønsket rekkevidde. Innsjøer innenfor ønsket rekkevidde får Utmerket; scoren synker symmetrisk utenfor rekkevidden. Datakilde: N50 vegnett (Kartverket).",
-    ar5_land_use: "Urbanisering",
-    ar5_land_use_info: "Avstand fra bolig- og industriområder. Lengre unna utbygde områder gir høyere score. Scoren er basert på avstand til bolig- og industrisoner: mer enn 2× bufferdistansen = Utmerket. Datakilde: AR5 arealbruksklassifisering (Kartverket).",
-    ar5_residential: "Bolig:",
+    accessibility: "Tilgjengelighet",
+    accessibility_info: "Korteste avstand til nærmeste vei i luftlinje. Innsjøer innenfor ønsket rekkevidde får 'Utmerket'. Scoren synker utenfor rekkevidden. Datakilde: N50 vegnett (Kartverket).",
+    ar5_land_use: "Avstand fra bebyggelse",
+    ar5_land_use_info: "Avstand fra bolig- og industriområder basert på AR5-arealdata. Lengre unna utbygde områder gir høyere score: mer enn 2× avstanden = Utmerket. Datakilde: AR5 arealbruksklassifisering (Kartverket).",
+    ar5_residential: "Boligområder:",
     ar5_industrial: "Industri:",
     fishing: "Fiske",
     fishing_info: "Fiskemuligheter basert på kjente fiskearter i innsjøen. Scoren er basert på andelen av dine valgte fiskeslekter som er til stede. Datakilde: NINA Vanndata fisk (NINA).",
     overall_score: "Total score",
     score_cabin_density: "Hyttetetthet",
-    score_accessibility: "Turens lengde",
-    score_ar5: "Urbanisering",
+    score_accessibility: "Tilgjengelighet",
+    score_ar5: "Bebyggelse",
     score_fishing: "Fiske",
     area: "Areal",
     road_distance: "Avstand til vei",
@@ -104,14 +104,14 @@ const I18N = {
     fish_species: "Fiskearter",
     prized_fish: "Sportsfisk",
     legend: "Tegnforklaring",
-    legend_suitability: "Innsjøer \u2013 egnethet for telt:",
+    legend_suitability: "Egnethet",
     legend_lakes: "Innsjøer",
     level_1: "Elendig",
     level_2: "Dårlig",
     level_3: "Middels",
     level_4: "Bra",
     level_5: "Utmerket",
-    lake_size_filter: "Innsjøstørrelse (filter)",
+    lake_size_filter: "Innsjøstørrelse",
     lake_size_filter_hint: "Skjul innsjøer utenfor dette størrelsesintervallet",
     error_no_data: "Klarte ikke å laste kartdata",
     error_no_data_hint: "Kjør <code>uv run telttur generate</code> for å lage <code>output/data.js</code>.",
@@ -684,45 +684,6 @@ function buildControls(cfg, lakeFields) {
     body.style.display = body.style.display === "none" ? "block" : "none";
   });
 
-  // Lake size filter — rendered as a distinct filter section (not a scoring dimension)
-  const minArea = cfg.min_lake_area_m2 || 0;
-  if (ctrl.min_lake_area) {
-    const filterDiv = document.createElement("div");
-    filterDiv.className = "tt-filter-section";
-    filterDiv.innerHTML =
-      `<div class="tt-filter-header">${t("lake_size_filter")}</div>` +
-      `<div class="tt-filter-hint">${t("lake_size_filter_hint")}</div>` +
-      `<div id="tt-ls-range-label" style="margin-bottom:2px">` +
-      `<span id="tt-ls-min-val" style="font-weight:bold">${formatArea(minArea)}</span>` +
-      ` – ` +
-      `<span id="tt-ls-max-val" style="font-weight:bold">${formatArea(50000000)}</span>` +
-      `</div>` +
-      `<div id="tt-ls-slider"></div>`;
-    body.appendChild(filterDiv);
-  }
-
-  // Cabin density card
-  if (dt.cabin_density && scoring.cabin_density) {
-    const cd = ctrl.cabin_density_slider;
-    let bodyHtml = "";
-    if (cd && cd.enabled && lakeFieldSet.has("building_density")) {
-      const defaultLabel = (t("cabin_density_levels") ?? [])[cd.default_step - 1] ?? cd.default_step;
-      bodyHtml =
-        `<div class="tt-dim-body" id="tt-cabin-body">` +
-        `${t("cabin_density_tolerance")} <span id="tt-ct-val" style="font-weight:bold">${defaultLabel}</span>` +
-        `<div class="tt-slider-range-labels">` +
-        `<span>${t("cabin_density_level_low")}</span><span>${t("cabin_density_level_high")}</span>` +
-        `</div>` +
-        `<div id="tt-ct-slider"></div>` +
-        `</div>`;
-    }
-    body.appendChild(buildDimCard(
-      "tt-cabin", t("cabin_density"),
-      t("cabin_density_info"),
-      bodyHtml,
-    ));
-  }
-
   // Accessibility card
   if (dt.accessibility && scoring.accessibility) {
     const ar = ctrl.accessibility_range;
@@ -734,6 +695,7 @@ function buildControls(cfg, lakeFields) {
       bodyHtml =
         `<div class="tt-dim-body" id="tt-access-body">` +
         `<div id="tt-ar-range-label" style="margin-bottom:6px">` +
+        `${t("road_distance")}: ` +
         `<span id="tt-ar-min-val" style="font-weight:bold">${arMin}</span> m` +
         ` – ` +
         `<span id="tt-ar-max-val" style="font-weight:bold">${arMax}</span> m` +
@@ -772,6 +734,28 @@ function buildControls(cfg, lakeFields) {
     ));
   }
 
+  // Buildings (cabin density) card
+  if (dt.cabin_density && scoring.cabin_density) {
+    const cd = ctrl.cabin_density_slider;
+    let bodyHtml = "";
+    if (cd && cd.enabled && lakeFieldSet.has("building_density")) {
+      const defaultLabel = (t("cabin_density_levels") ?? [])[cd.default_step - 1] ?? cd.default_step;
+      bodyHtml =
+        `<div class="tt-dim-body" id="tt-cabin-body">` +
+        `${t("cabin_density_tolerance")} <span id="tt-ct-val" style="font-weight:bold">${defaultLabel}</span>` +
+        `<div class="tt-slider-range-labels">` +
+        `<span>${t("cabin_density_level_low")}</span><span>${t("cabin_density_level_high")}</span>` +
+        `</div>` +
+        `<div id="tt-ct-slider"></div>` +
+        `</div>`;
+    }
+    body.appendChild(buildDimCard(
+      "tt-cabin", t("cabin_density"),
+      t("cabin_density_info"),
+      bodyHtml,
+    ));
+  }
+
   // Fishing card
   if (dt.fishing && scoring.fishing) {
     const fgCfg = ctrl.fishing_genera;
@@ -799,6 +783,23 @@ function buildControls(cfg, lakeFields) {
       t("fishing_info"),
       bodyHtml,
     ));
+  }
+
+  // Lake size filter — separate section at the bottom
+  const minArea = cfg.min_lake_area_m2 || 0;
+  if (ctrl.min_lake_area) {
+    const filterDiv = document.createElement("div");
+    filterDiv.className = "tt-filter-section";
+    filterDiv.innerHTML =
+      `<div class="tt-filter-header">${t("lake_size_filter")}</div>` +
+      `<div class="tt-filter-hint">${t("lake_size_filter_hint")}</div>` +
+      `<div id="tt-ls-range-label" style="margin-bottom:2px">` +
+      `<span id="tt-ls-min-val" style="font-weight:bold">${formatArea(minArea)}</span>` +
+      ` – ` +
+      `<span id="tt-ls-max-val" style="font-weight:bold">${formatArea(50000000)}</span>` +
+      `</div>` +
+      `<div id="tt-ls-slider"></div>`;
+    body.appendChild(filterDiv);
   }
 
   document.body.appendChild(container);
@@ -971,7 +972,7 @@ function buildLegend(data) {
   const legend = document.createElement("div");
   legend.id = "tt-legend";
 
-  let html = `<b>${t("legend")}</b>`;
+  let html = "";
 
   if (hasTentability) {
     html += `<b>${t("legend_suitability")}</b><br>`;
