@@ -12,153 +12,68 @@
 // ---------------------------------------------------------------------------
 
 const I18N = {
-  en: {
-    title: "Telttur – Norwegian Camping Suitability Map",
-    scoring: "Criteria",
-    min_lake_size: "Min lake size:",
-    cabin_density: "Cabin density",
-    cabin_density_info: "Density of buildings and cabins within a set radius of the lake. Fewer nearby buildings means a quieter camping spot. Use the slider to set your tolerance. Data source: N50 building layer (Kartverket). Note: this differs from the Buildings score, which uses AR5 land-use classification data.",
-    cabin_density_tolerance: "Tolerance:",
-    cabin_density_levels: ["Very low", "Low", "Medium", "High", "Very high"],
-    cabin_density_level_low: "Low",
-    cabin_density_level_high: "High",
-    accessibility: "Accessibility",
-    accessibility_info: "How far you need to walk from the nearest road (as-the-crow-flies). Set your preferred walking distance range. Lakes within your preferred range score Excellent; scores degrade symmetrically beyond the range. Data source: N50 road network (Kartverket).",
-    ar5_land_use: "Buildings",
-    ar5_land_use_info: "Distance from residential and industrial zones according to AR5 land-use data. Farther from developed areas scores higher: beyond 2× the buffer distance = Excellent. Note: this differs from the cabin density score, which counts individual buildings from N50 data. Data source: AR5 land use classification (Kartverket).",
-    ar5_residential: "Residential:",
-    ar5_industrial: "Industrial:",
-    fishing: "Fishing",
-    fishing_info: "Fishing opportunities based on known fish species in the lake. Score is based on the fraction of your selected fish genera that are present. Data source: NINA Vanndata fisk (NINA).",
-    overall_score: "Overall score",
-    score_cabin_density: "Cabin density",
-    score_accessibility: "Accessibility",
-    score_ar5: "Buildings",
-    score_fishing: "Fishing",
-    area: "Area",
-    road_distance: "Distance to road",
-    building_density: "Cabin density",
-    industrial_distance: "Distance to industry",
-    residential_distance: "Distance to housing",
-    fish_species: "Fish species",
-    prized_fish: "Prized fish",
-    legend: "Legend",
-    legend_suitability: "Suitability",
-    legend_lakes: "Lakes",
-    level_1: "Terrible",
-    level_2: "Poor",
-    level_3: "Fair",
-    level_4: "Good",
-    level_5: "Excellent",
-    lake_size_filter: "Lake size",
-    lake_size_filter_hint: "Hide lakes outside this size range",
-    error_no_data: "Could not load map data",
-    error_no_data_hint: "Run <code>uv run telttur generate</code> to produce <code>output/data.js</code>.",
-    genus_Salmo: "Trout/Salmon",
-    genus_Salvelinus: "Char",
-    genus_Thymallus: "Grayling",
-    genus_Esox: "Pike",
-    genus_Perca: "Perch",
-    genus_Coregonus: "Whitefish",
-    fish_select_all: "Select all",
-    fish_deselect_all: "Deselect all",
-    fish_selected_all: "All selected",
-    fish_selected_none: "None selected",
-    credits: "Credits",
-    credits_data: "Data sources",
-    credits_n50: "N50 map data (roads, lakes, buildings)",
-    credits_ar5: "AR5 land use classification",
-    credits_nina: "Fish species observations",
-    credits_basemap: "Base map tiles",
-    credits_library: "Map library",
-    credits_source_code: "Source code",
-  },
-  no: {
-    title: "Telttur \u2013 Kart over teltturer i Norge",
-    scoring: "Kriterier",
-    min_lake_size: "Min innsjøstørrelse:",
-    cabin_density: "Hyttetetthet",
-    cabin_density_info: "Tetthet av enkeltbygninger og hytter innenfor en kort avstand fra innsjøen. 'Lav terskel' betyr at det kun er det mest avsidesliggende vannene som markeres som 'Utmerket'. Datakilde: N50 bygningslag (Kartverket). Merk: dette er et annet mål enn 'Avstand fra bebyggelse', som bruker AR5-arealklassifiseringsdata.",
-    cabin_density_tolerance: "Toleranse:",
-    cabin_density_levels: ["Svært lav", "Lav", "Middels", "Høy", "Svært høy"],
-    cabin_density_level_low: "Lav",
-    cabin_density_level_high: "Høy",
-    accessibility: "Tilgjengelighet",
-    accessibility_info: "Korteste avstand til nærmeste vei i luftlinje. Innsjøer innenfor ønsket rekkevidde får 'Utmerket'. Scoren synker utenfor rekkevidden. Datakilde: N50 vegnett (Kartverket).",
-    ar5_land_use: "Avstand fra bebyggelse",
-    ar5_land_use_info: "Avstand fra bolig- og industriområder basert på AR5-arealdata. Lengre unna utbygde områder gir høyere score: mer enn 2× avstanden = Utmerket. Datakilde: AR5 arealbruksklassifisering (Kartverket).",
-    ar5_residential: "Boligområder:",
-    ar5_industrial: "Industri:",
-    fishing: "Fiske",
-    fishing_info: "Fiskemuligheter basert på kjente fiskearter i innsjøen. Scoren er basert på andelen av dine valgte fiskeslekter som er til stede. Datakilde: NINA Vanndata fisk (NINA).",
-    overall_score: "Total score",
-    score_cabin_density: "Hyttetetthet",
-    score_accessibility: "Tilgjengelighet",
-    score_ar5: "Bebyggelse",
-    score_fishing: "Fiske",
-    area: "Areal",
-    road_distance: "Avstand til vei",
-    building_density: "Hyttetetthet",
-    industrial_distance: "Avstand til industri",
-    residential_distance: "Avstand til bebyggelse",
-    fish_species: "Fiskearter",
-    prized_fish: "Sportsfisk",
-    legend: "Tegnforklaring",
-    legend_suitability: "Egnethet",
-    legend_lakes: "Innsjøer",
-    level_1: "Elendig",
-    level_2: "Dårlig",
-    level_3: "Middels",
-    level_4: "Bra",
-    level_5: "Utmerket",
-    lake_size_filter: "Innsjøstørrelse",
-    lake_size_filter_hint: "Skjul innsjøer utenfor dette størrelsesintervallet",
-    error_no_data: "Klarte ikke å laste kartdata",
-    error_no_data_hint: "Kjør <code>uv run telttur generate</code> for å lage <code>output/data.js</code>.",
-    genus_Salmo: "Ørret/Laks",
-    genus_Salvelinus: "Røye",
-    genus_Thymallus: "Harr",
-    genus_Esox: "Gjedde",
-    genus_Perca: "Abbor",
-    genus_Coregonus: "Sik",
-    fish_select_all: "Velg alle",
-    fish_deselect_all: "Fjern alle",
-    fish_selected_all: "Alle valgt",
-    fish_selected_none: "Ingen valgt",
-    credits: "Kildehenvisninger",
-    credits_data: "Datakilder",
-    credits_n50: "N50 kartdata (veier, innsjøer, bygninger)",
-    credits_ar5: "AR5 arealbruksklassifisering",
-    credits_nina: "Fiskeartsobservasjoner",
-    credits_basemap: "Bakgrunnskartfliser",
-    credits_library: "Kartbibliotek",
-    credits_source_code: "Kildekode",
-  },
+  title: "Telttur – Kart over teltturer i Norge",
+  scoring: "Kriterier",
+  min_lake_size: "Min innsjøstørrelse:",
+  cabin_density: "Hyttetetthet",
+  cabin_density_info: "Tetthet av enkeltbygninger og hytter innenfor en kort avstand fra innsjøen. 'Lav terskel' betyr at det kun er det mest avsidesliggende vannene som markeres som 'Utmerket'. Datakilde: N50 bygningslag (Kartverket). Merk: dette er et annet mål enn 'Avstand fra bebyggelse', som bruker AR5-arealklassifiseringsdata.",
+  cabin_density_tolerance: "Toleranse:",
+  cabin_density_levels: ["Svært lav", "Lav", "Middels", "Høy", "Svært høy"],
+  cabin_density_level_low: "Lav",
+  cabin_density_level_high: "Høy",
+  accessibility: "Tilgjengelighet",
+  accessibility_info: "Korteste avstand til nærmeste vei i luftlinje. Innsjøer innenfor ønsket rekkevidde får 'Utmerket'. Scoren synker utenfor rekkevidden. Datakilde: N50 vegnett (Kartverket).",
+  ar5_land_use: "Avstand fra bebyggelse",
+  ar5_land_use_info: "Avstand fra bolig- og industriområder basert på AR5-arealdata. Lengre unna utbygde områder gir høyere score: mer enn 2\xd7 avstanden = Utmerket. Datakilde: AR5 arealbruksklassifisering (Kartverket).",
+  ar5_residential: "Boligområder:",
+  ar5_industrial: "Industri:",
+  fishing: "Fiske",
+  fishing_info: "Fiskemuligheter basert på kjente fiskearter i innsjøen. Scoren er basert på andelen av dine valgte fiskeslekter som er til stede. Datakilde: NINA Vanndata fisk (NINA).",
+  overall_score: "Total score",
+  score_cabin_density: "Hyttetetthet",
+  score_accessibility: "Tilgjengelighet",
+  score_ar5: "Bebyggelse",
+  score_fishing: "Fiske",
+  area: "Areal",
+  road_distance: "Avstand til vei",
+  building_density: "Hyttetetthet",
+  industrial_distance: "Avstand til industri",
+  residential_distance: "Avstand til bebyggelse",
+  fish_species: "Fiskearter",
+  prized_fish: "Sportsfisk",
+  legend_suitability: "Egnethet",
+  legend_lakes: "Innsjøer",
+  level_1: "Elendig",
+  level_2: "Dårlig",
+  level_3: "Middels",
+  level_4: "Bra",
+  level_5: "Utmerket",
+  lake_size_filter: "Innsjøstørrelse",
+  lake_size_filter_hint: "Skjul innsjøer utenfor dette størrelsesintervallet",
+  error_no_data: "Klarte ikke å laste kartdata",
+  error_no_data_hint: "Kjør <code>uv run telttur generate</code> for å lage <code>output/data.js</code>.",
+  genus_Salmo: "Ørret/Laks",
+  genus_Salvelinus: "Røye",
+  genus_Thymallus: "Harr",
+  genus_Esox: "Gjedde",
+  genus_Perca: "Abbor",
+  genus_Coregonus: "Sik",
+  fish_select_all: "Velg alle",
+  fish_deselect_all: "Fjern alle",
+  fish_selected_all: "Alle valgt",
+  fish_selected_none: "Ingen valgt",
+  credits: "Kildehenvisninger",
+  credits_data: "Datakilder",
+  credits_n50: "N50 kartdata (veier, innsjøer, bygninger)",
+  credits_ar5: "AR5 arealbruksklassifisering",
+  credits_nina: "Fiskeartsobservasjoner",
+  credits_basemap: "Bakgrunnskartfliser",
+  credits_library: "Kartbibliotek",
+  credits_source_code: "Kildekode",
 };
 
-/** Detect initial language: stored preference → browser language → English fallback. */
-function _detectLang() {
-  const stored = localStorage.getItem("telttur-lang");
-  if (stored === "en" || stored === "no") return stored;
-  const nav = navigator.language?.toLowerCase() ?? "";
-  return nav.startsWith("en") ? "en" : "no";
-}
-
-let _lang = _detectLang();
-
-/** Return the translated string for key in the current language. */
 function t(key) {
-  return I18N[_lang]?.[key] ?? I18N.en[key] ?? key;
-}
-
-/** Switch the UI language, persist it, and rebuild the controls and legend. */
-function setLang(lang) {
-  if (lang === _lang) return;
-  _lang = lang;
-  localStorage.setItem("telttur-lang", lang);
-  document.documentElement.lang = lang === "no" ? "nb" : "en";
-  document.title = t("title");
-  if (_ttData) rebuildUI();
+  return I18N[key] ?? key;
 }
 
 // ---------------------------------------------------------------------------
@@ -573,7 +488,7 @@ function initMap(data) {
 
   // Build UI
   buildControls(data.config, data.lake_fields);
-  buildLegend(data);
+  buildLegend();
   buildFooter();
 
   // Debug building layer (only present when generated with --debug-buildings)
@@ -634,22 +549,27 @@ function ttToggleDim(id) {
 
 /**
  * Build a scoring dimension card element.
- * @param {string} id       - Checkbox element id (e.g. "tt-cabin").
- * @param {string} label    - Display label.
- * @param {string} infoText - Tooltip description text.
- * @param {string} bodyHtml - Inner HTML for the card body (sliders etc.).
+ * @param {string} id            - Checkbox element id (e.g. "tt-cabin").
+ * @param {string} label         - Display label.
+ * @param {string} infoText      - Tooltip description text.
+ * @param {string} bodyHtml      - Inner HTML for the card body (sliders etc.).
+ * @param {boolean} defaultChecked - Whether the dimension starts enabled.
  */
-function buildDimCard(id, label, infoText, bodyHtml) {
+function buildDimCard(id, label, infoText, bodyHtml, defaultChecked = true) {
   const card = document.createElement("div");
   card.className = "tt-dim-card";
   card.innerHTML =
     `<div class="tt-dim-header">` +
-    `<label><input type="checkbox" id="${id}" checked> ${label}</label>` +
+    `<label><input type="checkbox" id="${id}"${defaultChecked ? " checked" : ""}> ${label}</label>` +
     `<span class="tt-info-btn" tabindex="0">ⓘ` +
     `<span class="tt-info-tip">${infoText}</span>` +
     `</span>` +
     `</div>` +
     bodyHtml;
+  if (!defaultChecked) {
+    const cardBody = card.querySelector(`#${id}-body`);
+    if (cardBody) cardBody.style.display = "none";
+  }
   card.querySelector(`#${id}`).addEventListener("change", () => ttToggleDim(id));
   card.querySelector(".tt-info-btn").addEventListener("click", function () {
     this.classList.toggle("tt-info-open");
@@ -734,7 +654,7 @@ function buildControls(cfg, lakeFields) {
     ));
   }
 
-  // Buildings (cabin density) card
+  // Buildings (cabin density) card — starts unchecked
   if (dt.cabin_density && scoring.cabin_density) {
     const cd = ctrl.cabin_density_slider;
     let bodyHtml = "";
@@ -753,10 +673,11 @@ function buildControls(cfg, lakeFields) {
       "tt-cabin", t("cabin_density"),
       t("cabin_density_info"),
       bodyHtml,
+      false,
     ));
   }
 
-  // Fishing card
+  // Fishing card — starts unchecked
   if (dt.fishing && scoring.fishing) {
     const fgCfg = ctrl.fishing_genera;
     const fishingGenera = scoring.fishing?.genera ?? [];
@@ -782,6 +703,7 @@ function buildControls(cfg, lakeFields) {
       "tt-fishing", t("fishing"),
       t("fishing_info"),
       bodyHtml,
+      false,
     ));
   }
 
@@ -794,7 +716,7 @@ function buildControls(cfg, lakeFields) {
       `<div class="tt-filter-header">${t("lake_size_filter")}</div>` +
       `<div class="tt-filter-hint">${t("lake_size_filter_hint")}</div>` +
       `<div id="tt-ls-range-label" style="margin-bottom:2px">` +
-      `<span id="tt-ls-min-val" style="font-weight:bold">${formatArea(minArea)}</span>` +
+      `<span id="tt-ls-min-val" style="font-weight:bold">${formatArea(0)}</span>` +
       ` – ` +
       `<span id="tt-ls-max-val" style="font-weight:bold">${formatArea(50000000)}</span>` +
       `</div>` +
@@ -803,16 +725,6 @@ function buildControls(cfg, lakeFields) {
   }
 
   document.body.appendChild(container);
-
-  // Language switcher (standalone fixed element)
-  const langSwitcher = document.createElement("div");
-  langSwitcher.id = "tt-lang-switcher";
-  langSwitcher.innerHTML =
-    `<button class="tt-lang-btn${_lang === 'en' ? ' tt-lang-active' : ''}">EN</button>` +
-    `<button class="tt-lang-btn${_lang === 'no' ? ' tt-lang-active' : ''}">NO</button>`;
-  langSwitcher.children[0].addEventListener("click", () => setLang("en"));
-  langSwitcher.children[1].addEventListener("click", () => setLang("no"));
-  document.body.appendChild(langSwitcher);
 
   // Initialise noUiSlider for cabin density (discrete steps mapped to quantiles)
   const ctSliderEl = document.getElementById("tt-ct-slider");
@@ -829,8 +741,8 @@ function buildControls(cfg, lakeFields) {
       const step = Math.round(parseFloat(values[0]));
       const label = levels[step - 1] ?? step;
       document.getElementById("tt-ct-val").textContent = label;
-      teltturUpdate(_ttCfg);
     });
+    _ctSlider.on("change", () => teltturUpdate(_ttCfg));
   }
 
   // Initialise noUiSlider for AR5 residential buffer
@@ -846,8 +758,8 @@ function buildControls(cfg, lakeFields) {
     });
     _ar5ResSlider.on("update", (values) => {
       document.getElementById("tt-ar5-res-val").textContent = Math.round(values[0]);
-      teltturUpdate(_ttCfg);
     });
+    _ar5ResSlider.on("change", () => teltturUpdate(_ttCfg));
   }
 
   // Initialise noUiSlider for AR5 industrial buffer
@@ -863,8 +775,8 @@ function buildControls(cfg, lakeFields) {
     });
     _ar5IndSlider.on("update", (values) => {
       document.getElementById("tt-ar5-ind-val").textContent = Math.round(values[0]);
-      teltturUpdate(_ttCfg);
     });
+    _ar5IndSlider.on("change", () => teltturUpdate(_ttCfg));
   }
 
   // Fish genera dropdown events
@@ -932,15 +844,15 @@ function buildControls(cfg, lakeFields) {
     _arSlider.on("update", (values) => {
       document.getElementById("tt-ar-min-val").textContent = Math.round(values[0]);
       document.getElementById("tt-ar-max-val").textContent = Math.round(values[1]);
-      teltturUpdate(_ttCfg);
     });
+    _arSlider.on("change", () => teltturUpdate(_ttCfg));
   }
 
   // Initialise noUiSlider for lake size range
   const lsSliderEl = document.getElementById("tt-ls-slider");
   if (lsSliderEl && typeof noUiSlider !== "undefined") {
     _lakeSizeSlider = noUiSlider.create(lsSliderEl, {
-      start: [100000, 50000000],
+      start: [0, 50000000],
       connect: true,
       range: {
         "min": [0, 100],
@@ -955,8 +867,8 @@ function buildControls(cfg, lakeFields) {
     _lakeSizeSlider.on("update", (values) => {
       document.getElementById("tt-ls-min-val").textContent = formatArea(parseFloat(values[0]));
       document.getElementById("tt-ls-max-val").textContent = formatArea(parseFloat(values[1]));
-      teltturUpdate(_ttCfg);
     });
+    _lakeSizeSlider.on("change", () => teltturUpdate(_ttCfg));
   }
 }
 
@@ -964,31 +876,16 @@ function buildControls(cfg, lakeFields) {
 // Legend
 // ---------------------------------------------------------------------------
 
-function buildLegend(data) {
-  const hasTentability = data.lake_fields.includes("building_density") ||
-    data.lake_fields.includes("road_distance_m") ||
-    data.lake_fields.includes("fish_genera_mask");
-
+function buildLegend() {
   const legend = document.createElement("div");
   legend.id = "tt-legend";
-
-  let html = "";
-
-  if (hasTentability) {
-    html += `<b>${t("legend_suitability")}</b><br>`;
-    for (let level = 5; level >= 1; level--) {
-      html +=
-        `<div class="tt-legend-row">` +
-        `<span class="tt-legend-swatch" style="background:${LEVEL_COLORS[level]}"></span>` +
-        `${t(`level_${level}`)}</div>`;
-    }
-  } else {
+  let html = `<div class="tt-legend-header">${t("legend_suitability")}</div>`;
+  for (let level = 5; level >= 1; level--) {
     html +=
-      '<div class="tt-legend-row">' +
-      '<span class="tt-legend-swatch" style="background:#67a9cf"></span>' +
-      `${t("legend_lakes")}</div>`;
+      `<div class="tt-legend-row">` +
+      `<span class="tt-legend-swatch" style="background:${LEVEL_COLORS[level]}"></span>` +
+      `${t(`level_${level}`)}</div>`;
   }
-
   legend.innerHTML = html;
   document.body.appendChild(legend);
 }
@@ -1036,34 +933,10 @@ function buildFooter() {
 let _ttCfg = null;
 let _ttData = null;
 
-/** Tear down and rebuild the controls panel and legend (used on language switch). */
-function rebuildUI() {
-  const old = document.getElementById("tt-controls");
-  if (old) old.remove();
-  const oldLegend = document.getElementById("tt-legend");
-  if (oldLegend) oldLegend.remove();
-  const oldFooter = document.getElementById("tt-footer");
-  if (oldFooter) oldFooter.remove();
-  const oldDialog = document.getElementById("tt-credits-dialog");
-  if (oldDialog) oldDialog.remove();
-  const oldLang = document.getElementById("tt-lang-switcher");
-  if (oldLang) oldLang.remove();
-  _arSlider = null;
-  _lakeSizeSlider = null;
-  _ctSlider = null;
-  _ar5ResSlider = null;
-  _ar5IndSlider = null;
-  buildControls(_ttData.config, _ttData.lake_fields);
-  buildLegend(_ttData);
-  buildFooter();
-  teltturUpdate(_ttData.config);
-}
-
 function _start(data) {
   _ttCfg = data.config;
   _ttData = data;
   document.title = t("title");
-  document.documentElement.lang = _lang === "no" ? "nb" : "en";
   initMap(data);
 }
 

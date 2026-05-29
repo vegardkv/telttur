@@ -5,7 +5,7 @@ fylke: norway
 output_filename: data_norway.js
 
 # Only include lakes ≥ 5 ha to keep the dataset manageable nationally
-min_lake_area_m2: 10000
+min_lake_area_m2: 5000
 
 lake_display_mode: marker
 show_roads: false
