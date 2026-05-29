@@ -1,49 +1,17 @@
 """CLI entry point for telttur map generation."""
 
-import math
 import time
 from pathlib import Path
 
 import click
 
-from telttur.config import BBox, load_config
+from telttur.config import load_config
 from telttur.data_export import export_data
 from telttur.download import download_n50
 from telttur.lakes import process_lakes
 from telttur.roads import process_roads
 from telttur.scoring import process_scoring
 from telttur.scoring.cabin_density import extract_buildings_all
-
-
-def _adaptive_simplify_tolerance(
-    bbox: BBox, configured: float, large_threshold: float = 15_000, small_threshold: float = 2_000
-) -> float:
-    """Return an effective simplify tolerance based on bbox area.
-
-    Thresholds (km²):
-      <  2 000 km² — use configured value as-is
-      2 000–15 000 km² — at least 100 m
-      > 15 000 km² — at least 200 m
-    """
-    lat_km = (bbox.north - bbox.south) * 111.0
-    mid_lat_rad = math.radians((bbox.north + bbox.south) / 2)
-    lon_km = (bbox.east - bbox.west) * 111.0 * math.cos(mid_lat_rad)
-    area_km2 = lat_km * lon_km
-
-    if area_km2 > large_threshold:
-        minimum = 200.0
-    elif area_km2 > small_threshold:
-        minimum = 100.0
-    else:
-        minimum = configured
-
-    effective = max(configured, minimum)
-    if effective != configured:
-        print(
-            f"Adaptive simplification: bbox area ~{area_km2:.0f} km², "
-            f"raising tolerance from {configured}m to {effective}m"
-        )
-    return effective
 
 
 @click.group()
@@ -76,8 +44,6 @@ def generate(
         f"E={config.bbox.east} W={config.bbox.west}"
     )
 
-    effective_simplify = _adaptive_simplify_tolerance(config.bbox, config.simplify_tolerance_m)
-
     # Step 1: Download data
     t0 = time.time()
     config.data_path.mkdir(parents=True, exist_ok=True)
@@ -101,7 +67,7 @@ def generate(
     lakes = process_lakes(
         gdb_paths,
         config.bbox,
-        effective_simplify,
+        config.simplify_tolerance_m,
         min_lake_area_m2=config.min_lake_area_m2,
     )
     print(f"  [lakes: {time.time() - t0:.1f}s]")
