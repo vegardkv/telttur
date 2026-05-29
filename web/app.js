@@ -51,7 +51,6 @@ const I18N = {
   lake_size_filter: "Innsjøstørrelse",
   lake_size_filter_hint: "Skjul innsjøer utenfor dette størrelsesintervallet",
   error_no_data: "Klarte ikke å laste kartdata",
-  error_no_data_hint: "Kjør <code>uv run telttur generate</code> for å lage <code>output/data.js</code>.",
   genus_Salmo: "Ørret/Laks",
   genus_Salvelinus: "Røye",
   genus_Thymallus: "Harr",
@@ -112,7 +111,6 @@ const DEFAULT_LAKE_COLOR = "#67a9cf";
 let map;
 let lakesLayer;     // L.LayerGroup containing all CircleMarker instances
 let allMarkers = []; // { marker, fields } — kept for re-filtering
-let _debugBldgLayer = null; // LayerGroup for debug building points (optional)
 let _arSlider = null;             // noUiSlider instance for accessibility range
 let _lakeSizeSlider = null;       // noUiSlider instance for lake size range
 let _ctSlider = null;             // noUiSlider instance for cabin density threshold
@@ -244,9 +242,7 @@ function readControlState(cfg) {
   const ctrl = cfg.interactive;
   const scoring = cfg.scoring;
 
-  const arCfg = ctrl.accessibility_range || {};
-  const ctCfg = ctrl.cabin_density_slider || {};
-  const ar5Cfg = ctrl.ar5_buffers || {};
+  const ctCfg = ctrl.cabin_density_slider;
 
   // Build fishing genera mask from checkboxes (default: all selected)
   const fishingGenera = scoring.fishing?.genera ?? [];
@@ -256,26 +252,21 @@ function readControlState(cfg) {
   }
 
   return {
-    minArea: ctrl.min_lake_area ? _lsMin() : cfg.min_lake_area_m2,
-    maxArea: ctrl.min_lake_area ? _lsMax() : Infinity,
-    arMin: arCfg.enabled ? _arSliderMin() : 0,
-    arMax: arCfg.enabled ? _arSliderMax() : 5000,
+    minArea: _lsMin(),
+    maxArea: _lsMax(),
+    arMin: _arSliderMin(),
+    arMax: _arSliderMax(),
     ctThreshold: (() => {
       const quantiles = ctCfg.quantiles ?? [];
-      if (!ctCfg.enabled || !quantiles.length) return quantiles[Math.floor(quantiles.length / 2)] ?? 0.05;
       const step = _ctSlider ? Math.round(parseFloat(_ctSlider.get())) : (ctCfg.default_step ?? 3);
       return quantiles[step - 1] ?? quantiles[quantiles.length - 1] ?? 0.05;
     })(),
-    ar5ResBuf: ar5Cfg.enabled
-      ? (_ar5ResSlider ? parseFloat(_ar5ResSlider.get()) : (scoring.ar5_land_use?.residential_buffer_m ?? 1000))
-      : (scoring.ar5_land_use?.residential_buffer_m ?? 1000),
-    ar5IndBuf: ar5Cfg.enabled
-      ? (_ar5IndSlider ? parseFloat(_ar5IndSlider.get()) : (scoring.ar5_land_use?.industrial_buffer_m ?? 2000))
-      : (scoring.ar5_land_use?.industrial_buffer_m ?? 2000),
-    cabinOn: checkVal("tt-cabin", !!scoring.cabin_density?.enabled),
-    accessOn: checkVal("tt-access", !!scoring.accessibility?.enabled),
-    ar5On: checkVal("tt-ar5", !!scoring.ar5_land_use?.enabled),
-    fishingOn: checkVal("tt-fishing", !!scoring.fishing?.enabled),
+    ar5ResBuf: _ar5ResSlider ? parseFloat(_ar5ResSlider.get()) : (scoring.ar5_land_use?.residential_buffer_m ?? 1000),
+    ar5IndBuf: _ar5IndSlider ? parseFloat(_ar5IndSlider.get()) : (scoring.ar5_land_use?.industrial_buffer_m ?? 2000),
+    cabinOn: checkVal("tt-cabin", false),
+    accessOn: checkVal("tt-access", true),
+    ar5On: checkVal("tt-ar5", true),
+    fishingOn: checkVal("tt-fishing", false),
     fishingMask,
   };
 }
@@ -491,46 +482,6 @@ function initMap(data) {
   buildLegend();
   buildFooter();
 
-  // Debug building layer (only present when generated with --debug-buildings)
-  if (data.debug_buildings) {
-    _debugBldgLayer = L.layerGroup().addTo(map);
-    const RESIDENTIAL_MIN = 100;
-    const RESIDENTIAL_MAX = 199;
-    for (const row of data.debug_buildings.rows) {
-      const [lat, lng, typeCode] = row;
-      const isResidential = typeCode != null && typeCode >= RESIDENTIAL_MIN && typeCode <= RESIDENTIAL_MAX;
-      L.circleMarker([lat, lng], {
-        radius: 4,
-        color: isResidential ? "#c0392b" : "#7f8c8d",
-        weight: 1,
-        fillColor: isResidential ? "#e74c3c" : "#bdc3c7",
-        fillOpacity: 0.8,
-        opacity: 1,
-      }).bindTooltip(
-        typeCode != null ? `bygningstype ${typeCode}${isResidential ? " ✓" : ""}` : "unknown type",
-        { sticky: true }
-      ).addTo(_debugBldgLayer);
-    }
-    // Add a toggle button to the map
-    const debugBtn = L.control({ position: "topright" });
-    debugBtn.onAdd = () => {
-      const div = L.DomUtil.create("div", "tt-debug-btn");
-      div.innerHTML = `<button id="tt-debug-bldg-btn">Buildings: ON</button>`;
-      L.DomEvent.disableClickPropagation(div);
-      div.querySelector("button").addEventListener("click", () => {
-        if (map.hasLayer(_debugBldgLayer)) {
-          map.removeLayer(_debugBldgLayer);
-          div.querySelector("button").textContent = "Buildings: OFF";
-        } else {
-          map.addLayer(_debugBldgLayer);
-          div.querySelector("button").textContent = "Buildings: ON";
-        }
-      });
-      return div;
-    };
-    debugBtn.addTo(map);
-  }
-
   // Initial filter pass
   setTimeout(() => teltturUpdate(data.config, idx), 100);
 }
@@ -579,10 +530,7 @@ function buildDimCard(id, label, infoText, bodyHtml, defaultChecked = true) {
 
 function buildControls(cfg, lakeFields) {
   const ctrl = cfg.interactive;
-  if (!ctrl || !ctrl.enabled) return;
-
   const scoring = cfg.scoring || {};
-  const dt = ctrl.dimension_toggles || {};
   const lakeFieldSet = new Set(lakeFields);
 
   const container = document.createElement("div");
@@ -605,13 +553,12 @@ function buildControls(cfg, lakeFields) {
   });
 
   // Accessibility card
-  if (dt.accessibility && scoring.accessibility) {
+  {
     const ar = ctrl.accessibility_range;
     let bodyHtml = "";
-    if (ar && ar.enabled && lakeFieldSet.has("road_distance_m")) {
+    if (lakeFieldSet.has("road_distance_m")) {
       const arMin = ar.min_m | 0;
       const arMax = ar.max_m | 0;
-      const arSliderMax = ar.slider_max_m | 0;
       bodyHtml =
         `<div class="tt-dim-body" id="tt-access-body">` +
         `<div id="tt-ar-range-label" style="margin-bottom:6px">` +
@@ -631,14 +578,12 @@ function buildControls(cfg, lakeFields) {
   }
 
   // Land use (AR5) card
-  if (dt.ar5_land_use && scoring.ar5_land_use) {
-    const ar5b = ctrl.ar5_buffers;
+  {
     const ar5s = scoring.ar5_land_use;
     let bodyHtml = "";
-    if (ar5b && ar5b.enabled && ar5s && lakeFieldSet.has("industrial_distance_m")) {
+    if (ar5s && lakeFieldSet.has("industrial_distance_m")) {
       const resVal = ar5s.residential_buffer_m | 0;
       const indVal = ar5s.industrial_buffer_m | 0;
-      const ar5SliderMax = ar5b.slider_max_m | 0;
       bodyHtml =
         `<div class="tt-dim-body" id="tt-ar5-body">` +
         `${t("ar5_residential")} <span id="tt-ar5-res-val" style="font-weight:bold">${resVal}</span> m<br>` +
@@ -655,10 +600,10 @@ function buildControls(cfg, lakeFields) {
   }
 
   // Buildings (cabin density) card — starts unchecked
-  if (dt.cabin_density && scoring.cabin_density) {
+  {
     const cd = ctrl.cabin_density_slider;
     let bodyHtml = "";
-    if (cd && cd.enabled && lakeFieldSet.has("building_density")) {
+    if (lakeFieldSet.has("building_density")) {
       const defaultLabel = (t("cabin_density_levels") ?? [])[cd.default_step - 1] ?? cd.default_step;
       bodyHtml =
         `<div class="tt-dim-body" id="tt-cabin-body">` +
@@ -678,11 +623,10 @@ function buildControls(cfg, lakeFields) {
   }
 
   // Fishing card — starts unchecked
-  if (dt.fishing && scoring.fishing) {
-    const fgCfg = ctrl.fishing_genera;
+  {
     const fishingGenera = scoring.fishing?.genera ?? [];
     let bodyHtml = "";
-    if (fgCfg && fgCfg.enabled && fishingGenera.length > 0 && lakeFieldSet.has("fish_genera_mask")) {
+    if (fishingGenera.length > 0 && lakeFieldSet.has("fish_genera_mask")) {
       bodyHtml =
         `<div class="tt-dim-body" id="tt-fishing-body">` +
         `<div class="tt-fish-dropdown">` +
@@ -708,8 +652,7 @@ function buildControls(cfg, lakeFields) {
   }
 
   // Lake size filter — separate section at the bottom
-  const minArea = cfg.min_lake_area_m2 || 0;
-  if (ctrl.min_lake_area) {
+  {
     const filterDiv = document.createElement("div");
     filterDiv.className = "tt-filter-section";
     filterDiv.innerHTML =
@@ -946,6 +889,5 @@ if (window.TELTTUR_DATA) {
   document.body.innerHTML =
     `<div style="padding:2em;font-family:sans-serif;color:#c00">` +
     `<h2>${t("error_no_data")}</h2>` +
-    `<p>${t("error_no_data_hint")}</p>` +
     `</div>`;
 }

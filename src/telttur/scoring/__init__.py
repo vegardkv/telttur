@@ -44,65 +44,52 @@ def process_scoring(
     road_lines: gpd.GeoDataFrame,
     config: ScoringConfig,
 ) -> gpd.GeoDataFrame:
-    """Full scoring pipeline: run enabled dimensions to compute raw data columns.
+    """Full scoring pipeline: compute raw data columns for every dimension.
 
-    Each dimension is run only when its ``enabled`` flag is True. Raw data
-    columns (distances, densities, bitmasks) are computed here; threshold-based
-    score conversion is handled by the JavaScript frontend.
+    Raw data columns (distances, densities, bitmasks) are computed here;
+    threshold-based score conversion is handled by the JavaScript frontend.
     """
 
     # --- Cabin density ---
-    if config.cabin_density.enabled:
-        print("Extracting buildings for cabin density scoring...")
-        buildings = cabin_density.extract_buildings(gdb_paths, bbox)
-        print(f"  Found {len(buildings)} building features")
+    print("Extracting buildings for cabin density scoring...")
+    buildings = cabin_density.extract_buildings(gdb_paths, bbox)
+    print(f"  Found {len(buildings)} building features")
 
-        if buildings.empty:
-            print("  No buildings found — all lakes get zero building density")
-            lakes = lakes.copy()
-            lakes[LakeCols.BUILDING_COUNT] = 0
-            lakes[LakeCols.BUILDING_DENSITY] = 0.0
-        else:
-            print(f"Scoring cabin density ({config.cabin_density.buffer_m} m buffer)...")
-            lakes = cabin_density.score_cabin_density(lakes, buildings, config.cabin_density)
+    if buildings.empty:
+        print("  No buildings found — all lakes get zero building density")
+        lakes = lakes.copy()
+        lakes[LakeCols.BUILDING_COUNT] = 0
+        lakes[LakeCols.BUILDING_DENSITY] = 0.0
     else:
-        print("Cabin density scoring disabled — skipping")
+        print(f"Scoring cabin density ({config.cabin_density.buffer_m} m buffer)...")
+        lakes = cabin_density.score_cabin_density(lakes, buildings, config.cabin_density)
 
     # --- Accessibility ---
-    if config.accessibility.enabled:
-        print("Scoring accessibility (distance to nearest drivable road)...")
-        lakes = accessibility.score_accessibility(
-            lakes, road_lines, config.accessibility, config.accessibility.excluded_road_types
-        )
-    else:
-        print("Accessibility scoring disabled — skipping")
+    print("Scoring accessibility (distance to nearest drivable road)...")
+    lakes = accessibility.score_accessibility(
+        lakes, road_lines, config.accessibility, config.accessibility.excluded_road_types
+    )
 
     # --- AR5 land use proximity ---
-    if config.ar5_land_use.enabled:
-        print("Scoring AR5 land use proximity (industrial / residential zones)...")
-        industrial_polygons, residential_polygons = ar5_land_use.fetch_ar5_land_use_polygons(
-            gdb_paths, bbox, config.ar5_land_use
-        )
-        lakes = ar5_land_use.score_ar5_land_use(
-            lakes, industrial_polygons, residential_polygons, config.ar5_land_use
-        )
-    else:
-        print("AR5 land use scoring disabled — skipping")
+    print("Scoring AR5 land use proximity (industrial / residential zones)...")
+    industrial_polygons, residential_polygons = ar5_land_use.fetch_ar5_land_use_polygons(
+        gdb_paths, bbox, config.ar5_land_use
+    )
+    lakes = ar5_land_use.score_ar5_land_use(
+        lakes, industrial_polygons, residential_polygons, config.ar5_land_use
+    )
 
     # --- Fishing suitability ---
-    if config.fishing.enabled:
-        print("Downloading NINA freshwater fish observations...")
-        try:
-            fish_obs = fishing.fetch_nina_fish_observations()
-            print(f"  Loaded {len(fish_obs)} fish occurrence records")
-            print(f"Scoring fishing suitability ({config.fishing.buffer_m} m buffer)...")
-            lakes = fishing.score_fishing(lakes, fish_obs, config.fishing)
-            total = len(lakes)
-            with_fish = (lakes[LakeCols.FISH_GENERA_MASK] > 0).sum()
-            print(f"  Lakes with at least one prized genus: {with_fish}/{total}")
-        except RuntimeError as exc:
-            print(f"  WARNING: Fishing scoring skipped — {exc}")
-    else:
-        print("Fishing scoring disabled — skipping")
+    print("Downloading NINA freshwater fish observations...")
+    try:
+        fish_obs = fishing.fetch_nina_fish_observations()
+        print(f"  Loaded {len(fish_obs)} fish occurrence records")
+        print(f"Scoring fishing suitability ({config.fishing.buffer_m} m buffer)...")
+        lakes = fishing.score_fishing(lakes, fish_obs, config.fishing)
+        total = len(lakes)
+        with_fish = (lakes[LakeCols.FISH_GENERA_MASK] > 0).sum()
+        print(f"  Lakes with at least one prized genus: {with_fish}/{total}")
+    except RuntimeError as exc:
+        print(f"  WARNING: Fishing scoring skipped — {exc}")
 
     return lakes

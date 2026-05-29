@@ -137,70 +137,44 @@ def _compute_density_quantiles(lakes: gpd.GeoDataFrame, steps: int) -> list[floa
 
 def build_config_block(config: Config, lakes: gpd.GeoDataFrame) -> dict[str, Any]:
     """Extract scoring thresholds and interactive control defaults for the frontend."""
-    scoring_cfg: dict[str, Any] = {}
-
-    if config.scoring.cabin_density.enabled:
-        scoring_cfg["cabin_density"] = {"enabled": True}
-
-    if config.scoring.accessibility.enabled:
-        t2 = config.scoring.accessibility.thresholds
-        scoring_cfg["accessibility"] = {
-            "enabled": True,
+    t2 = config.scoring.accessibility.thresholds
+    scoring_cfg: dict[str, Any] = {
+        "accessibility": {
             "thresholds": {
                 "excellent": t2.excellent,
                 "good": t2.good,
                 "fair": t2.fair,
                 "poor": t2.poor,
             },
-        }
-
-    if config.scoring.ar5_land_use.enabled:
-        scoring_cfg["ar5_land_use"] = {
-            "enabled": True,
+        },
+        "ar5_land_use": {
             "residential_buffer_m": config.scoring.ar5_land_use.residential_buffer_m,
             "industrial_buffer_m": config.scoring.ar5_land_use.industrial_buffer_m,
-        }
+        },
+        "fishing": {"genera": _FISHING_PRIZED_GENERA},
+    }
 
-    if config.scoring.fishing.enabled:
-        scoring_cfg["fishing"] = {"enabled": True, "genera": _FISHING_PRIZED_GENERA}
-
-    interactive_cfg: dict[str, Any] = {}
     ctrl = config.map.interactive_controls
-    if ctrl.enabled:
-        interactive_cfg["enabled"] = True
-        dt = ctrl.dimension_toggles
-        interactive_cfg["dimension_toggles"] = {
-            "cabin_density": dt.cabin_density,
-            "accessibility": dt.accessibility,
-            "ar5_land_use": dt.ar5_land_use,
-            "fishing": dt.fishing,
-        }
-        interactive_cfg["min_lake_area"] = ctrl.min_lake_area
-        ar = ctrl.accessibility_range
-        interactive_cfg["accessibility_range"] = {
-            "enabled": ar.enabled,
+    ar = ctrl.accessibility_range
+    cd = ctrl.cabin_density_slider
+    quantiles = _compute_density_quantiles(lakes, cd.steps)
+    print("Cabin density quantiles for slider steps:", quantiles)
+    ar5b = ctrl.ar5_buffers
+    interactive_cfg: dict[str, Any] = {
+        "accessibility_range": {
             "min_m": ar.min_m,
             "max_m": ar.max_m,
             "slider_max_m": ar.slider_max_m,
-        }
-        cd = ctrl.cabin_density_slider
-        quantiles = _compute_density_quantiles(lakes, cd.steps)
-        print("Cabin density quantiles for slider steps:", quantiles)
-        interactive_cfg["cabin_density_slider"] = {
-            "enabled": cd.enabled,
+        },
+        "cabin_density_slider": {
             "steps": cd.steps,
             "default_step": cd.default_step,
             "quantiles": quantiles,
-        }
-        ar5b = ctrl.ar5_buffers
-        interactive_cfg["ar5_buffers"] = {
-            "enabled": ar5b.enabled,
+        },
+        "ar5_buffers": {
             "slider_max_m": ar5b.slider_max_m,
-        }
-        fg = ctrl.fishing_genera
-        interactive_cfg["fishing_genera"] = {"enabled": fg.enabled}
-    else:
-        interactive_cfg["enabled"] = False
+        },
+    }
 
     return {
         "scoring": scoring_cfg,

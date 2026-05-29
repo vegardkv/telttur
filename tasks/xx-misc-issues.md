@@ -99,7 +99,17 @@ This is starting to look good. I want to do some final polish and bug fixes:
 - reduce min lake size for norway by 50% (generate step)
 - remove english in the web app
 - re-color after slider has moved, and not while it is moving (current performance is not good enough for continuous update)
-- 
+
+### Round 8 - clean up
+
+This round is purely a clean-up round to remove dead code that is no longer relevant. This purpose is to make long-term maintainence easier
+
+Some known issues that can be cleaned up
+- remove most subcommands from the telttur module. only "generate" is used in practice
+- remove "--skip-download" as a CLI option
+- remove debugging code from app.js
+- remove the "run telttur generate" error message from app.js
+- clean up all config structures (config.py). many of these are no longer relevant, since the scoring functionality has been moved to app.js. moreover, all scoring-related data should always be computed, so no need for an option to toggle which scoring data is computed
 
 ### Misc.
 

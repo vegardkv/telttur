@@ -25,23 +25,6 @@ uv sync
 
 ## Usage
 
-### Quick start with a built-in profile
-
-Three scale profiles are available — `local` (Oslo area), `regional` (Akershus), `national` (all of Norway):
-
-```bash
-# Generate directly from a profile
-uv run telttur generate --profile local
-
-# Or generate a full config file to customise, then run from it
-uv run telttur sample -o my-config.yaml --profile local
-uv run telttur generate --config my-config.yaml
-```
-
-The generated file contains every available option with its default value filled in, ready to edit.
-
-### Custom configuration
-
 Edit or create a `config.yaml`. The minimum required field is either `bbox` or `fylke`:
 
 ```yaml
@@ -69,19 +52,6 @@ This will:
 2. Extract and buffer roads
 3. Extract and classify lakes
 4. Generate an interactive HTML map in `output/map.html`
-
-### Other commands
-
-```bash
-# Skip download (reuse previously downloaded data)
-uv run telttur generate --skip-download
-
-# Download data only
-uv run telttur download
-
-# Inspect layers in a downloaded .gdb file
-uv run telttur inspect data/n50/34_Innlandet/Basisdata_34_Innlandet_25833_N50Kartdata_FGDB.gdb
-```
 
 ## Data Sources
 

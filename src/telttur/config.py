@@ -1,6 +1,5 @@
-from enum import Enum, StrEnum
+from enum import StrEnum
 from pathlib import Path
-from typing import Literal
 
 import yaml
 from pydantic import BaseModel, Field, model_validator
@@ -43,19 +42,9 @@ class AccessibilityThresholds(BaseModel):
     poor: float = 5000.0  # < 5 km   → Poor; ≥ 5 km → Terrible
 
 
-class InteractiveDimensionToggles(BaseModel):
-    """Which scoring dimension checkboxes to expose in the interactive panel."""
-
-    cabin_density: bool = True
-    accessibility: bool = True
-    ar5_land_use: bool = True
-    fishing: bool = True
-
-
 class InteractiveAccessibilityRange(BaseModel):
     """Range slider config for interactive accessibility scoring."""
 
-    enabled: bool = True
     min_m: float = 0.0  # default preferred minimum distance
     max_m: float = 2000.0  # default preferred maximum distance
     slider_max_m: float = 10000.0  # upper bound of the slider
@@ -70,7 +59,6 @@ class InteractiveCabinDensitySlider(BaseModel):
     rather than a raw density number.
     """
 
-    enabled: bool = True
     steps: int = 5  # number of discrete slider positions
     default_step: int = 3  # 1-indexed default position
 
@@ -78,33 +66,16 @@ class InteractiveCabinDensitySlider(BaseModel):
 class InteractiveAr5Buffers(BaseModel):
     """Sliders for AR5 residential and industrial proximity buffer distances.
 
-    When enabled, one slider per zone type is shown.  Within the buffer = Terrible;
+    One slider per zone type is shown.  Within the buffer = Terrible;
     beyond 2× the buffer = Excellent, with gradual steps in between.
     """
 
-    enabled: bool = True
     slider_max_m: float = 10000.0
-
-
-class InteractiveFishingGenera(BaseModel):
-    """Checkboxes to select which prized genera are desired for fishing scoring.
-
-    When enabled, one checkbox per prized genus is shown in the controls panel.
-    All genera are selected by default; deselecting one removes it from the
-    score calculation.
-    """
-
-    enabled: bool = True
 
 
 class InteractiveControlsConfig(BaseModel):
     """Configuration for the interactive scoring controls panel embedded in the map."""
 
-    enabled: bool = True
-    dimension_toggles: InteractiveDimensionToggles = Field(
-        default_factory=InteractiveDimensionToggles
-    )
-    min_lake_area: bool = True
     accessibility_range: InteractiveAccessibilityRange = Field(
         default_factory=InteractiveAccessibilityRange
     )
@@ -112,7 +83,6 @@ class InteractiveControlsConfig(BaseModel):
         default_factory=InteractiveCabinDensitySlider
     )
     ar5_buffers: InteractiveAr5Buffers = Field(default_factory=InteractiveAr5Buffers)
-    fishing_genera: InteractiveFishingGenera = Field(default_factory=InteractiveFishingGenera)
 
 
 class MapConfig(BaseModel):
@@ -126,7 +96,6 @@ class MapConfig(BaseModel):
 class CabinDensityConfig(BaseModel):
     """Configuration for cabin density scoring dimension."""
 
-    enabled: bool = True
     buffer_m: float = 200.0
     thresholds: CabinDensityThresholds = Field(default_factory=CabinDensityThresholds)
 
@@ -134,7 +103,6 @@ class CabinDensityConfig(BaseModel):
 class AccessibilityConfig(BaseModel):
     """Configuration for accessibility scoring dimension."""
 
-    enabled: bool = True
     excluded_road_types: list[str] = Field(
         default_factory=lambda: ["P", "sti", "gangOgSykkelveg", "traktorveg"]
     )
@@ -152,7 +120,6 @@ class Ar5DataSource(StrEnum):
 class Ar5LandUseConfig(BaseModel):
     """Configuration for AR5 land use proximity scoring dimension."""
 
-    enabled: bool = True
     source: Ar5DataSource = Ar5DataSource.AUTO
     industrial_buffer_m: float = 2000.0
     residential_buffer_m: float = 1000.0
@@ -161,14 +128,12 @@ class Ar5LandUseConfig(BaseModel):
 class FishingConfig(BaseModel):
     """Configuration for fishing suitability scoring dimension."""
 
-    enabled: bool = True
     buffer_m: float = 500.0
 
 
 class ScoringConfig(BaseModel):
     """Configuration for lake tentability scoring."""
 
-    enabled: bool = True
     cabin_density: CabinDensityConfig = Field(default_factory=CabinDensityConfig)
     accessibility: AccessibilityConfig = Field(default_factory=AccessibilityConfig)
     ar5_land_use: Ar5LandUseConfig = Field(default_factory=Ar5LandUseConfig)
@@ -178,18 +143,15 @@ class ScoringConfig(BaseModel):
 class Config(BaseModel):
     bbox: BBox | None = None
     fylke: str | None = None
-    buffer_distance_m: float = 2000.0
     simplify_tolerance_m: float = 25.0
     min_lake_area_m2: float = 0.0
     data_dir: str = "data"
     output_dir: str = "output"
     output_filename: str = "data.js"
     embed: bool = False
-    landcover_mode: Literal["wms", "vector", "disabled"] = "wms"
     map: MapConfig = MapConfig()
     scoring: ScoringConfig = ScoringConfig()
     show_roads: bool = True
-    lake_display_mode: Literal["polygon", "marker"] = "polygon"
 
     @model_validator(mode="before")
     @classmethod
@@ -251,97 +213,3 @@ def load_config(path: str) -> Config:
     with Path(path).open() as f:
         raw = yaml.safe_load(f)
     return Config(**raw)
-
-
-# ---------------------------------------------------------------------------
-# Profile system
-# ---------------------------------------------------------------------------
-
-
-class Profile(StrEnum):
-    local = "local"
-    regional = "regional"
-    national = "national"
-
-
-def build_profile_config(profile: Profile) -> Config:
-    """Build a Config from a named profile with sensible scale-based defaults."""
-    if profile == Profile.local:
-        return Config(
-            fylke="oslo",
-            min_lake_area_m2=1000.0,
-            lake_display_mode="polygon",
-            landcover_mode="wms",
-            show_roads=True,
-            map=MapConfig(
-                interactive_controls=InteractiveControlsConfig(enabled=True),
-            ),
-            scoring=ScoringConfig(
-                accessibility=AccessibilityConfig(enabled=True),
-                ar5_land_use=Ar5LandUseConfig(enabled=True),
-            ),
-        )
-    elif profile == Profile.regional:
-        return Config(
-            fylke="akershus",
-            min_lake_area_m2=1000.0,
-            lake_display_mode="marker",
-            landcover_mode="wms",
-            show_roads=False,
-            map=MapConfig(
-                interactive_controls=InteractiveControlsConfig(enabled=True),
-            ),
-            scoring=ScoringConfig(
-                accessibility=AccessibilityConfig(enabled=True),
-                ar5_land_use=Ar5LandUseConfig(enabled=True),
-            ),
-        )
-    else:  # national
-        return Config(
-            fylke="norway",
-            min_lake_area_m2=50000.0,
-            lake_display_mode="marker",
-            landcover_mode="disabled",
-            show_roads=False,
-            map=MapConfig(
-                interactive_controls=InteractiveControlsConfig(enabled=False),
-            ),
-            scoring=ScoringConfig(
-                accessibility=AccessibilityConfig(enabled=False),
-                ar5_land_use=Ar5LandUseConfig(enabled=False),
-            ),
-        )
-
-
-def _convert_enums(obj: object) -> object:
-    """Recursively replace Enum instances with their .value in a nested structure."""
-    if isinstance(obj, Enum):
-        return obj.value
-    if isinstance(obj, dict):
-        return {k: _convert_enums(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [_convert_enums(item) for item in obj]
-    return obj
-
-
-def dump_config_yaml(config: Config, profile: Profile | None = None) -> str:
-    """Serialise *config* to a YAML string suitable for use as a config file.
-
-    The derived ``bbox`` field is excluded because it is resolved automatically
-    from ``fylke`` at load time. Enum values are serialised as plain strings.
-    A header comment is prepended indicating the profile (if any).
-    """
-    data = config.model_dump(mode="python")
-    data.pop("bbox", None)  # derived from fylke; not needed in the file
-    data = _convert_enums(data)  # type: ignore[assignment]
-
-    header_lines = ["# Generated by: uv run telttur sample"]
-    if profile:
-        header_lines.append(f"# Profile: {profile}")
-    header_lines.append(
-        "# Run with: uv run telttur generate --config <this-file>"
-        f"{f' (or: --profile {profile})' if profile else ''}"
-    )
-    header = "\n".join(header_lines) + "\n\n"
-
-    return header + yaml.dump(data, default_flow_style=False, sort_keys=False, allow_unicode=True)

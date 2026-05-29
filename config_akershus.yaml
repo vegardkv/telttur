@@ -6,16 +6,4 @@ embed: true
 
 min_lake_area_m2: 1000  # exclude lakes smaller than 0.1 ha
 
-lake_display_mode: marker
-
 show_roads: false
-
-map:
-  interactive_controls:
-    enabled: true
-    dimension_toggles:
-      cabin_density: true
-      accessibility: true
-      ar5_land_use: true
-    min_lake_area: true
-

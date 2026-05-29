@@ -29,17 +29,6 @@ All Python/tool invocations go through `uv`. Never call `python`, `ruff`, `ty`, 
 ```bash
 # Primary workflow
 uv run telttur generate --config my-config.yaml
-uv run telttur generate --skip-download     # Reuse cached data
-
-# Run the pipeline (will probably be deprecated)
-uv run telttur generate --profile local     # Oslo area (quick)
-uv run telttur generate --profile regional  # Akershus
-uv run telttur generate --profile national  # All of Norway
-
-# Other CLI commands (rarely used)
-uv run telttur download
-uv run telttur sample -o my-config.yaml --profile local
-uv run telttur inspect data/n50/<path>.gdb
 
 # Lint & format
 uv run ruff check
