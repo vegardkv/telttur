@@ -35,8 +35,8 @@ composite tentability score.
 
 from __future__ import annotations
 
-import io
 import zipfile
+from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
@@ -51,6 +51,7 @@ from telttur.scoring.common import (
 )
 
 _NINA_URL = "https://ipt.nina.no/archive.do?r=vanninfofisk"
+_NINA_ARCHIVE_NAME = "vanninfofisk.zip"
 
 # Ordered list of (genus, user-facing label) pairs for the prized game fish.
 # The list position is the bit index used in the fish_genera_mask column.
@@ -75,15 +76,14 @@ _GENUS_TO_BIT: dict[str, int] = {
 }
 
 
-def fetch_nina_fish_observations(timeout_s: float = 60.0) -> gpd.GeoDataFrame:
-    """Download and parse the NINA freshwater fish occurrence archive.
+def _ensure_nina_archive(data_dir: Path, timeout_s: float) -> Path:
+    """Return path to the cached NINA archive, downloading it if absent."""
+    archive_path = data_dir / _NINA_ARCHIVE_NAME
+    if archive_path.exists():
+        print(f"  Using cached NINA archive: {archive_path}")
+        return archive_path
 
-    Returns a GeoDataFrame (UTM33) with columns:
-      geometry           — Point
-      scientific_name    — species name string
-
-    Raises ``RuntimeError`` on network or parsing errors.
-    """
+    data_dir.mkdir(parents=True, exist_ok=True)
     try:
         resp = requests.get(_NINA_URL, timeout=timeout_s)
         resp.raise_for_status()
@@ -91,7 +91,27 @@ def fetch_nina_fish_observations(timeout_s: float = 60.0) -> gpd.GeoDataFrame:
         raise RuntimeError(f"Failed to download NINA fish data: {exc}") from exc
 
     try:
-        with zipfile.ZipFile(io.BytesIO(resp.content)) as zf, zf.open("occurrence.txt") as f:
+        archive_path.write_bytes(resp.content)
+    except OSError as exc:
+        archive_path.unlink(missing_ok=True)
+        raise RuntimeError(f"Failed to save NINA fish archive: {exc}") from exc
+
+    return archive_path
+
+
+def fetch_nina_fish_observations(data_dir: Path, timeout_s: float = 60.0) -> gpd.GeoDataFrame:
+    """Load the NINA freshwater fish occurrence archive, downloading it if not cached.
+
+    Returns a GeoDataFrame (UTM33) with columns:
+      geometry           — Point
+      scientific_name    — species name string
+
+    Raises ``RuntimeError`` on network or parsing errors.
+    """
+    archive_path = _ensure_nina_archive(data_dir, timeout_s)
+
+    try:
+        with zipfile.ZipFile(archive_path) as zf, zf.open("occurrence.txt") as f:
             df = pd.read_csv(
                 f,
                 sep="\t",

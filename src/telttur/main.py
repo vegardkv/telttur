@@ -81,6 +81,7 @@ def generate(
             lakes,
             road_lines,
             config.scoring,
+            config.data_path,
         )
         print(f"  [scoring: {time.time() - t0:.1f}s]")
 

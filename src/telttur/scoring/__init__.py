@@ -37,12 +37,13 @@ __all__ = [
 ]
 
 
-def process_scoring(
+def process_scoring(  # noqa: PLR0913
     gdb_paths: list[Path],
     bbox: BBox,
     lakes: gpd.GeoDataFrame,
     road_lines: gpd.GeoDataFrame,
     config: ScoringConfig,
+    data_dir: Path,
 ) -> gpd.GeoDataFrame:
     """Full scoring pipeline: compute raw data columns for every dimension.
 
@@ -82,7 +83,7 @@ def process_scoring(
     # --- Fishing suitability ---
     print("Downloading NINA freshwater fish observations...")
     try:
-        fish_obs = fishing.fetch_nina_fish_observations()
+        fish_obs = fishing.fetch_nina_fish_observations(data_dir / "nina")
         print(f"  Loaded {len(fish_obs)} fish occurrence records")
         print(f"Scoring fishing suitability ({config.fishing.buffer_m} m buffer)...")
         lakes = fishing.score_fishing(lakes, fish_obs, config.fishing)
