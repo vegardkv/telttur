@@ -307,7 +307,7 @@ function computeScores(fields, cs) {
 // Interactive update — called on every slider/checkbox change
 // ---------------------------------------------------------------------------
 
-function teltturUpdate(cfg, idx) {
+function teltturUpdate(cfg) {
   const cs = readControlState(cfg);
 
   for (const { marker, fields } of allMarkers) {
@@ -454,6 +454,15 @@ function initMap(data) {
   }).addTo(map);
   allMarkers = [];
 
+  // Build UI first so we can read the initial filter state and colour each
+  // marker correctly up front — avoids a second full re-style pass on load.
+  buildControls(data.config, data.lake_fields);
+  buildLegend();
+  buildFooter();
+
+  const cs = readControlState(data.config);
+  const markers = [];
+
   for (const row of data.lakes) {
     const lat = row[idx["lat"]];
     const lng = row[idx["lng"]];
@@ -464,14 +473,18 @@ function initMap(data) {
       f[key] = row[idx[key]];
     }
 
-    // Initial colour — will be set by teltturUpdate() shortly after init
+    // Compute initial colour/visibility now so no post-load re-style is needed.
+    const area = f.area || 0;
+    const hidden = area < cs.minArea || area > cs.maxArea;
+    const score = hidden ? 0 : computeScores(f, cs).tentability_score || 0;
+
     const marker = L.circleMarker([lat, lng], {
       radius: 8,
       color: "#333333",
-      weight: 0.8,
-      fillColor: DEFAULT_LAKE_COLOR,
-      fillOpacity: 0.65,
-      opacity: 1,
+      weight: hidden ? 0 : 0.8,
+      fillColor: hidden ? DEFAULT_LAKE_COLOR : LEVEL_COLORS[score] || DEFAULT_LAKE_COLOR,
+      fillOpacity: hidden ? 0 : 0.65,
+      opacity: hidden ? 0 : 1,
     });
 
     marker.bindPopup("", { maxWidth: 300 });
@@ -479,17 +492,13 @@ function initMap(data) {
       const cs = readControlState(data.config);
       marker.getPopup().setContent(buildPopup(f, computeScores(f, cs), data.config));
     });
-    marker.addTo(lakesLayer);
+    markers.push(marker);
     allMarkers.push({ marker, fields: f });
   }
 
-  // Build UI
-  buildControls(data.config, data.lake_fields);
-  buildLegend();
-  buildFooter();
-
-  // Initial filter pass
-  setTimeout(() => teltturUpdate(data.config, idx), 100);
+  // Bulk insert: building the cluster hierarchy in a single pass (and honouring
+  // chunkedLoading) is far faster than 140k+ individual addLayer calls.
+  lakesLayer.addLayers(markers);
 }
 
 // ---------------------------------------------------------------------------
