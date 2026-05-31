@@ -445,7 +445,13 @@ function initMap(data) {
   const idx = {};
   for (let i = 0; i < fields.length; i++) idx[fields[i]] = i;
 
-  lakesLayer = L.layerGroup().addTo(map);
+  lakesLayer = L.markerClusterGroup({
+    disableClusteringAtZoom: 10,
+    maxClusterRadius: 120,
+    spiderfyOnMaxZoom: false,
+    zoomToBoundsOnClick: true,
+    chunkedLoading: true,
+  }).addTo(map);
   allMarkers = [];
 
   for (const row of data.lakes) {
