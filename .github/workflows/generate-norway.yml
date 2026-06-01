@@ -3,9 +3,23 @@ name: Generate Norway Map
 on:
   workflow_dispatch:
 
+# Allow the workflow to publish to GitHub Pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one Pages deploy at a time; don't cancel an in-progress publish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 jobs:
   generate:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -31,3 +45,21 @@ jobs:
         with:
           name: map-norway
           path: output/map_norway.html
+
+      # The embedded, self-contained HTML becomes the site's index page.
+      - name: Assemble Pages site
+        run: |
+          mkdir -p _site
+          cp output/map_norway.html _site/index.html
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
