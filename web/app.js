@@ -12,7 +12,7 @@
 // ---------------------------------------------------------------------------
 
 const I18N = {
-  title: "Telttur – Kart over teltturer i Norge",
+  title: "Turvann – Kart over turvann i Norge",
   scoring: "Kriterier",
   min_lake_size: "Min innsjøstørrelse:",
   cabin_density: "Hyttetetthet",

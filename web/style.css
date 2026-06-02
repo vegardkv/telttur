@@ -16,7 +16,7 @@ html, body {
 
 #tt-controls {
   position: fixed;
-  top: 80px;
+  top: 10px;
   right: 10px;
   z-index: 9999;
   background: white;
