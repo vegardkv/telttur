@@ -420,6 +420,10 @@ html, body {
   padding: 0;
 }
 
+.leaflet-bottom.leaflet-left {
+  bottom: 28px;
+}
+
 #tt-credits-btn:hover {
   text-decoration: underline;
 }

@@ -443,13 +443,15 @@ function initMap(data) {
   const bbox = data.meta.bbox; // [south, west, north, east]
   const bounds = L.latLngBounds([bbox[0], bbox[1]], [bbox[2], bbox[3]]);
 
-  map = L.map("map", { preferCanvas: true });
+  map = L.map("map", { preferCanvas: true, attributionControl: false });
   map.fitBounds(bounds, { padding: [20, 20] });
 
   L.tileLayer(KARTVERKET_GRAY, {
     attribution: KARTVERKET_ATTR,
     maxZoom: 18,
   }).addTo(map);
+
+  L.control.scale({ metric: true, imperial: false, maxWidth: 120 }).addTo(map);
 
   // Roads
   if (data.roads && data.roads.features && data.roads.features.length > 0) {
