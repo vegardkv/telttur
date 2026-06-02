@@ -237,7 +237,8 @@ html, body {
 
 /* noUiSlider range label */
 #tt-ar-range-label,
-#tt-ls-range-label {
+#tt-ls-range-label,
+#tt-ms-range-label {
   font-size: 13px;
   color: #555;
 }

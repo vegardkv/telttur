@@ -50,6 +50,9 @@ const I18N = {
   level_5: "Utmerket",
   lake_size_filter: "Innsjøstørrelse",
   lake_size_filter_hint: "Skjul innsjøer utenfor dette størrelsesintervallet",
+  min_score_filter: "Minimum egnethet",
+  min_score_filter_hint: "Grå ut innsjøer med lav total score",
+  min_score_label: "Vis fra og med",
   error_no_data: "Klarte ikke å laste kartdata",
   genus_Salmo: "Ørret/Laks",
   genus_Salvelinus: "Røye",
@@ -103,6 +106,8 @@ const BADGE_CLASSES = {
   5: "tt-b5",
 };
 const DEFAULT_LAKE_COLOR = "#67a9cf";
+// Lakes below the minimum-suitability threshold are greyed out rather than hidden.
+const BELOW_THRESHOLD_COLOR = "#bdbdbd";
 
 // ---------------------------------------------------------------------------
 // State
@@ -116,6 +121,7 @@ let _lakeSizeSlider = null;       // noUiSlider instance for lake size range
 let _ctSlider = null;             // noUiSlider instance for cabin density threshold
 let _ar5ResSlider = null;         // noUiSlider instance for AR5 residential buffer
 let _ar5IndSlider = null;         // noUiSlider instance for AR5 industrial buffer
+let _minScoreSlider = null;       // noUiSlider instance for minimum overall score
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -161,6 +167,11 @@ function _lsMin() {
 /** Return the high handle value of the lake size slider (or default 50 km²). */
 function _lsMax() {
   return _lakeSizeSlider ? parseFloat(_lakeSizeSlider.get()[1]) : 50000000;
+}
+
+/** Return the minimum overall score to display (or default 1 = show all). */
+function _minScore() {
+  return _minScoreSlider ? Math.round(parseFloat(_minScoreSlider.get())) : 1;
 }
 
 /** Return checked state of a checkbox (or a default). */
@@ -254,6 +265,7 @@ function readControlState(cfg) {
   return {
     minArea: _lsMin(),
     maxArea: _lsMax(),
+    minScore: _minScore(),
     arMin: _arSliderMin(),
     arMax: _arSliderMax(),
     ctThreshold: (() => {
@@ -320,8 +332,16 @@ function teltturUpdate(cfg) {
 
     const live = computeScores(fields, cs);
     const score = live.tentability_score || 0;
+
+    // Lakes below the threshold are greyed out (not hidden). Unscored lakes
+    // (score 0) keep their default colour and are never greyed.
+    const below = score && score < cs.minScore;
+    const fillColor = below
+      ? BELOW_THRESHOLD_COLOR
+      : LEVEL_COLORS[score] || DEFAULT_LAKE_COLOR;
+
     marker.setStyle({
-      fillColor: LEVEL_COLORS[score] || DEFAULT_LAKE_COLOR,
+      fillColor,
       color: "#333333",
       weight: 0.8,
       fillOpacity: 0.65,
@@ -474,15 +494,20 @@ function initMap(data) {
     }
 
     // Compute initial colour/visibility now so no post-load re-style is needed.
+    // Area filter hides; the score threshold greys lakes out instead.
     const area = f.area || 0;
+    const score = computeScores(f, cs).tentability_score || 0;
     const hidden = area < cs.minArea || area > cs.maxArea;
-    const score = hidden ? 0 : computeScores(f, cs).tentability_score || 0;
+    const below = score && score < cs.minScore;
+    const fillColor = below
+      ? BELOW_THRESHOLD_COLOR
+      : LEVEL_COLORS[score] || DEFAULT_LAKE_COLOR;
 
     const marker = L.circleMarker([lat, lng], {
       radius: 8,
       color: "#333333",
       weight: hidden ? 0 : 0.8,
-      fillColor: hidden ? DEFAULT_LAKE_COLOR : LEVEL_COLORS[score] || DEFAULT_LAKE_COLOR,
+      fillColor: hidden ? DEFAULT_LAKE_COLOR : fillColor,
       fillOpacity: hidden ? 0 : 0.65,
       opacity: hidden ? 0 : 1,
     });
@@ -682,6 +707,21 @@ function buildControls(cfg, lakeFields) {
     body.appendChild(filterDiv);
   }
 
+  // Minimum overall score filter — separate section at the bottom
+  {
+    const scoreDiv = document.createElement("div");
+    scoreDiv.className = "tt-filter-section";
+    scoreDiv.innerHTML =
+      `<div class="tt-filter-header">${t("min_score_filter")}</div>` +
+      `<div class="tt-filter-hint">${t("min_score_filter_hint")}</div>` +
+      `<div id="tt-ms-range-label" style="margin-bottom:2px">` +
+      `${t("min_score_label")}: ` +
+      `<span id="tt-ms-val" style="font-weight:bold">${t("level_1")}</span>` +
+      `</div>` +
+      `<div id="tt-ms-slider"></div>`;
+    body.appendChild(scoreDiv);
+  }
+
   document.body.appendChild(container);
 
   // Initialise noUiSlider for cabin density (discrete steps mapped to quantiles)
@@ -827,6 +867,22 @@ function buildControls(cfg, lakeFields) {
       document.getElementById("tt-ls-max-val").textContent = formatArea(parseFloat(values[1]));
     });
     _lakeSizeSlider.on("change", () => teltturUpdate(_ttCfg));
+  }
+
+  // Initialise noUiSlider for minimum overall score (discrete levels 1–5)
+  const msSliderEl = document.getElementById("tt-ms-slider");
+  if (msSliderEl && typeof noUiSlider !== "undefined") {
+    _minScoreSlider = noUiSlider.create(msSliderEl, {
+      start: [1],
+      connect: [true, false],
+      step: 1,
+      range: { min: 1, max: 5 },
+    });
+    _minScoreSlider.on("update", (values) => {
+      const lvl = Math.round(parseFloat(values[0]));
+      document.getElementById("tt-ms-val").textContent = t(`level_${lvl}`);
+    });
+    _minScoreSlider.on("change", () => teltturUpdate(_ttCfg));
   }
 }
 
