@@ -111,6 +111,16 @@ Some known issues that can be cleaned up
 - remove the "run telttur generate" error message from app.js
 - clean up all config structures (config.py). many of these are no longer relevant, since the scoring functionality has been moved to app.js. moreover, all scoring-related data should always be computed, so no need for an option to toggle which scoring data is computed
 
+### Round 9 - score consistency
+
+Scoring is a bit inconsistent, i think. In general, i want lakes that fall within the ranges specified by the filters to get a perfect score. Outside the ranges, the score should taper. I want the following:
+- accessbility/tilgjengelighet: "utmerket" within interval. "elendig" beyond 2x max and within 1/2 minimum
+- "avstand fra bebyggelse": "utmerket" within the range. "elendig beyond 2x range
+- cabin density is fine
+- fishing is probably fine
+
+I believe this is the most consistent way of handling this, but i am open to suggestions for improvement. Check the code and fix it to ensure consistent behavior. Also update dev/agent documentation and in-app descriptions where applicable
+
 ### Misc.
 
 - Use a UI component framework to reduce the amount of javascript code. For ease of maintainence and readability

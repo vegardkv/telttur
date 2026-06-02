@@ -208,15 +208,17 @@ def score_ar5_land_use(
 ) -> gpd.GeoDataFrame:
     """Score each lake by proximity to industrial and residential land-use zones.
 
-    Lakes far from both zone types receive EXCELLENT; lakes within the configured
-    distance thresholds are penalised using a graduated scale.
+    Lakes far from both zone types receive EXCELLENT; lakes closer than the
+    configured clearance are penalised using a graduated scale.
 
-    Scoring per zone type (using ``buffer_m`` as the threshold distance):
-      dist > buffer_m            → EXCELLENT
-      dist > 0.75 * buffer_m    → GOOD
-      dist > 0.50 * buffer_m    → FAIR
-      dist > 0.25 * buffer_m    → POOR
-      dist ≤ 0.25 * buffer_m    → TERRIBLE
+    This function only computes the raw distance columns below — the actual
+    score conversion happens interactively in ``web/app.js``. For reference,
+    the per-zone-type scoring (``buffer_m`` = desired clearance B) is:
+      dist ≥ B            → EXCELLENT
+      dist ≥ 5/6 * B      → GOOD
+      dist ≥ 4/6 * B      → FAIR
+      dist > 1/2 * B      → POOR
+      dist ≤ 1/2 * B      → TERRIBLE
 
     The dimension score is the *minimum* (worst) of the industrial and residential
     sub-scores.

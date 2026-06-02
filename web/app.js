@@ -22,9 +22,9 @@ const I18N = {
   cabin_density_level_low: "Lav",
   cabin_density_level_high: "Høy",
   accessibility: "Tilgjengelighet",
-  accessibility_info: "Korteste avstand til nærmeste vei i luftlinje. Innsjøer innenfor ønsket rekkevidde får 'Utmerket'. Scoren synker utenfor rekkevidden. Datakilde: N50 vegnett (Kartverket).",
+  accessibility_info: "Korteste avstand til nærmeste vei i luftlinje. Innsjøer innenfor ønsket rekkevidde får 'Utmerket'. Scoren synker utenfor rekkevidden og blir 'Elendig' under halve minimumsavstanden eller mer enn dobbelt så langt som maksimum. Datakilde: N50 vegnett (Kartverket).",
   ar5_land_use: "Avstand fra bebyggelse",
-  ar5_land_use_info: "Avstand fra bolig- og industriområder basert på AR5-arealdata. Lengre unna utbygde områder gir høyere score: mer enn 2\xd7 avstanden = Utmerket. Datakilde: AR5 arealbruksklassifisering (Kartverket).",
+  ar5_land_use_info: "Avstand fra bolig- og industriområder basert på AR5-arealdata. Lengre unna utbygde områder gir høyere score: innsjøer som er minst den valgte avstanden unna får 'Utmerket', og scoren synker til 'Elendig' ved halvparten av avstanden. Datakilde: AR5 arealbruksklassifisering (Kartverket).",
   ar5_residential: "Boligområder:",
   ar5_industrial: "Industri:",
   fishing: "Fiske",
@@ -187,16 +187,17 @@ function checkVal(id, def) {
 function scoreAccess(dist, minM, maxM) {
   if (dist >= minM && dist <= maxM) return 5;
   if (dist > maxM) {
-    if (dist <= maxM * 1.25) return 4;
-    if (dist <= maxM * 1.5) return 3;
-    if (dist <= maxM * 2.0) return 2;
+    // taper above: 5 at maxM, elendig beyond 2× maxM
+    if (dist <= maxM * (4 / 3)) return 4;
+    if (dist <= maxM * (5 / 3)) return 3;
+    if (dist <= maxM * 2) return 2;
     return 1;
   }
-  // dist < minM
+  // dist < minM — taper below: 5 at minM, elendig at/below ½ minM
   if (minM === 0) return 5;
-  if (dist >= minM * 0.75) return 4;
-  if (dist >= minM * 0.5) return 3;
-  if (dist >= minM * 0.25) return 2;
+  if (dist >= minM * (5 / 6)) return 4;
+  if (dist >= minM * (4 / 6)) return 3;
+  if (dist > minM * 0.5) return 2;
   return 1;
 }
 
@@ -211,11 +212,12 @@ function scoreCabin(density, threshold) {
 
 function scoreAr5One(dist, buf) {
   if (buf <= 0) return 5;
-  if (dist <= buf) return 1;
-  if (dist <= buf * 1.25) return 2;
-  if (dist <= buf * 1.5) return 3;
-  if (dist <= buf * 2.0) return 4;
-  return 5;
+  // farther from buildings = better: 5 once at/beyond buf, elendig at/below ½ buf
+  if (dist >= buf) return 5;
+  if (dist >= buf * (5 / 6)) return 4;
+  if (dist >= buf * (4 / 6)) return 3;
+  if (dist > buf * 0.5) return 2;
+  return 1;
 }
 
 function scoreAr5(indDist, resDist, indBuf, resBuf) {

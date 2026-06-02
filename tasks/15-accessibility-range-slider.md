@@ -10,17 +10,20 @@ Currently, accessibility scoring uses a monotonic scale: closer to road = better
 
 Given a user-selected range `[min_km, max_km]`:
 
+Scores degrade in three even steps on each side so that **Terrible (1) is reached exactly at
+2× the max above the range and at ½ the min below it** (round 9 — score consistency):
+
 - **Within range** (`min_km ≤ d ≤ max_km`): Excellent (5)
 - **Above range**:
-  - `d ≤ max_km × 1.25`: Good (4)
-  - `d ≤ max_km × 1.5`: Fair (3)
-  - `d ≤ max_km × 2.0`: Poor (2)
-  - `d > max_km × 2.0`: Terrible (1)
+  - `d ≤ max_km × 4/3`: Good (4)
+  - `d ≤ max_km × 5/3`: Fair (3)
+  - `d ≤ max_km × 2`: Poor (2)
+  - `d > max_km × 2`: Terrible (1)
 - **Below range**:
-  - `d ≥ min_km × 0.75`: Good (4)
-  - `d ≥ min_km × 0.5`: Fair (3)
-  - `d ≥ min_km × 0.25`: Poor (2)
-  - `d < min_km × 0.25`: Terrible (1)
+  - `d ≥ min_km × 5/6`: Good (4)
+  - `d ≥ min_km × 4/6`: Fair (3)
+  - `d > min_km × 1/2`: Poor (2)
+  - `d ≤ min_km × 1/2`: Terrible (1)
 
 If `min_km` is 0, the "below range" logic is disabled (any distance below max is fine).
 
