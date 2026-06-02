@@ -248,11 +248,15 @@ def score_ar5_land_use(
         lakes[LakeCols.INDUSTRIAL_DISTANCE_M] = float("inf")
     else:
         ind_dist = _distances_to(industrial_polygons)
-        lakes[LakeCols.INDUSTRIAL_DISTANCE_M] = lakes.index.map(ind_dist).fillna(float("inf")).round(1)
+        lakes[LakeCols.INDUSTRIAL_DISTANCE_M] = (
+            lakes.index.map(ind_dist).fillna(float("inf")).round(1)
+        )
     if residential_polygons.empty:
         lakes[LakeCols.RESIDENTIAL_DISTANCE_M] = float("inf")
     else:
         res_dist = _distances_to(residential_polygons)
-        lakes[LakeCols.RESIDENTIAL_DISTANCE_M] = lakes.index.map(res_dist).fillna(float("inf")).round(1)
+        lakes[LakeCols.RESIDENTIAL_DISTANCE_M] = (
+            lakes.index.map(res_dist).fillna(float("inf")).round(1)
+        )
 
     return lakes

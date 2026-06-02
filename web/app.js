@@ -22,7 +22,9 @@ const I18N = {
   cabin_density_level_low: "Lav",
   cabin_density_level_high: "Høy",
   accessibility: "Tilgjengelighet",
-  accessibility_info: "Korteste avstand til nærmeste vei i luftlinje. Innsjøer innenfor ønsket rekkevidde får 'Utmerket'. Scoren synker utenfor rekkevidden og blir 'Elendig' under halve minimumsavstanden eller mer enn dobbelt så langt som maksimum. Datakilde: N50 vegnett (Kartverket).",
+  accessibility_info: "Korteste avstand til nærmeste vei i luftlinje, kombinert med høydeforskjell mellom veipunktet og innsjøen. Innsjøer innenfor ønsket rekkevidde og stigning får 'Utmerket'. Scoren synker utenfor rekkevidden og blir 'Elendig' ved dobbel maksdistanse eller dobbel maksstigning. Datakilder: N50 vegnett (Kartverket), DTM50 (Kartverket).",
+  climb_max: "Maks stigning:",
+  elevation_gain: "Stigning",
   ar5_land_use: "Avstand fra bebyggelse",
   ar5_land_use_info: "Avstand fra bolig- og industriområder basert på AR5-arealdata. Lengre unna utbygde områder gir høyere score: innsjøer som er minst den valgte avstanden unna får 'Utmerket', og scoren synker til 'Elendig' ved halvparten av avstanden. Datakilde: AR5 arealbruksklassifisering (Kartverket).",
   ar5_residential: "Boligområder:",
@@ -117,6 +119,7 @@ let map;
 let lakesLayer;     // L.LayerGroup containing all CircleMarker instances
 let allMarkers = []; // { marker, fields } — kept for re-filtering
 let _arSlider = null;             // noUiSlider instance for accessibility range
+let _climbSlider = null;          // noUiSlider instance for max acceptable climb
 let _lakeSizeSlider = null;       // noUiSlider instance for lake size range
 let _ctSlider = null;             // noUiSlider instance for cabin density threshold
 let _ar5ResSlider = null;         // noUiSlider instance for AR5 residential buffer
@@ -147,6 +150,12 @@ function formatDist(m) {
   if (m == null) return "–";
   if (m >= 1000) return (m / 1000).toFixed(1) + " km";
   return Math.round(m) + " m";
+}
+
+function _climbMax() {
+  return _climbSlider
+    ? parseFloat(_climbSlider.get())
+    : (_ttCfg?.interactive?.climb?.max_m ?? 200);
 }
 
 /** Return the low handle value of the accessibility range slider (or default 0). */
@@ -198,6 +207,15 @@ function scoreAccess(dist, minM, maxM) {
   if (dist >= minM * (5 / 6)) return 4;
   if (dist >= minM * (4 / 6)) return 3;
   if (dist > minM * 0.5) return 2;
+  return 1;
+}
+
+function scoreClimb(gain, maxClimb) {
+  if (maxClimb <= 0) return 5;
+  if (gain <= maxClimb) return 5;
+  if (gain <= maxClimb * (4 / 3)) return 4;
+  if (gain <= maxClimb * (5 / 3)) return 3;
+  if (gain <= maxClimb * 2) return 2;
   return 1;
 }
 
@@ -268,6 +286,7 @@ function readControlState(cfg) {
     })(),
     ar5ResBuf: _ar5ResSlider ? parseFloat(_ar5ResSlider.get()) : (scoring.ar5_land_use?.residential_buffer_m ?? 1000),
     ar5IndBuf: _ar5IndSlider ? parseFloat(_ar5IndSlider.get()) : (scoring.ar5_land_use?.industrial_buffer_m ?? 2000),
+    climbMax: _climbMax(),
     cabinOn: checkVal("tt-cabin", false),
     accessOn: checkVal("tt-access", true),
     ar5On: checkVal("tt-ar5", true),
@@ -287,7 +306,11 @@ function computeScores(fields, cs) {
   }
 
   if (cs.accessOn && fields.road_distance_m != null) {
-    live.accessibility_score = scoreAccess(fields.road_distance_m, cs.arMin, cs.arMax);
+    const distScore = scoreAccess(fields.road_distance_m, cs.arMin, cs.arMax);
+    const climbScore = fields.elevation_gain_m != null
+      ? scoreClimb(fields.elevation_gain_m, cs.climbMax)
+      : null;
+    live.accessibility_score = climbScore != null ? Math.min(distScore, climbScore) : distScore;
     scores.push(live.accessibility_score);
   }
 
@@ -385,6 +408,10 @@ function buildPopup(fields, liveScores, cfg) {
       const val = col.endsWith("_m") ? formatDist(fields[col]) : fields[col];
       detailRows.push([label, val]);
     }
+  }
+
+  if (fields.elevation_gain_m != null) {
+    detailRows.push([t("elevation_gain"), `${Math.round(fields.elevation_gain_m)} m`]);
   }
 
   // Prized genera present at this lake
@@ -602,8 +629,16 @@ function buildControls(cfg, lakeFields) {
         ` – ` +
         `<span id="tt-ar-max-val" style="font-weight:bold">${arMax}</span> m` +
         `</div>` +
-        `<div id="tt-ar-slider"></div>` +
-        `</div>`;
+        `<div id="tt-ar-slider"></div>`;
+      if (lakeFieldSet.has("elevation_gain_m")) {
+        const climbMax = ctrl.climb?.max_m | 0;
+        bodyHtml +=
+          `<div id="tt-climb-label" style="margin-top:8px;margin-bottom:6px">` +
+          `${t("climb_max")} <span id="tt-climb-val" style="font-weight:bold">${climbMax}</span> m` +
+          `</div>` +
+          `<div id="tt-climb-slider"></div>`;
+      }
+      bodyHtml += `</div>`;
     }
     body.appendChild(buildDimCard(
       "tt-access", t("accessibility"),
@@ -839,6 +874,22 @@ function buildControls(cfg, lakeFields) {
       document.getElementById("tt-ar-max-val").textContent = Math.round(values[1]);
     });
     _arSlider.on("change", () => teltturUpdate(_ttCfg));
+  }
+
+  // Initialise noUiSlider for max acceptable climb
+  const climbSliderEl = document.getElementById("tt-climb-slider");
+  if (climbSliderEl && typeof noUiSlider !== "undefined") {
+    const cl = ctrl.climb;
+    _climbSlider = noUiSlider.create(climbSliderEl, {
+      start: [cl.max_m | 0],
+      connect: [true, false],
+      step: 50,
+      range: { min: 0, max: cl.slider_max_m | 0 },
+    });
+    _climbSlider.on("update", (values) => {
+      document.getElementById("tt-climb-val").textContent = Math.round(values[0]);
+    });
+    _climbSlider.on("change", () => teltturUpdate(_ttCfg));
   }
 
   // Initialise noUiSlider for lake size range

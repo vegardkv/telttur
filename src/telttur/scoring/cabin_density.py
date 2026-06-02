@@ -160,6 +160,8 @@ def score_cabin_density(
 
     sqrt_area = area_m2.apply(lambda a: math.sqrt(max(a, 1.0)))
     # Multiply by 10000 to get buildings per ha
-    lakes[LakeCols.BUILDING_DENSITY] = (10_000 * lakes[LakeCols.BUILDING_COUNT] / sqrt_area).round(4)
+    lakes[LakeCols.BUILDING_DENSITY] = (10_000 * lakes[LakeCols.BUILDING_COUNT] / sqrt_area).round(
+        4
+    )
 
     return lakes

@@ -33,6 +33,9 @@ class LakeCols(StrEnum):
     FISH_SPECIES_COUNT = "fish_species_count"
     FISH_GENERA_MASK = "fish_genera_mask"
 
+    # Elevation gain — raw data (score computed in JS)
+    ELEVATION_GAIN_M = "elevation_gain_m"
+
 
 def find_lake_layers(gdb_path: Path) -> list[str]:
     """List layers in a .gdb that likely contain lake/water data."""

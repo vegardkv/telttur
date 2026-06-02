@@ -27,9 +27,11 @@ def cli() -> None:
     type=click.Path(exists=True),
     help="Path to config YAML file.",
 )
-@click.option("--debug-buildings", is_flag=True, help=(
-    "Export all raw building points for debugging. Not suitable for large regions."
-))
+@click.option(
+    "--debug-buildings",
+    is_flag=True,
+    help=("Export all raw building points for debugging. Not suitable for large regions."),
+)
 def generate(
     config_path: str | None,
     debug_buildings: bool,

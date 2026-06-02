@@ -67,8 +67,20 @@ def process_scoring(  # noqa: PLR0913
 
     # --- Accessibility ---
     print("Scoring accessibility (distance to nearest drivable road)...")
+    dem_path = None
+    try:
+        from telttur.elevation import _ensure_dem
+
+        dem_path = _ensure_dem(data_dir / "dem", bbox)
+    except RuntimeError as exc:
+        print(f"  WARNING: DEM download failed — {exc}; elevation gain will be skipped")
+
     lakes = accessibility.score_accessibility(
-        lakes, road_lines, config.accessibility, config.accessibility.excluded_road_types
+        lakes,
+        road_lines,
+        config.accessibility,
+        config.accessibility.excluded_road_types,
+        dem_path=dem_path,
     )
 
     # --- AR5 land use proximity ---

@@ -35,6 +35,7 @@ def build_lake_data(
     optional_cols = [
         LakeCols.FISH_GENERA_MASK,
         LakeCols.ROAD_DISTANCE_M,
+        LakeCols.ELEVATION_GAIN_M,
         LakeCols.BUILDING_DENSITY,
         LakeCols.INDUSTRIAL_DISTANCE_M,
         LakeCols.RESIDENTIAL_DISTANCE_M,
@@ -160,6 +161,7 @@ def build_config_block(config: Config, lakes: gpd.GeoDataFrame) -> dict[str, Any
     quantiles = _compute_density_quantiles(lakes, cd.steps)
     print("Cabin density quantiles for slider steps:", quantiles)
     ar5b = ctrl.ar5_buffers
+    cl = ctrl.climb
     interactive_cfg: dict[str, Any] = {
         "accessibility_range": {
             "min_m": ar.min_m,
@@ -173,6 +175,10 @@ def build_config_block(config: Config, lakes: gpd.GeoDataFrame) -> dict[str, Any
         },
         "ar5_buffers": {
             "slider_max_m": ar5b.slider_max_m,
+        },
+        "climb": {
+            "max_m": cl.max_m,
+            "slider_max_m": cl.slider_max_m,
         },
     }
 

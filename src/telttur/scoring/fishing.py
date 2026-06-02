@@ -56,12 +56,12 @@ _NINA_ARCHIVE_NAME = "vanninfofisk.zip"
 # Ordered list of (genus, user-facing label) pairs for the prized game fish.
 # The list position is the bit index used in the fish_genera_mask column.
 _PRIZED_GENERA_LIST: list[tuple[str, str]] = [
-    ("Salmo", "Trout/Salmon"),    # bit 0
-    ("Salvelinus", "Char"),        # bit 1
-    ("Thymallus", "Grayling"),     # bit 2
-    ("Esox", "Pike"),              # bit 3
-    ("Perca", "Perch"),            # bit 4
-    ("Coregonus", "Whitefish"),    # bit 5
+    ("Salmo", "Trout/Salmon"),  # bit 0
+    ("Salvelinus", "Char"),  # bit 1
+    ("Thymallus", "Grayling"),  # bit 2
+    ("Esox", "Pike"),  # bit 3
+    ("Perca", "Perch"),  # bit 4
+    ("Coregonus", "Whitefish"),  # bit 5
 ]
 
 # Exported to the frontend config block so JavaScript can render genus labels
@@ -71,9 +71,7 @@ PRIZED_GENERA: list[dict[str, object]] = [
     for i, (genus, label) in enumerate(_PRIZED_GENERA_LIST)
 ]
 
-_GENUS_TO_BIT: dict[str, int] = {
-    genus: i for i, (genus, _) in enumerate(_PRIZED_GENERA_LIST)
-}
+_GENUS_TO_BIT: dict[str, int] = {genus: i for i, (genus, _) in enumerate(_PRIZED_GENERA_LIST)}
 
 
 def _ensure_nina_archive(data_dir: Path, timeout_s: float) -> Path:

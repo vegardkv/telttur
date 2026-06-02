@@ -73,6 +73,17 @@ class InteractiveAr5Buffers(BaseModel):
     slider_max_m: float = 10000.0
 
 
+class InteractiveClimb(BaseModel):
+    """Max acceptable vertical climb slider in the accessibility card.
+
+    Climb beyond max_m tapers the accessibility score toward Elendig (1)
+    following the same shape as the other dimension sliders.
+    """
+
+    max_m: float = 200.0
+    slider_max_m: float = 1000.0
+
+
 class InteractiveControlsConfig(BaseModel):
     """Configuration for the interactive scoring controls panel embedded in the map."""
 
@@ -83,6 +94,7 @@ class InteractiveControlsConfig(BaseModel):
         default_factory=InteractiveCabinDensitySlider
     )
     ar5_buffers: InteractiveAr5Buffers = Field(default_factory=InteractiveAr5Buffers)
+    climb: InteractiveClimb = Field(default_factory=InteractiveClimb)
 
 
 class MapConfig(BaseModel):
