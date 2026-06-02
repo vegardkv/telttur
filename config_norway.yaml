@@ -9,8 +9,6 @@ min_lake_area_m2: 5000
 
 show_roads: false
 
-embed: true
-
 scoring:
   ar5_land_use:
     source: n50  # WFS rejects Norway-wide bbox; use local N50 data directly
