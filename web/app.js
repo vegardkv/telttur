@@ -28,7 +28,7 @@ const I18N = {
   ar5_residential: "Boligområder:",
   ar5_industrial: "Industri:",
   fishing: "Fiske",
-  fishing_info: "Fiskemuligheter basert på kjente fiskearter i innsjøen. Scoren er basert på andelen av dine valgte fiskeslekter som er til stede. Datakilde: NINA Vanndata fisk (NINA).",
+  fishing_info: "Fiskemuligheter basert på kjente fiskearter i innsjøen. Utmerket (5) om alle valgte arter er til stede; ett hakk ned per art som mangler, men aldri Elendig (1) med mindre ingen valgte arter finnes. Datakilde: NINA Vanndata fisk (NINA).",
   overall_score: "Total score",
   score_cabin_density: "Hyttetetthet",
   score_accessibility: "Tilgjengelighet",
@@ -230,20 +230,12 @@ function popcount(n) {
   return count;
 }
 
-/** Score fishing by fraction of desired prized genera present at the lake.
- *  generaMask — bitmask of genera found near the lake (from data)
- *  desiredMask — bitmask of genera the user wants (from checkboxes)
- *  Returns null when desiredMask is 0 (no genera selected → skip dimension).
- */
 function scoreFishing(generaMask, desiredMask) {
   if (!desiredMask) return null;
   const matched = popcount(generaMask & desiredMask);
-  const fraction = matched / popcount(desiredMask);
-  if (fraction <= 0) return 1;
-  if (fraction <= 0.25) return 2;
-  if (fraction <= 0.5) return 3;
-  if (fraction <= 0.75) return 4;
-  return 5;
+  if (matched === 0) return 1;
+  const missing = popcount(desiredMask) - matched;
+  return Math.max(2, 5 - missing);
 }
 
 // ---------------------------------------------------------------------------
@@ -263,7 +255,6 @@ function readControlState(cfg) {
   for (const g of fishingGenera) {
     if (checkVal(`tt-fg-${g.code}`, true)) fishingMask |= (1 << g.code);
   }
-
   return {
     minArea: _lsMin(),
     maxArea: _lsMax(),
