@@ -121,9 +121,17 @@ Scoring is a bit inconsistent, i think. In general, i want lakes that fall withi
 
 I believe this is the most consistent way of handling this, but i am open to suggestions for improvement. Check the code and fix it to ensure consistent behavior. Also update dev/agent documentation and in-app descriptions where applicable
 
+### Round 10 - improvements
+
+Tracked in tasks 39–41.
+
+- Add difference in vertical meters to "accessbility". Perhaps even evaluate the straight line between nearest point and lake → **task 39**
+- Fishing should have a selector for two modes → **task 40**:
+  - "Any fish is good" - i.e. an OR-filter approach. As long as any of the species are available, yield "Utmerket", otherwise, yield "Elendig".
+  - "More is merrier" - almost like the current approach: if all species are present: "utmerket". if none are present: "elendig". if 1 or more is missing, "middels".
+- add a distance indicator to the map → **task 41**
+
 ### Misc.
 
 - Use a UI component framework to reduce the amount of javascript code. For ease of maintainence and readability
-- Assess performance of app.js when changing scoring parameters. Is there any low-hanging fruit here. Try the in-browser profiler first, and consider node with direct profiling of a function invocation if a more consistent approach is needed.
 - Accessbility: distance from publid transportation
-- "debug-buildings" should be a config option. since it is only for debugging, it should probably be left out of app.js. Leave it for now, though.
