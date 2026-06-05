@@ -16,14 +16,18 @@ from shapely.geometry import box
 
 from telttur.config import BBox
 
-_DTM50_WCS = "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm50"
-_DTM50_COVERAGE = "nhm_dtm_50"
+_DTM50_WCS = "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
+_DTM50_COVERAGE = "nhm_dtm_topo_25833"
 _CRS_UTM33 = "EPSG:25833"
 _CRS_WGS84 = "EPSG:4326"
 _CT_TIFF = "tiff"
 _CT_OCTET = "octet-stream"
-# WCS service rejects requests wider/taller than this; large bboxes are tiled.
-_MAX_TILE_EXTENT_M = 200_000  # 200 km per side → 4000×4000 pixels at 50 m
+# Service pixel limit: 3840 cols × 2160 rows. At 50 m resolution that caps each
+# tile at ~180 km wide and ~100 km tall.
+_MAX_TILE_W_M = 180_000  # 3600 pixels at 50 m — stays within 3840 col limit
+_MAX_TILE_H_M = 100_000  # 2000 pixels at 50 m — stays within 2160 row limit
+# DEM coverage in UTM33 from WCS DescribeCoverage — tiles entirely outside are skipped.
+_DEM_MIN_E, _DEM_MIN_N, _DEM_MAX_E, _DEM_MAX_N = -100_274, 6_399_724, 1_150_255, 8_000_275
 
 
 def _download_dem_tile(  # noqa: PLR0913
@@ -40,7 +44,7 @@ def _download_dem_tile(  # noqa: PLR0913
         "BBOX": f"{minx:.0f},{miny:.0f},{maxx:.0f},{maxy:.0f}",
         "RESX": "50",
         "RESY": "50",
-        "FORMAT": "image/tiff",
+        "FORMAT": "GeoTIFF",
     }
     try:
         resp = requests.get(_DTM50_WCS, params=params, timeout=timeout_s)
@@ -63,8 +67,8 @@ def _download_dem_tile(  # noqa: PLR0913
 def ensure_dem(data_dir: Path, bbox: BBox, timeout_s: float = 120.0) -> Path:
     """Return path to cached DTM50 GeoTIFF for the given bbox, downloading if absent.
 
-    For large bboxes the download is split into tiles of at most
-    _MAX_TILE_EXTENT_M per side and then merged into a single cached file.
+    For large bboxes the download is tiled to respect the WCS service pixel
+    limits (_MAX_TILE_W_M × _MAX_TILE_H_M) and then merged.
     """
     cache_name = f"dem50_{bbox.south:.1f}_{bbox.west:.1f}_{bbox.north:.1f}_{bbox.east:.1f}.tif"
     cache_path = data_dir / cache_name
@@ -86,12 +90,12 @@ def ensure_dem(data_dir: Path, bbox: BBox, timeout_s: float = 120.0) -> Path:
     height = maxy - miny
     bbox_label = f"{bbox.south:.1f}°N–{bbox.north:.1f}°N {bbox.west:.1f}°E–{bbox.east:.1f}°E"
 
-    if width <= _MAX_TILE_EXTENT_M and height <= _MAX_TILE_EXTENT_M:
+    if width <= _MAX_TILE_W_M and height <= _MAX_TILE_H_M:
         print(f"  Downloading DTM50 for bbox {bbox_label} ...")
         _download_dem_tile(cache_path, minx, miny, maxx, maxy, timeout_s)
     else:
-        n_cols = math.ceil(width / _MAX_TILE_EXTENT_M)
-        n_rows = math.ceil(height / _MAX_TILE_EXTENT_M)
+        n_cols = math.ceil(width / _MAX_TILE_W_M)
+        n_rows = math.ceil(height / _MAX_TILE_H_M)
         tile_w = width / n_cols
         tile_h = height / n_rows
         print(f"  Downloading DTM50 in {n_cols}×{n_rows} tiles for bbox {bbox_label} ...")
@@ -104,6 +108,11 @@ def ensure_dem(data_dir: Path, bbox: BBox, timeout_s: float = 120.0) -> Path:
                 ty0 = miny + row * tile_h
                 tx1 = tx0 + tile_w
                 ty1 = ty0 + tile_h
+                # Skip tiles entirely outside the DEM coverage extent.
+                if tx1 <= _DEM_MIN_E or tx0 >= _DEM_MAX_E:
+                    continue
+                if ty1 <= _DEM_MIN_N or ty0 >= _DEM_MAX_N:
+                    continue
                 tile_path = tile_dir / f"tile_{col}_{row}.tif"
                 if not tile_path.exists():
                     print(f"    tile ({col + 1}/{n_cols}, {row + 1}/{n_rows}) ...")
