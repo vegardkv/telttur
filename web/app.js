@@ -408,10 +408,9 @@ function buildPopup(fields, liveScores, cfg) {
       const val = col.endsWith("_m") ? formatDist(fields[col]) : fields[col];
       detailRows.push([label, val]);
     }
-  }
-
-  if (fields.elevation_gain_m != null) {
-    detailRows.push([t("elevation_gain"), `${Math.round(fields.elevation_gain_m)} m`]);
+    if (col === "road_distance_m" && fields.elevation_gain_m != null) {
+      detailRows.push([t("elevation_gain"), `${Math.round(fields.elevation_gain_m)} m`]);
+    }
   }
 
   // Prized genera present at this lake
