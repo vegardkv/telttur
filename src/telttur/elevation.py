@@ -20,7 +20,7 @@ _CT_TIFF = "tiff"
 _CT_OCTET = "octet-stream"
 
 
-def _ensure_dem(data_dir: Path, bbox: BBox, timeout_s: float = 120.0) -> Path:
+def ensure_dem(data_dir: Path, bbox: BBox, timeout_s: float = 120.0) -> Path:
     """Return path to cached DTM50 GeoTIFF for the given bbox, downloading if absent."""
     cache_name = f"dem50_{bbox.south:.1f}_{bbox.west:.1f}_{bbox.north:.1f}_{bbox.east:.1f}.tif"
     cache_path = data_dir / cache_name
@@ -79,9 +79,19 @@ def _ensure_dem(data_dir: Path, bbox: BBox, timeout_s: float = 120.0) -> Path:
 def sample_elevations(dem_path: Path, points_xy: Sequence[tuple[float, float]]) -> list[float]:
     """Sample elevation (metres) at each (x, y) UTM33 coordinate.
 
-    Returns 0.0 for points outside the raster extent or on nodata cells.
+    Raises RuntimeError if any point lies outside the raster extent — the DEM
+    is padded 500 m around the study area, so out-of-extent is a bug.
+    Returns 0.0 for genuine nodata cells (e.g. sea).
     """
     with rasterio.open(dem_path) as src:
+        left, bottom, right, top = src.bounds
+        for x, y in points_xy:
+            if not (left <= x <= right and bottom <= y <= top):
+                raise RuntimeError(
+                    f"Point ({x:.1f}, {y:.1f}) lies outside DEM extent "
+                    f"({left:.0f}–{right:.0f} E, {bottom:.0f}–{top:.0f} N). "
+                    "Re-download the DEM with a larger padding."
+                )
         nodata = src.nodata
         results = []
         for vals in src.sample(points_xy):

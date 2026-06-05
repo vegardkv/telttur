@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 
 import geopandas as gpd
 
+from telttur.elevation import ensure_dem
 from telttur.lakes import LakeCols
 from telttur.scoring import accessibility, ar5_land_use, cabin_density, fishing
 from telttur.scoring.common import (
@@ -67,14 +68,7 @@ def process_scoring(  # noqa: PLR0913
 
     # --- Accessibility ---
     print("Scoring accessibility (distance to nearest drivable road)...")
-    dem_path = None
-    try:
-        from telttur.elevation import _ensure_dem
-
-        dem_path = _ensure_dem(data_dir / "dem", bbox)
-    except RuntimeError as exc:
-        print(f"  WARNING: DEM download failed — {exc}; elevation gain will be skipped")
-
+    dem_path = ensure_dem(data_dir / "dem", bbox)
     lakes = accessibility.score_accessibility(
         lakes,
         road_lines,
@@ -94,15 +88,12 @@ def process_scoring(  # noqa: PLR0913
 
     # --- Fishing suitability ---
     print("Downloading NINA freshwater fish observations...")
-    try:
-        fish_obs = fishing.fetch_nina_fish_observations(data_dir / "nina")
-        print(f"  Loaded {len(fish_obs)} fish occurrence records")
-        print(f"Scoring fishing suitability ({config.fishing.buffer_m} m buffer)...")
-        lakes = fishing.score_fishing(lakes, fish_obs, config.fishing)
-        total = len(lakes)
-        with_fish = (lakes[LakeCols.FISH_GENERA_MASK] > 0).sum()
-        print(f"  Lakes with at least one prized genus: {with_fish}/{total}")
-    except RuntimeError as exc:
-        print(f"  WARNING: Fishing scoring skipped — {exc}")
+    fish_obs = fishing.fetch_nina_fish_observations(data_dir / "nina")
+    print(f"  Loaded {len(fish_obs)} fish occurrence records")
+    print(f"Scoring fishing suitability ({config.fishing.buffer_m} m buffer)...")
+    lakes = fishing.score_fishing(lakes, fish_obs, config.fishing)
+    total = len(lakes)
+    with_fish = (lakes[LakeCols.FISH_GENERA_MASK] > 0).sum()
+    print(f"  Lakes with at least one prized genus: {with_fish}/{total}")
 
     return lakes
