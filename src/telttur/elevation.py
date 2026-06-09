@@ -63,6 +63,13 @@ def _download_dem_tile(  # noqa: PLR0913
                 time.sleep(wait)
             else:
                 raise RuntimeError(f"Failed to download DTM50: {exc}") from exc
+        except (requests.Timeout, requests.ConnectionError) as exc:
+            if attempt < _MAX_TILE_ATTEMPTS:
+                wait = 15 * (2 ** (attempt - 1))  # 15 s, 30 s, 60 s
+                print(f"      {type(exc).__name__}, retrying in {wait}s (attempt {attempt}/{_MAX_TILE_ATTEMPTS}) ...")
+                time.sleep(wait)
+            else:
+                raise RuntimeError(f"Failed to download DTM50: {exc}") from exc
         except requests.RequestException as exc:
             raise RuntimeError(f"Failed to download DTM50: {exc}") from exc
 
