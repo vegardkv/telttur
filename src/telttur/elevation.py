@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import math
 import shutil
+import time
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -26,6 +27,8 @@ _CT_OCTET = "octet-stream"
 # tile at ~180 km wide and ~100 km tall.
 _MAX_TILE_W_M = 180_000  # 3600 pixels at 50 m — stays within 3840 col limit
 _MAX_TILE_H_M = 100_000  # 2000 pixels at 50 m — stays within 2160 row limit
+_RETRY_STATUSES = {429, 500, 502, 503, 504}
+_MAX_TILE_ATTEMPTS = 4  # 1 initial + 3 retries
 # DEM coverage in UTM33 from WCS DescribeCoverage — tiles entirely outside are skipped.
 _DEM_MIN_E, _DEM_MIN_N, _DEM_MAX_E, _DEM_MAX_N = -100_274, 6_399_724, 1_150_255, 8_000_275
 
@@ -46,12 +49,24 @@ def _download_dem_tile(  # noqa: PLR0913
         "RESY": "50",
         "FORMAT": "GeoTIFF",
     }
-    try:
-        resp = requests.get(_DTM50_WCS, params=params, timeout=timeout_s)
-        resp.raise_for_status()
-    except requests.RequestException as exc:
-        raise RuntimeError(f"Failed to download DTM50: {exc}") from exc
+    resp = None
+    for attempt in range(1, _MAX_TILE_ATTEMPTS + 1):
+        try:
+            resp = requests.get(_DTM50_WCS, params=params, timeout=timeout_s)
+            resp.raise_for_status()
+            break
+        except requests.HTTPError as exc:
+            status = exc.response.status_code if exc.response is not None else None
+            if attempt < _MAX_TILE_ATTEMPTS and status in _RETRY_STATUSES:
+                wait = 15 * (2 ** (attempt - 1))  # 15 s, 30 s, 60 s
+                print(f"      HTTP {status}, retrying in {wait}s (attempt {attempt}/{_MAX_TILE_ATTEMPTS}) ...")
+                time.sleep(wait)
+            else:
+                raise RuntimeError(f"Failed to download DTM50: {exc}") from exc
+        except requests.RequestException as exc:
+            raise RuntimeError(f"Failed to download DTM50: {exc}") from exc
 
+    assert resp is not None
     ct = resp.headers.get("Content-Type", "").lower()
     if _CT_TIFF not in ct and _CT_OCTET not in ct:
         preview = resp.text[:300].replace("\n", " ")
