@@ -30,7 +30,7 @@ const I18N = {
   ar5_residential: "Boligområder:",
   ar5_industrial: "Industri:",
   fishing: "Fiske",
-  fishing_info: "Fiskemuligheter basert på kjente fiskearter i innsjøen. Utmerket (5) om alle valgte arter er til stede; ett hakk ned per art som mangler, men aldri Elendig (1) med mindre ingen valgte arter finnes. Datakilde: NINA Vanndata fisk (NINA).",
+  fishing_info: "Fiskemuligheter basert på kjente fiskearter i innsjøen. Utmerket (5) om alle valgte arter er til stede; ett hakk ned per art som mangler, men aldri Elendig (1) med mindre ingen valgte arter finnes. NINA-dataene er enkeltstående punktobservasjoner som knyttes til en innsjø ut fra koordinatene. En observasjon kan derfor havne på feil vann, og fravær av observasjoner betyr ikke at arten mangler, bare at ingen er registrert. Dataene sier ingenting direkte om størrelsen på bestanden. Datakilde: NINA Vanndata fisk (NINA).",
   overall_score: "Total score",
   score_cabin_density: "Hyttetetthet",
   score_accessibility: "Tilgjengelighet",
