@@ -269,12 +269,19 @@ html, body {
 .tt-info-btn {
   position: relative;
   cursor: pointer;
-  color: #888;
-  font-size: 14px;
+  color: #4a78b5;
+  font-size: 18px;
   line-height: 1;
   user-select: none;
   flex-shrink: 0;
   outline: none;
+  transition: color 0.15s ease;
+}
+
+.tt-info-btn:hover,
+.tt-info-btn:focus,
+.tt-info-btn.tt-info-open {
+  color: #2c5894;
 }
 
 .tt-info-tip {
