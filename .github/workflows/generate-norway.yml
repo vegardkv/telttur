@@ -55,8 +55,9 @@ jobs:
         run: |
           mkdir -p _site
           cp web/index.html web/app.js web/style.css _site/
-          # The frontend references ../output/data.js; flatten it to a sibling for the deploy.
-          sed -i 's#\.\./output/data\.js#data.js#' _site/index.html
+          # Both index.html (preload hint) and app.js (DATA_URL) reference
+          # ../output/data.js; flatten it to a sibling for the deploy.
+          sed -i 's#\.\./output/data\.js#data.js#' _site/index.html _site/app.js
           if [ "${{ inputs.update_data }}" = "true" ]; then
             cp output/data_norway.js _site/data.js
           else
