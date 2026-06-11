@@ -224,11 +224,10 @@ def export_data(
     debug_buildings: gpd.GeoDataFrame | None = None,
 ) -> None:
     """Assemble and write data.json for the static Leaflet frontend."""
-    bbox = config.bbox
-    assert bbox is not None  # guaranteed by Config.require_bbox validator
+    # The frontend frames a fixed Norway view itself (see NORWAY_BOUNDS in
+    # web/app.js), so the dataset's bounding box is deliberately not exported.
     meta: dict[str, Any] = {
         "generated": datetime.now(UTC).isoformat(),
-        "bbox": [bbox.south, bbox.west, bbox.north, bbox.east],
         "region": getattr(config, "fylke", None) or "custom",
     }
 

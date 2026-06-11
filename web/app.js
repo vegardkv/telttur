@@ -1,8 +1,10 @@
 /**
  * Telttur – static Leaflet frontend.
  *
- * Reads data.json (relative to this file's location, or the path set in
- * DATA_URL) and renders lakes, roads, and an interactive control panel.
+ * Paints the basemap immediately, then loads data.js (from DATA_URL) in the
+ * background and renders lakes, roads, and an interactive control panel once it
+ * arrives. See the bootstrap section at the bottom of this file for why the data
+ * is loaded this way rather than via a <script> tag in index.html.
  */
 
 "use strict";
@@ -456,12 +458,22 @@ function buildPopup(fields, liveScores, cfg) {
 // Map initialisation
 // ---------------------------------------------------------------------------
 
-function initMap(data) {
-  const bbox = data.meta.bbox; // [south, west, north, east]
-  const bounds = L.latLngBounds([bbox[0], bbox[1]], [bbox[2], bbox[3]]);
+// Initial map view: mainland Norway. app.js always opens here, so the dataset
+// need not ship its own bounding box. For small dev datasets this means the
+// lakes may sit in one corner and you'll zoom in manually — an accepted
+// trade-off for keeping the data payload free of view metadata.
+const NORWAY_BOUNDS = [[57.7, 4.0], [71.5, 31.8]]; // [[south, west], [north, east]]
 
+/**
+ * Create the map and basemap and frame mainland Norway, with no data attached.
+ *
+ * Kept separate from populate() so the basemap can paint as soon as app.js runs
+ * — before the multi-MB data.js has downloaded. See the bootstrap section at
+ * the bottom of this file for the full rationale.
+ */
+function initShell() {
   map = L.map("map", { preferCanvas: true, attributionControl: false });
-  map.fitBounds(bounds, { padding: [20, 20] });
+  map.fitBounds(NORWAY_BOUNDS, { padding: [20, 20] });
 
   L.tileLayer(KARTVERKET_GRAY, {
     attribution: KARTVERKET_ATTR,
@@ -469,6 +481,17 @@ function initMap(data) {
   }).addTo(map);
 
   L.control.scale({ metric: true, imperial: false, maxWidth: 120 }).addTo(map);
+}
+
+/**
+ * Attach the loaded dataset to the already-rendered map shell: draw roads and
+ * lakes, and build the control panel/legend/footer. The map view is set by
+ * initShell() and is not adjusted to the dataset.
+ */
+function populate(data) {
+  _ttCfg = data.config;
+  _ttData = data;
+  document.title = t("title");
 
   // Roads
   if (data.roads && data.roads.features && data.roads.features.length > 0) {
@@ -545,6 +568,9 @@ function initMap(data) {
   // Bulk insert: building the cluster hierarchy in a single pass (and honouring
   // chunkedLoading) is far faster than 140k+ individual addLayer calls.
   lakesLayer.addLayers(markers);
+
+  // Data is in and rendered — drop the loading indicator.
+  document.getElementById("tt-loading")?.remove();
 }
 
 // ---------------------------------------------------------------------------
@@ -987,23 +1013,52 @@ function buildFooter() {
 
 // ---------------------------------------------------------------------------
 // Bootstrap
+//
+// Load ordering exists entirely to keep the First Contentful Paint fast:
+//
+//   1. initShell() paints the basemap with a default view the instant app.js
+//      runs. This is what fires the FCP — in ~1–2 s instead of after the full
+//      data download.
+//
+//   2. loadData() then injects data.js and calls populate() once it lands, so
+//      the lakes/roads/controls appear when ready without ever blocking render.
+//
+// Why data.js is loaded here rather than as a <script> tag in index.html:
+//   - As a synchronous <script> (~3.7 MB) it blocked the initial render until
+//     the whole payload had downloaded (~20 s on throttled mobile — flagged by
+//     PageSpeed as a render-blocking request). Loading it after the shell is up
+//     moves it off the critical path.
+//   - We inject a <script> element rather than fetch()-ing the data because the
+//     frontend must work when opened over file:// (see CLAUDE.md), where fetch()
+//     would be blocked by CORS. A dynamically-inserted script is not. data.js
+//     stays a dumb data blob that just assigns window.TELTTUR_DATA; index.html
+//     carries a <link rel="preload"> so the download still starts during parse.
 // ---------------------------------------------------------------------------
+
+const DATA_URL = "../output/data.js";
 
 let _ttCfg = null;
 let _ttData = null;
 
-function _start(data) {
-  _ttCfg = data.config;
-  _ttData = data;
-  document.title = t("title");
-  initMap(data);
+/** Replace the loading indicator with an error message. */
+function showError() {
+  document.getElementById("tt-loading")?.remove();
+  const el = document.createElement("div");
+  el.id = "tt-error";
+  el.innerHTML = `<h2>${t("error_no_data")}</h2>`;
+  document.body.appendChild(el);
 }
 
-if (window.TELTTUR_DATA) {
-  _start(window.TELTTUR_DATA);
-} else {
-  document.body.innerHTML =
-    `<div style="padding:2em;font-family:sans-serif;color:#c00">` +
-    `<h2>${t("error_no_data")}</h2>` +
-    `</div>`;
+/** Inject data.js and hand the dataset to populate() once it has loaded. */
+function loadData() {
+  const script = document.createElement("script");
+  script.src = DATA_URL;
+  // data.js assigns window.TELTTUR_DATA as a side effect; read it on load.
+  script.onload = () =>
+    window.TELTTUR_DATA ? populate(window.TELTTUR_DATA) : showError();
+  script.onerror = showError;
+  document.head.appendChild(script);
 }
+
+initShell();
+loadData();
