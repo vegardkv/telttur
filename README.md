@@ -7,6 +7,8 @@ and land cover to help find ideal tent-by-the-lake spots within walking distance
 > to a hand-authored Leaflet/JS/CSS frontend. The Python pipeline will output `data.json` instead of
 > a monolithic HTML file. See `tasks/19-migrate-to-leaflet.md` for details.
 
+A full model for Norway is available at https://turvann.no/
+
 ## Features
 
 - **Road buffer zones**: Visualize how far you're willing to walk from the car (configurable distance)
