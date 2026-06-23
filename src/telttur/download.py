@@ -222,15 +222,25 @@ def download_n50(bbox: BBox, data_dir: Path) -> list[Path]:
             if gdb_path := _download_and_extract(n50_dir, file_info, fylke_code, fylke_name):
                 gdb_paths.append(gdb_path)
 
+    # Sweep up any leftover zips (e.g. from older cached runs that kept them).
+    # The extracted .gdb dirs are the cache; the zips only bloat it.
+    for stray_zip in n50_dir.glob("*.zip"):
+        stray_zip.unlink(missing_ok=True)
+
     return gdb_paths
 
 
 def _find_existing(n50_dir: Path, fylke_code: str, fylke_name: str) -> Path | None:
-    """Return path to an already-extracted .gdb, or None."""
-    existing = list(n50_dir.glob(f"*{fylke_code}*{fylke_name}*.gdb"))
-    if existing:
-        print(f"  Already downloaded: {existing[0].name}")
-        return existing[0]
+    """Return path to an already-extracted .gdb, or None.
+
+    The .gdb lives inside ``n50_dir/{code}_{name}/`` and is the cached artifact
+    re-runs reuse (the source zip is discarded after extraction).
+    """
+    extract_dir = n50_dir / f"{fylke_code}_{fylke_name}"
+    for gdb in extract_dir.rglob("*.gdb"):
+        if gdb.is_dir():
+            print(f"  Already downloaded: {gdb.name}")
+            return gdb
     return None
 
 
@@ -255,33 +265,29 @@ def _order_fylke(fylke_code: str, fylke_name: str, areas: list[dict]) -> OrderRe
 def _download_and_extract(
     n50_dir: Path, file_info: OrderFile, fylke_code: str, fylke_name: str
 ) -> Path | None:
-    """Download a single file and extract its .gdb. Returns path or None on failure."""
+    """Download a single file, extract its .gdb, and discard the source zip.
+
+    The extracted .gdb is all later runs need, so the (large) zip is removed
+    once unpacked — mirroring how the DEM/drinking-water tiles are dropped after
+    merging. Cache hits are handled earlier by ``_find_existing``.
+    """
     if file_info.status != "ReadyForDownload":  # noqa: PLR2004
         print(f"    File not ready: {file_info.name}")
         return None
 
-    download_url = file_info.downloadUrl
     filename = file_info.name or f"n50_{fylke_code}.zip"
     zip_path = n50_dir / filename
 
-    if not zip_path.exists():
-        print(f"    Downloading {filename}...")
-        try:
-            download_file(download_url, zip_path)
-        except requests.exceptions.RequestException as exc:
-            print(f"    Warning: Failed to download {filename}: {exc}")
-            zip_path.unlink(missing_ok=True)
-            return None
-    else:
-        print(f"    Already have {filename}")
+    print(f"    Downloading {filename}...")
+    try:
+        download_file(file_info.downloadUrl, zip_path)
+    except requests.exceptions.RequestException as exc:
+        print(f"    Warning: Failed to download {filename}: {exc}")
+        zip_path.unlink(missing_ok=True)
+        return None
 
+    print("    Extracting...")
     extract_dir = n50_dir / f"{fylke_code}_{fylke_name}"
-    if not extract_dir.exists():
-        print("    Extracting...")
-        return extract_fgdb(zip_path, extract_dir)
-
-    # Find existing gdb
-    for gdb in extract_dir.rglob("*.gdb"):
-        if gdb.is_dir():
-            return gdb
-    return None
+    gdb_path = extract_fgdb(zip_path, extract_dir)
+    zip_path.unlink(missing_ok=True)
+    return gdb_path
