@@ -12,6 +12,7 @@ import pandas as pd
 
 from telttur.config import Config
 from telttur.lakes import LakeCols
+from telttur.restrictions import RESTRICTIONS as _RESTRICTIONS
 from telttur.scoring import (
     LEVEL_COLORS,
     LEVEL_NAMES,
@@ -34,6 +35,7 @@ def build_lake_data(
     # Determine which optional fields are present
     optional_cols = [
         LakeCols.FISH_GENERA_MASK,
+        LakeCols.RESTRICTIONS_MASK,
         LakeCols.ROAD_DISTANCE_M,
         LakeCols.ELEVATION_GAIN_M,
         LakeCols.BUILDING_DENSITY,
@@ -73,6 +75,7 @@ def build_lake_data(
             elif col in (
                 LakeCols.FISH_GENERA_MASK,
                 LakeCols.FISH_SPECIES_COUNT,
+                LakeCols.RESTRICTIONS_MASK,
             ):
                 entry.append(int(val))
             else:
@@ -153,6 +156,7 @@ def build_config_block(config: Config, lakes: gpd.GeoDataFrame) -> dict[str, Any
             "industrial_buffer_m": config.scoring.ar5_land_use.industrial_buffer_m,
         },
         "fishing": {"genera": _FISHING_PRIZED_GENERA},
+        "restrictions": {"bits": _RESTRICTIONS},
     }
 
     ctrl = config.map.interactive_controls

@@ -9,6 +9,7 @@ from telttur.config import load_config
 from telttur.data_export import export_data
 from telttur.download import download_n50
 from telttur.lakes import process_lakes
+from telttur.restrictions import tag_drinking_water
 from telttur.roads import process_roads
 from telttur.scoring import process_scoring
 from telttur.scoring.cabin_density import extract_buildings_all
@@ -87,7 +88,14 @@ def generate(
         )
         print(f"  [scoring: {time.time() - t0:.1f}s]")
 
-    # Step 5: Export data.json
+    # Step 5: Restriction flags (drinking-water source via Mattilsynet WMS)
+    if not lakes.empty:
+        t0 = time.time()
+        print("Tagging drinking-water lakes (Mattilsynet WMS)...")
+        lakes = tag_drinking_water(lakes, config.data_path)
+        print(f"  [restrictions: {time.time() - t0:.1f}s]")
+
+    # Step 6: Export data.json
     t0 = time.time()
     print("Exporting data.json...")
     output_dir = config.output_path

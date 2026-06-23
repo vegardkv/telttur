@@ -36,6 +36,9 @@ class LakeCols(StrEnum):
     # Elevation gain — raw data (score computed in JS)
     ELEVATION_GAIN_M = "elevation_gain_m"
 
+    # Restrictions bitmask — bit 0 = drinking-water source (drikkevann)
+    RESTRICTIONS_MASK = "restrictions_mask"
+
 
 def find_lake_layers(gdb_path: Path) -> list[str]:
     """List layers in a .gdb that likely contain lake/water data."""

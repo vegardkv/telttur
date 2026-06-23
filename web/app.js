@@ -68,11 +68,16 @@ const I18N = {
   fish_deselect_all: "Fjern alle",
   fish_selected_all: "Alle valgt",
   fish_selected_none: "Ingen valgt",
+  restrictions: "Restriksjoner",
+  restrictions_none: "Ingen",
+  restriction_drikkevann: "Drikkevann",
+  drinking_water_filter: "Skjul drikkevann",
   credits: "Kildehenvisninger",
   credits_data: "Datakilder",
   credits_n50: "N50 kartdata (veier, innsjøer, bygninger)",
   credits_ar5: "AR5 arealbruksklassifisering",
   credits_nina: "Fiskeartsobservasjoner",
+  credits_mattilsynet: "Drikkevannskilder (innsjøer)",
   credits_basemap: "Bakgrunnskartfliser",
   credits_library: "Kartbibliotek",
   credits_source_code: "Kildekode",
@@ -294,6 +299,7 @@ function readControlState(cfg) {
     ar5On: checkVal("tt-ar5", true),
     fishingOn: checkVal("tt-fishing", false),
     fishingMask,
+    hideDrinkingWater: checkVal("tt-hide-drinkingwater", false),
   };
 }
 
@@ -343,7 +349,8 @@ function teltturUpdate(cfg) {
   for (const { marker, fields } of allMarkers) {
     const area = fields.area || 0;
 
-    if (area < cs.minArea || area > cs.maxArea) {
+    if (area < cs.minArea || area > cs.maxArea
+        || (cs.hideDrinkingWater && (fields.restrictions_mask & 1))) {
       marker.setStyle({ fillOpacity: 0, opacity: 0, weight: 0 });
       continue;
     }
@@ -424,6 +431,15 @@ function buildPopup(fields, liveScores, cfg) {
     if (present.length > 0) {
       detailRows.push([t("prized_fish"), present.join(", ")]);
     }
+  }
+
+  // Restrictions — always shown when the data is present (value "Ingen" if none).
+  if (fields.restrictions_mask != null) {
+    const bits = cfg?.scoring?.restrictions?.bits ?? [];
+    const active = bits
+      .filter(b => (fields.restrictions_mask & (1 << b.bit)) !== 0)
+      .map(b => t(`restriction_${b.key}`) || b.key);
+    detailRows.push([t("restrictions"), active.length ? active.join(", ") : t("restrictions_none")]);
   }
 
   let html = "<div class='tt-popup'>";
@@ -541,7 +557,8 @@ function populate(data) {
     // Area filter hides; the score threshold greys lakes out instead.
     const area = f.area || 0;
     const score = computeScores(f, cs).tentability_score || 0;
-    const hidden = area < cs.minArea || area > cs.maxArea;
+    const hidden = area < cs.minArea || area > cs.maxArea
+      || (cs.hideDrinkingWater && (f.restrictions_mask & 1));
     const below = score && score < cs.minScore;
     const fillColor = below
       ? BELOW_THRESHOLD_COLOR
@@ -777,6 +794,18 @@ function buildControls(cfg, lakeFields) {
     body.appendChild(scoreDiv);
   }
 
+  // Drinking-water filter — hide drinking-water source lakes
+  if (lakeFieldSet.has("restrictions_mask")) {
+    const dwDiv = document.createElement("div");
+    dwDiv.className = "tt-filter-section";
+    dwDiv.innerHTML =
+      `<div class="tt-filter-header">` +
+      `<label><input type="checkbox" id="tt-hide-drinkingwater"> ${t("drinking_water_filter")}</label>` +
+      `</div>`;
+    body.appendChild(dwDiv);
+    dwDiv.querySelector("#tt-hide-drinkingwater").addEventListener("change", () => teltturUpdate(_ttCfg));
+  }
+
   document.body.appendChild(container);
 
   // Initialise noUiSlider for cabin density (discrete steps mapped to quantiles)
@@ -997,6 +1026,7 @@ function buildFooter() {
     `<li><a href="https://kartkatalog.geonorge.no/metadata/n50-kartdata/ea192681-d039-42ec-b1bc-f3ce04c189ac" target="_blank" rel="noopener">Kartverket</a> — ${t("credits_n50")}</li>` +
     `<li><a href="https://www.nibio.no/tema/jord/arealressurser/arealressurskart-ar5" target="_blank" rel="noopener">NIBIO</a> — ${t("credits_ar5")}</li>` +
     `<li><a href="https://ipt.nina.no/resource?r=vanninfofisk" target="_blank" rel="noopener">NINA</a> — ${t("credits_nina")}</li>` +
+    `<li><a href="https://kartkatalog.geonorge.no/metadata/50f62bbe-b216-4e38-bd75-1a54744c1a53" target="_blank" rel="noopener">Mattilsynet</a> — ${t("credits_mattilsynet")}</li>` +
     `<li><a href="https://www.kartverket.no/" target="_blank" rel="noopener">Kartverket</a> — ${t("credits_basemap")}</li>` +
     `</ul>` +
     `<b>${t("credits_library")}</b>` +
