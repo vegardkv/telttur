@@ -70,14 +70,9 @@ def process_scoring(  # noqa: PLR0913
     # --- Accessibility ---
     print("Scoring accessibility (distance to nearest road and public-transport stop)...")
     dem_path = ensure_dem(data_dir / "dem", bbox)
-    # Transit stops are best-effort: an Entur outage should not break the build,
-    # in which case the frontend simply offers road access only.
-    stops: gpd.GeoDataFrame | None = None
-    try:
-        stops = load_transit_stops(data_dir / "entur", bbox)
-        print(f"  Loaded {len(stops)} public-transport stops")
-    except RuntimeError as exc:
-        print(f"  WARNING: skipping transit accessibility — {exc}")
+    # Fail-fast: a missing data source aborts the build (see CLAUDE.md).
+    stops = load_transit_stops(data_dir / "entur", bbox)
+    print(f"  Loaded {len(stops)} public-transport stops")
     lakes = accessibility.score_accessibility(
         lakes,
         road_lines,

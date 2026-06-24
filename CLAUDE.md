@@ -62,6 +62,14 @@ web/
 - **Minimal interface** — expose only what's necessary.
 - **DRY / KISS** — no over-engineering. Three similar lines beats a premature abstraction.
 - `config.yaml` should stay lean — only the bare minimum of inputs, no redundant optional fields.
+- **Fail fast on missing data** — every external data source the pipeline depends on must
+  raise and abort the build if it can't be fetched or parsed. Never silently skip a
+  dimension, swallow a download error, or substitute empty/default data — a partial map is
+  worse than a failed build, because the gap is invisible downstream. (An *intentional*
+  source fallback, like AR5 WFS → N50, is fine — but the fallback path must itself fail
+  hard if it fails.) Distinct from a legitimately empty result within a valid region (e.g.
+  a bbox that genuinely contains no buildings), which is not an error. Repo-wide audit
+  tracked in `tasks/46-fail-fast-data-audit.md`.
 
 ## Python Guidelines
 
