@@ -67,6 +67,7 @@ def _fetch_ar5_wfs(bbox: BBox, timeout_s: float = 30.0) -> gpd.GeoDataFrame:
     except Exception as exc:
         raise RuntimeError(f"Failed to parse AR5 WFS response: {exc}") from exc
 
+    # Category 3: a successful query with zero features means the bbox has no AR5 zones.
     if gdf.empty:
         return gpd.GeoDataFrame(columns=["geometry", "artype"], crs=CRS_UTM33)
 
@@ -106,6 +107,7 @@ def _extract_n50_land_use_zones(
 
     industrial_frames: list[gpd.GeoDataFrame] = []
     residential_frames: list[gpd.GeoDataFrame] = []
+    found_area_layer = False
 
     for gdb_path in gdb_paths:
         all_layers = fiona.listlayers(str(gdb_path))
@@ -116,6 +118,7 @@ def _extract_n50_land_use_zones(
             if any(kw in ln.lower() for kw in ("arealdekke", "arealbruk", "markslag"))
             and _AREA_LABEL in ln.lower()
         ]
+        found_area_layer = found_area_layer or bool(area_layers)
         for layer_name in area_layers:
             gdf = gpd.read_file(str(gdb_path), layer=layer_name, bbox=utm_bounds)
             if gdf.crs is None:
@@ -143,6 +146,16 @@ def _extract_n50_land_use_zones(
                     ["geometry"]
                 ].copy()
             )
+
+    # Category 1: a missing arealdekke layer means an incomplete N50 download. Raise
+    # rather than return empty frames, which would silently become inf distances.
+    # (A zone-free region still finds the layer and returns empty — that case is fine.)
+    if not found_area_layer:
+        names = ", ".join(p.name for p in gdb_paths)
+        raise RuntimeError(
+            f"No N50 arealdekke layer found in {names}; cannot build the AR5 land-use "
+            "fallback. The N50 download may be incomplete."
+        )
 
     empty = gpd.GeoDataFrame(columns=["geometry"], crs=CRS_UTM33)
 
@@ -244,6 +257,7 @@ def score_ar5_land_use(
         )
         return joined.groupby(joined.index)["_dist"].min()
 
+    # Category 3: no zones in the region → inf distance (the best score) is correct.
     if industrial_polygons.empty:
         lakes[LakeCols.INDUSTRIAL_DISTANCE_M] = float("inf")
     else:

@@ -225,6 +225,7 @@ def tag_drinking_water(
     representative point.
     """
     lakes = lakes.copy()
+    # Category 3: no lakes means nothing to tag (defensive guard).
     if lakes.empty:
         lakes[LakeCols.RESTRICTIONS_MASK] = np.array([], dtype=int)
         return lakes

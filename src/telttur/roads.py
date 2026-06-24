@@ -85,7 +85,13 @@ def extract_roads(
             frames.append(gdf)
 
     if not frames:
-        return gpd.GeoDataFrame(columns=["geometry"], crs=CRS_UTM33)
+        # Category 1: N50 always ships a road centerline layer, so finding none means the
+        # download is incomplete/corrupt (not that the region lacks roads).
+        names = ", ".join(p.name for p in gdb_paths)
+        raise RuntimeError(
+            f"No road centerline layer found in N50 data ({names}); the N50 download "
+            "may be incomplete. Delete the cache and re-run."
+        )
 
     roads = gpd.pd.concat(frames, ignore_index=True)
     roads = gpd.GeoDataFrame(roads, crs=CRS_UTM33)
@@ -105,6 +111,7 @@ def _style_roads(roads: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
     Returns a GeoDataFrame with columns: category, label, color, geometry (lines).
     """
+    # Category 3: an empty frame here is a genuinely road-free region, not an error.
     if roads.empty:
         return gpd.GeoDataFrame(
             columns=["category", "label", "color", "geometry"],

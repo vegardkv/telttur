@@ -70,7 +70,13 @@ def extract_buildings(gdb_paths: list[Path], bbox: BBox) -> gpd.GeoDataFrame:
             frames.append(gdf)
 
     if not frames:
-        return gpd.GeoDataFrame(columns=["geometry"], crs=CRS_UTM33)
+        # Category 1: N50 always ships a building-point layer, so finding none means the
+        # download is incomplete/corrupt. (Empty rows is the genuinely-no-buildings case.)
+        names = ", ".join(p.name for p in gdb_paths)
+        raise RuntimeError(
+            f"No building-point layer found in N50 data ({names}); the N50 download may "
+            "be incomplete. Delete the cache and re-run."
+        )
 
     buildings = gpd.GeoDataFrame(gpd.pd.concat(frames, ignore_index=True), crs=CRS_UTM33)
     return buildings.clip(box(*utm_bounds))

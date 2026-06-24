@@ -180,6 +180,7 @@ def score_fishing(
         predicate="within",
     )
 
+    # Category 3: no observed fish within any lake buffer is a real zero, not an error.
     if not fish_in_buffer.empty:
         species_per_lake = (
             fish_in_buffer.groupby("lake_idx")["scientific_name"]

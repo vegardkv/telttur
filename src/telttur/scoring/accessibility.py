@@ -43,6 +43,7 @@ def _score_origin(  # noqa: PLR0913
     ``origins`` geometries may be lines (roads) or points (stops); the nearest
     point on the matched origin is sampled against the DEM either way.
     """
+    # Category 3: no access origins in the region → inf distance is the correct result.
     if origins.empty:
         lakes[dist_col] = float("inf")
         lakes[gain_col] = 0.0

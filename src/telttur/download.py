@@ -80,7 +80,8 @@ def get_fylke_bounds(
         _fylke_bounds_cache["data"] = bounds
         return bounds
     except (requests.exceptions.RequestException, KeyError, ValueError) as exc:
-        print(f"Warning: Could not fetch fylke bounds from API ({exc}), using hardcoded fallback.")
+        # Category 2: fall back to the complete built-in fylke bounds (not degraded data).
+        print(f"Note: fylke-bounds API unavailable ({exc}); using built-in fylke bounds.")
         return FYLKE_BOUNDS
 
 
@@ -200,7 +201,8 @@ def download_n50(bbox: BBox, data_dir: Path) -> list[Path]:
 
     fylker = find_overlapping_fylker(bbox)
     if not fylker:
-        print("Warning: No fylker found overlapping the given bounding box.")
+        # Category 1: a bbox outside Norway has no N50 data (caller aborts on the empty list).
+        print("No fylker overlap the given bounding box — check that it is inside Norway.")
         return []
 
     print(f"Bounding box overlaps {len(fylker)} fylke(r): {', '.join(n for _, n in fylker)}")
@@ -214,13 +216,15 @@ def download_n50(bbox: BBox, data_dir: Path) -> list[Path]:
             gdb_paths.append(existing)
             continue
 
+        # Each overlapping fylke is a hard dependency: the helpers below raise on any
+        # failure rather than skipping it, so the map is never built from a partial area.
         receipt = _order_fylke(fylke_code, fylke_name, areas)
-        if receipt is None:
-            continue
+        if not receipt.files:
+            msg = f"Geonorge order for {fylke_name} ({fylke_code}) returned no downloadable files"
+            raise RuntimeError(msg)
 
         for file_info in receipt.files:
-            if gdb_path := _download_and_extract(n50_dir, file_info, fylke_code, fylke_name):
-                gdb_paths.append(gdb_path)
+            gdb_paths.append(_download_and_extract(n50_dir, file_info, fylke_code, fylke_name))
 
     # Sweep up any leftover zips (e.g. from older cached runs that kept them).
     # The extracted .gdb dirs are the cache; the zips only bloat it.
@@ -244,36 +248,44 @@ def _find_existing(n50_dir: Path, fylke_code: str, fylke_name: str) -> Path | No
     return None
 
 
-def _order_fylke(fylke_code: str, fylke_name: str, areas: list[dict]) -> OrderReceipt | None:
-    """Validate availability and place order. Returns receipt or None on failure."""
+def _order_fylke(fylke_code: str, fylke_name: str, areas: list[dict]) -> OrderReceipt:
+    """Validate availability and place a download order. Raises on any failure.
+
+    The fylke is a hard dependency: if it isn't offered by Geonorge, the requested
+    format/projection is unavailable, or the order request fails, we abort rather
+    than build a map missing this part of the bbox (see CLAUDE.md fail-fast policy).
+    """
     area_entry = _find_area_entry(areas, fylke_code)
     if area_entry is None:
-        print(f"  Warning: Fylke {fylke_name} ({fylke_code}) not found in Geonorge areas")
-        return None
+        msg = f"Fylke {fylke_name} ({fylke_code}) not offered by Geonorge N50 download API"
+        raise RuntimeError(msg)
     if not _format_available(area_entry, TARGET_FORMAT, TARGET_PROJECTION):
-        print(f"  Warning: {TARGET_FORMAT}/{TARGET_PROJECTION} not available for {fylke_name}")
-        return None
+        msg = f"{TARGET_FORMAT}/{TARGET_PROJECTION} not available for {fylke_name} ({fylke_code})"
+        raise RuntimeError(msg)
 
     try:
         print(f"  Ordering N50 for {fylke_name} ({fylke_code})...")
         return place_order(fylke_code, fylke_name)
     except requests.exceptions.RequestException as exc:
-        print(f"  Warning: Failed to order N50 for {fylke_name} ({fylke_code}): {exc}")
-        return None
+        msg = f"Failed to order N50 for {fylke_name} ({fylke_code}): {exc}"
+        raise RuntimeError(msg) from exc
 
 
 def _download_and_extract(
     n50_dir: Path, file_info: OrderFile, fylke_code: str, fylke_name: str
-) -> Path | None:
+) -> Path:
     """Download a single file, extract its .gdb, and discard the source zip.
 
     The extracted .gdb is all later runs need, so the (large) zip is removed
     once unpacked — mirroring how the DEM/drinking-water tiles are dropped after
     merging. Cache hits are handled earlier by ``_find_existing``.
+
+    Raises on a not-ready file or a download error: the data is a hard dependency,
+    so a swallowed download error would silently yield a partial map.
     """
     if file_info.status != "ReadyForDownload":  # noqa: PLR2004
-        print(f"    File not ready: {file_info.name}")
-        return None
+        msg = f"Geonorge file not ready for download: {file_info.name} (status {file_info.status})"
+        raise RuntimeError(msg)
 
     filename = file_info.name or f"n50_{fylke_code}.zip"
     zip_path = n50_dir / filename
@@ -282,9 +294,9 @@ def _download_and_extract(
     try:
         download_file(file_info.downloadUrl, zip_path)
     except requests.exceptions.RequestException as exc:
-        print(f"    Warning: Failed to download {filename}: {exc}")
         zip_path.unlink(missing_ok=True)
-        return None
+        msg = f"Failed to download N50 {filename} for {fylke_name} ({fylke_code}): {exc}"
+        raise RuntimeError(msg) from exc
 
     print("    Extracting...")
     extract_dir = n50_dir / f"{fylke_code}_{fylke_name}"

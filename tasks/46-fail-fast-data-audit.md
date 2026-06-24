@@ -68,9 +68,26 @@ category 2 or 3, and that everything else is category 1.
 - No new config knobs (CLAUDE.md: lean config).
 
 ## Acceptance criteria
-- [ ] Every data-loading / scoring path is classified (1 hard / 2 fallback / 3 empty-ok),
+- [x] Every data-loading / scoring path is classified (1 hard / 2 fallback / 3 empty-ok),
       with category-3 paths commented as to why empty is valid.
-- [ ] All category-1 failures raise and abort the build; none silently degrade the map.
-- [ ] Intentional source fallbacks (AR5) still work but fail hard at their terminal path.
-- [ ] CLAUDE.md "Fail fast on missing data" principle matches the implemented behaviour.
-- [ ] `uv run ruff check`, `uv run ruff format`, `uv run ty check` all pass.
+- [x] All category-1 failures raise and abort the build; none silently degrade the map.
+- [x] Intentional source fallbacks (AR5) still work but fail hard at their terminal path.
+- [x] CLAUDE.md "Fail fast on missing data" principle matches the implemented behaviour.
+- [x] `uv run ruff check`, `uv run ruff format`, `uv run ty check` all pass.
+
+## Outcome
+
+Audit applied across the pipeline. Category-1 silent paths converted to raise:
+- `download.py` — `_order_fylke` / `_download_and_extract` now raise on unavailable
+  fylke, missing format, order failure, not-ready file, or download error (were warn +
+  skip, producing a partial map). The fylke-bounds API fall-through is documented as a
+  deliberate category-2 fallback to the complete built-in `FYLKE_BOUNDS`.
+- `roads.py`, `lakes.py`, `cabin_density.py` — "no road/lake/building *layer* found in
+  any N50 dataset" now raises (corrupt/incomplete download), distinct from a valid region
+  with zero features after clipping (category 3).
+- `ar5_land_use.py` — the N50 fallback (terminal end of the AUTO chain) raises when no
+  arealdekke layer exists, so the chain can't collapse to silent `inf` distances.
+
+Category-3 empty branches (accessibility origins, fishing observations, AR5 empty zones,
+empty roads styling, empty-lakes restriction guard) left as-is with comments explaining
+why empty is the correct, accurate result there.

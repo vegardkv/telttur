@@ -109,7 +109,13 @@ def extract_lakes(
             frames.append(gdf)
 
     if not frames:
-        return gpd.GeoDataFrame(columns=["geometry"], crs=CRS_WGS84)
+        # Category 1: N50 always ships a lake/water layer, so finding none means the
+        # download is incomplete/corrupt. (Empty rows after clipping is the no-lakes case.)
+        names = ", ".join(p.name for p in gdb_paths)
+        raise RuntimeError(
+            f"No lake/water layer found in N50 data ({names}); the N50 download may be "
+            "incomplete. Delete the cache and re-run."
+        )
 
     lakes = gpd.pd.concat(frames, ignore_index=True)
     lakes = gpd.GeoDataFrame(lakes, crs=CRS_UTM33)

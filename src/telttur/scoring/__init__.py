@@ -58,6 +58,7 @@ def process_scoring(  # noqa: PLR0913
     buildings = cabin_density.extract_buildings(gdb_paths, bbox)
     print(f"  Found {len(buildings)} building features")
 
+    # Category 3: no buildings in the region is valid — zero density is the correct result.
     if buildings.empty:
         print("  No buildings found — all lakes get zero building density")
         lakes = lakes.copy()
