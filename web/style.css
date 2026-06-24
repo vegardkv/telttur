@@ -221,6 +221,41 @@ html, body {
   background: #f5f5f5;
 }
 
+/* ─── Access-mode segmented toggle (road vs public transport) ────────────── */
+
+.tt-mode-toggle {
+  display: flex;
+  gap: 0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.tt-mode-btn {
+  flex: 1;
+  padding: 3px 7px;
+  background: #f5f5f5;
+  border: none;
+  border-left: 1px solid #ccc;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  color: inherit;
+}
+
+.tt-mode-btn:first-child {
+  border-left: none;
+}
+
+.tt-mode-btn:hover {
+  background: #e8e8e8;
+}
+
+.tt-mode-btn.active {
+  background: #4a90d9;
+  color: #fff;
+}
+
 /* ─── noUiSlider ─────────────────────────────────────────────────────────── */
 
 /* Low/High range labels flanking slider */

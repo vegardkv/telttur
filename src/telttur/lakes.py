@@ -20,6 +20,7 @@ class LakeCols(StrEnum):
 
     # Accessibility — raw data (score computed in JS)
     ROAD_DISTANCE_M = "road_distance_m"
+    TRANSIT_DISTANCE_M = "transit_distance_m"
 
     # Cabin density — raw data (score computed in JS)
     BUILDING_COUNT = "building_count"
@@ -35,6 +36,7 @@ class LakeCols(StrEnum):
 
     # Elevation gain — raw data (score computed in JS)
     ELEVATION_GAIN_M = "elevation_gain_m"
+    TRANSIT_ELEVATION_GAIN_M = "transit_elevation_gain_m"
 
     # Restrictions bitmask — bit 0 = drinking-water source (drikkevann)
     RESTRICTIONS_MASK = "restrictions_mask"

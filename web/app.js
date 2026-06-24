@@ -24,7 +24,9 @@ const I18N = {
   cabin_density_level_low: "Lav",
   cabin_density_level_high: "Høy",
   accessibility: "Tilgjengelighet",
-  accessibility_info: "Korteste avstand til nærmeste vei i luftlinje, kombinert med høydeforskjell mellom veipunktet og innsjøen. Innsjøer innenfor ønsket rekkevidde og stigning får 'Utmerket'. Scoren synker utenfor rekkevidden og blir 'Elendig' ved dobbel maksdistanse eller dobbel maksstigning. Datakilder: N50 vegnett (Kartverket), DTM50 (Kartverket).",
+  accessibility_info: "Korteste avstand til nærmeste vei eller kollektivstopp i luftlinje, kombinert med høydeforskjell mellom startpunktet og innsjøen. Velg reisemåte (bil eller kollektiv) – både avstand og stigning regnes ut fra det valget. Innsjøer innenfor ønsket rekkevidde og stigning får 'Utmerket'. Scoren synker utenfor rekkevidden og blir 'Elendig' ved dobbel maksdistanse eller dobbel maksstigning. Datakilder: N50 vegnett (Kartverket), DTM50 (Kartverket), kollektivdata (Entur).",
+  access_mode_road: "Bil",
+  access_mode_transit: "Kollektiv",
   climb_max: "Maks stigning:",
   elevation_gain: "Stigning",
   ar5_land_use: "Avstand fra bebyggelse",
@@ -40,6 +42,7 @@ const I18N = {
   score_fishing: "Fiske",
   area: "Areal",
   road_distance: "Avstand til vei",
+  transit_distance: "Avstand til kollektivstopp",
   building_density: "Hyttetetthet",
   industrial_distance: "Avstand til industri",
   residential_distance: "Avstand til bebyggelse",
@@ -77,6 +80,7 @@ const I18N = {
   credits_n50: "N50 kartdata (veier, innsjøer, bygninger)",
   credits_ar5: "AR5 arealbruksklassifisering",
   credits_nina: "Fiskeartsobservasjoner",
+  credits_entur: "Kollektivstopp (holdeplasser)",
   credits_mattilsynet: "Drikkevannskilder (innsjøer)",
   credits_basemap: "Bakgrunnskartfliser",
   credits_library: "Kartbibliotek",
@@ -127,6 +131,7 @@ let lakesLayer;     // L.LayerGroup containing all CircleMarker instances
 let allMarkers = []; // { marker, fields } — kept for re-filtering
 let _arSlider = null;             // noUiSlider instance for accessibility range
 let _climbSlider = null;          // noUiSlider instance for max acceptable climb
+let _accessMode = "road";         // accessibility access mode: "road" | "transit"
 let _lakeSizeSlider = null;       // noUiSlider instance for lake size range
 let _ctSlider = null;             // noUiSlider instance for cabin density threshold
 let _ar5ResSlider = null;         // noUiSlider instance for AR5 residential buffer
@@ -294,6 +299,7 @@ function readControlState(cfg) {
     ar5ResBuf: _ar5ResSlider ? parseFloat(_ar5ResSlider.get()) : (scoring.ar5_land_use?.residential_buffer_m ?? 1000),
     ar5IndBuf: _ar5IndSlider ? parseFloat(_ar5IndSlider.get()) : (scoring.ar5_land_use?.industrial_buffer_m ?? 2000),
     climbMax: _climbMax(),
+    accessMode: _accessMode,
     cabinOn: checkVal("tt-cabin", false),
     accessOn: checkVal("tt-access", true),
     ar5On: checkVal("tt-ar5", true),
@@ -313,11 +319,12 @@ function computeScores(fields, cs) {
     scores.push(live.cabin_density_score);
   }
 
-  if (cs.accessOn && fields.road_distance_m != null) {
-    const distScore = scoreAccess(fields.road_distance_m, cs.arMin, cs.arMax);
-    const climbScore = fields.elevation_gain_m != null
-      ? scoreClimb(fields.elevation_gain_m, cs.climbMax)
-      : null;
+  // Distance and climb both come from the selected access mode (road vs transit).
+  const accDist = cs.accessMode === "transit" ? fields.transit_distance_m : fields.road_distance_m;
+  const accGain = cs.accessMode === "transit" ? fields.transit_elevation_gain_m : fields.elevation_gain_m;
+  if (cs.accessOn && accDist != null) {
+    const distScore = scoreAccess(accDist, cs.arMin, cs.arMax);
+    const climbScore = accGain != null ? scoreClimb(accGain, cs.climbMax) : null;
     live.accessibility_score = climbScore != null ? Math.min(distScore, climbScore) : distScore;
     scores.push(live.accessibility_score);
   }
@@ -407,18 +414,25 @@ function buildPopup(fields, liveScores, cfg) {
   }
   const detailLabels = {
     road_distance_m: t("road_distance"),
+    transit_distance_m: t("transit_distance"),
     building_density: t("building_density"),
     industrial_distance_m: t("industrial_distance"),
     residential_distance_m: t("residential_distance"),
     fish_species_count: t("fish_species"),
+  };
+  // Each access distance is followed by its own climb (road→lake / stop→lake).
+  const climbForDist = {
+    road_distance_m: "elevation_gain_m",
+    transit_distance_m: "transit_elevation_gain_m",
   };
   for (const [col, label] of Object.entries(detailLabels)) {
     if (fields[col] != null) {
       const val = col.endsWith("_m") ? formatDist(fields[col]) : fields[col];
       detailRows.push([label, val]);
     }
-    if (col === "road_distance_m" && fields.elevation_gain_m != null) {
-      detailRows.push([t("elevation_gain"), `${Math.round(fields.elevation_gain_m)} m`]);
+    const climbCol = climbForDist[col];
+    if (climbCol && fields[col] != null && fields[climbCol] != null) {
+      detailRows.push([t("elevation_gain"), `${Math.round(fields[climbCol])} m`]);
     }
   }
 
@@ -663,10 +677,19 @@ function buildControls(cfg, lakeFields) {
     if (lakeFieldSet.has("road_distance_m")) {
       const arMin = ar.min_m | 0;
       const arMax = ar.max_m | 0;
+      const hasTransit = lakeFieldSet.has("transit_distance_m");
       bodyHtml =
-        `<div class="tt-dim-body" id="tt-access-body">` +
+        `<div class="tt-dim-body" id="tt-access-body">`;
+      if (hasTransit) {
+        bodyHtml +=
+          `<div class="tt-mode-toggle" id="tt-access-mode" style="margin-bottom:6px">` +
+          `<button type="button" class="tt-mode-btn active" data-mode="road">${t("access_mode_road")}</button>` +
+          `<button type="button" class="tt-mode-btn" data-mode="transit">${t("access_mode_transit")}</button>` +
+          `</div>`;
+      }
+      bodyHtml +=
         `<div id="tt-ar-range-label" style="margin-bottom:6px">` +
-        `${t("road_distance")}: ` +
+        `<span id="tt-ar-dist-label">${t("road_distance")}</span>: ` +
         `<span id="tt-ar-min-val" style="font-weight:bold">${arMin}</span> m` +
         ` – ` +
         `<span id="tt-ar-max-val" style="font-weight:bold">${arMax}</span> m` +
@@ -930,6 +953,25 @@ function buildControls(cfg, lakeFields) {
     _arSlider.on("change", () => teltturUpdate(_ttCfg));
   }
 
+  // Access-mode toggle (road vs public transport) — swaps which distance/climb
+  // fields feed the accessibility score and updates the distance label.
+  const accessModeEl = document.getElementById("tt-access-mode");
+  if (accessModeEl) {
+    accessModeEl.addEventListener("click", (e) => {
+      const btn = e.target.closest(".tt-mode-btn");
+      if (!btn || btn.dataset.mode === _accessMode) return;
+      _accessMode = btn.dataset.mode;
+      for (const b of accessModeEl.querySelectorAll(".tt-mode-btn")) {
+        b.classList.toggle("active", b.dataset.mode === _accessMode);
+      }
+      const distLabel = document.getElementById("tt-ar-dist-label");
+      if (distLabel) {
+        distLabel.textContent = _accessMode === "transit" ? t("transit_distance") : t("road_distance");
+      }
+      teltturUpdate(_ttCfg);
+    });
+  }
+
   // Initialise noUiSlider for max acceptable climb
   const climbSliderEl = document.getElementById("tt-climb-slider");
   if (climbSliderEl && typeof noUiSlider !== "undefined") {
@@ -1026,6 +1068,7 @@ function buildFooter() {
     `<li><a href="https://kartkatalog.geonorge.no/metadata/n50-kartdata/ea192681-d039-42ec-b1bc-f3ce04c189ac" target="_blank" rel="noopener">Kartverket</a> — ${t("credits_n50")}</li>` +
     `<li><a href="https://www.nibio.no/tema/jord/arealressurser/arealressurskart-ar5" target="_blank" rel="noopener">NIBIO</a> — ${t("credits_ar5")}</li>` +
     `<li><a href="https://ipt.nina.no/resource?r=vanninfofisk" target="_blank" rel="noopener">NINA</a> — ${t("credits_nina")}</li>` +
+    `<li><a href="https://data.entur.no/" target="_blank" rel="noopener">Entur</a> — ${t("credits_entur")}</li>` +
     `<li><a href="https://kartkatalog.geonorge.no/metadata/50f62bbe-b216-4e38-bd75-1a54744c1a53" target="_blank" rel="noopener">Mattilsynet</a> — ${t("credits_mattilsynet")}</li>` +
     `<li><a href="https://www.kartverket.no/" target="_blank" rel="noopener">Kartverket</a> — ${t("credits_basemap")}</li>` +
     `</ul>` +

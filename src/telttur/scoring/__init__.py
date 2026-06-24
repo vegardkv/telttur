@@ -26,6 +26,7 @@ from telttur.scoring.common import (
     LEVEL_NAMES,
     TentabilityLevel,
 )
+from telttur.transport import load_transit_stops
 
 if TYPE_CHECKING:
     from telttur.config import BBox, ScoringConfig
@@ -67,14 +68,23 @@ def process_scoring(  # noqa: PLR0913
         lakes = cabin_density.score_cabin_density(lakes, buildings, config.cabin_density)
 
     # --- Accessibility ---
-    print("Scoring accessibility (distance to nearest drivable road)...")
+    print("Scoring accessibility (distance to nearest road and public-transport stop)...")
     dem_path = ensure_dem(data_dir / "dem", bbox)
+    # Transit stops are best-effort: an Entur outage should not break the build,
+    # in which case the frontend simply offers road access only.
+    stops: gpd.GeoDataFrame | None = None
+    try:
+        stops = load_transit_stops(data_dir / "entur", bbox)
+        print(f"  Loaded {len(stops)} public-transport stops")
+    except RuntimeError as exc:
+        print(f"  WARNING: skipping transit accessibility — {exc}")
     lakes = accessibility.score_accessibility(
         lakes,
         road_lines,
         config.accessibility,
         config.accessibility.excluded_road_types,
         dem_path=dem_path,
+        stops=stops,
     )
 
     # --- AR5 land use proximity ---

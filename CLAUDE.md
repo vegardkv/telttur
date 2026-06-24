@@ -96,16 +96,18 @@ The `web/` frontend is a single-file vanilla JS app — no build step, no module
 | Dimension | Description |
 |-----------|-------------|
 | `cabin_density` | Building density around the lake shore (lower = better) |
-| `accessibility` | Distance from road (configurable preferred range) + vertical climb from road to lake |
+| `accessibility` | Distance to nearest road **or** public-transport stop (user-selectable mode) + vertical climb from that origin to the lake |
 | `ar5_land_use` | Proximity to residential/industrial AR5 zones |
 | `fishing` | Lake contains prized fish species |
 
 ## Data Sources
 
-All from [Geonorge](https://kartkatalog.geonorge.no/) (CC BY 4.0):
+All from [Geonorge](https://kartkatalog.geonorge.no/) (CC BY 4.0) unless noted:
 - **Roads/Lakes/Buildings**: N50 Kartdata (Kartverket)
 - **Land cover overlay**: FKB-AR5 WMS (NIBIO/Kartverket)
 - **Elevation**: Digital terrengmodell 50 m (DTM50), Kartverket — fetched via WCS, cached as GeoTIFF
+- **Public-transport stops**: Entur national aggregated GTFS (NLOD) — only `stops.txt` is
+  extracted, via HTTP range requests rather than the full ~640 MB feed (`transport.py`)
 
 ## Tasks
 

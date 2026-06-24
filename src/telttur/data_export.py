@@ -38,6 +38,8 @@ def build_lake_data(
         LakeCols.RESTRICTIONS_MASK,
         LakeCols.ROAD_DISTANCE_M,
         LakeCols.ELEVATION_GAIN_M,
+        LakeCols.TRANSIT_DISTANCE_M,
+        LakeCols.TRANSIT_ELEVATION_GAIN_M,
         LakeCols.BUILDING_DENSITY,
         LakeCols.INDUSTRIAL_DISTANCE_M,
         LakeCols.RESIDENTIAL_DISTANCE_M,
