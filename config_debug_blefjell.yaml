@@ -1,0 +1,20 @@
+# Telttur debug config — road-classification inspector.
+# With debug_map: true the pipeline runs download → roads → lakes, then writes a
+# standalone Leaflet HTML (output/<stem>_debug.html) instead of data.js. Scoring and
+# restriction tagging are skipped. Region is handled exactly like a normal run.
+#
+# Use a tight bbox around the lake/road under investigation: a whole `fylke:`
+# emits a huge HTML (Telemark ≈ 61 MB / 127k roads) that loads slowly. Edit these
+# bounds to frame your lake.
+bbox:
+  north: 59.8806917
+  south: 59.6334618
+  east: 9.6422077
+  west: 9.0799174
+# fylke: telemark   # alternative: whole county (large, slow)
+
+output_filename: telemark.js
+
+min_lake_area_m2: 5000
+
+debug_map: true

@@ -7,6 +7,7 @@ import click
 
 from telttur.config import load_config
 from telttur.data_export import export_data
+from telttur.debug_map import export_debug_map
 from telttur.download import download_n50
 from telttur.lakes import process_lakes
 from telttur.restrictions import tag_drinking_water
@@ -74,6 +75,18 @@ def generate(
         min_lake_area_m2=config.min_lake_area_m2,
     )
     print(f"  [lakes: {time.time() - t0:.1f}s]")
+
+    # Debug map: roads + lakes only. Skip scoring/restrictions (and their DEM/WCS +
+    # Mattilsynet WMS calls) and emit a standalone Leaflet HTML for inspecting road
+    # classifications instead of the normal data.js.
+    if config.debug_map:
+        output_dir = config.output_path
+        output_dir.mkdir(parents=True, exist_ok=True)
+        html_out = output_dir / (Path(config.output_filename).stem + "_debug.html")
+        export_debug_map(road_lines, lakes, config, html_out)
+        print(f"Debug map saved to: {html_out}")
+        print(f"Total time: {time.time() - pipeline_start:.1f}s")
+        return
 
     # Step 4: Tentability scoring
     if not lakes.empty:

@@ -164,6 +164,7 @@ class Config(BaseModel):
     map: MapConfig = MapConfig()
     scoring: ScoringConfig = ScoringConfig()
     show_roads: bool = True
+    debug_map: bool = False
 
     @model_validator(mode="before")
     @classmethod
