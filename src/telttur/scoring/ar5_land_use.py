@@ -162,6 +162,17 @@ def _extract_n50_land_use_zones(
     return _concat(industrial_frames), _concat(residential_frames)
 
 
+def _fetch_and_split_wfs(
+    bbox: BBox, timeout_s: float
+) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+    """Fetch AR5 polygons via WFS and split into (industrial, residential)."""
+    ar5 = _fetch_ar5_wfs(bbox, timeout_s=timeout_s)
+    industrial = ar5[ar5["artype"].isin(_AR5_INDUSTRIAL_ARTYPES)][["geometry"]].copy()
+    residential = ar5[ar5["artype"].isin(_AR5_RESIDENTIAL_ARTYPES)][["geometry"]].copy()
+    print(f"  AR5 WFS: {len(industrial)} industrial, {len(residential)} residential polygons")
+    return industrial, residential
+
+
 def fetch_ar5_land_use_polygons(
     gdb_paths: list[Path],
     bbox: BBox,
@@ -185,20 +196,12 @@ def fetch_ar5_land_use_polygons(
 
     if config.source == Ar5DataSource.WFS:
         print("  Fetching AR5 land use from NIBIO WFS (source=wfs)...")
-        ar5 = _fetch_ar5_wfs(bbox, timeout_s=wfs_timeout_s)
-        industrial = ar5[ar5["artype"].isin(_AR5_INDUSTRIAL_ARTYPES)][["geometry"]].copy()
-        residential = ar5[ar5["artype"].isin(_AR5_RESIDENTIAL_ARTYPES)][["geometry"]].copy()
-        print(f"  AR5 WFS: {len(industrial)} industrial, {len(residential)} residential polygons")
-        return industrial, residential
+        return _fetch_and_split_wfs(bbox, wfs_timeout_s)
 
     # Ar5DataSource.AUTO: try WFS, fall back to N50
     print("  Attempting AR5 WFS fetch from NIBIO...")
     try:
-        ar5 = _fetch_ar5_wfs(bbox, timeout_s=wfs_timeout_s)
-        industrial = ar5[ar5["artype"].isin(_AR5_INDUSTRIAL_ARTYPES)][["geometry"]].copy()
-        residential = ar5[ar5["artype"].isin(_AR5_RESIDENTIAL_ARTYPES)][["geometry"]].copy()
-        print(f"  AR5 WFS: {len(industrial)} industrial, {len(residential)} residential polygons")
-        return industrial, residential
+        return _fetch_and_split_wfs(bbox, wfs_timeout_s)
     except RuntimeError as exc:
         print(f"  AR5 WFS unavailable ({exc}); falling back to N50 arealdekke")
 
