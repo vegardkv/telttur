@@ -536,7 +536,6 @@ function initShell() {
  */
 function populate(data) {
   _ttCfg = data.config;
-  _ttData = data;
   document.title = t("title");
 
   // Roads
@@ -1114,7 +1113,6 @@ function buildFooter() {
 const DATA_URL = "../output/data.js";
 
 let _ttCfg = null;
-let _ttData = null;
 
 /** Replace the loading indicator with an error message. */
 function showError() {
