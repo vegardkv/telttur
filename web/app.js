@@ -610,6 +610,20 @@ function populate(data) {
 // Controls panel
 // ---------------------------------------------------------------------------
 
+/**
+ * Create a noUiSlider on an element (when it exists and the library loaded),
+ * wiring the label-updating "update" handler and the standard map-refreshing
+ * "change" handler. Returns the slider instance, or null when skipped.
+ */
+function initSlider(elId, opts, onUpdate) {
+  const el = document.getElementById(elId);
+  if (!el || typeof noUiSlider === "undefined") return null;
+  const slider = noUiSlider.create(el, opts);
+  slider.on("update", onUpdate);
+  slider.on("change", () => teltturUpdate(_ttCfg));
+  return slider;
+}
+
 /** Toggle a scoring dimension card body on/off and trigger a map update. */
 function ttToggleDim(id) {
   const cb = document.getElementById(id);
@@ -833,57 +847,40 @@ function buildControls(cfg, lakeFields) {
 
   document.body.appendChild(container);
 
-  // Initialise noUiSlider for cabin density (discrete steps mapped to quantiles)
-  const ctSliderEl = document.getElementById("tt-ct-slider");
-  if (ctSliderEl && typeof noUiSlider !== "undefined") {
+  // Cabin density slider (discrete steps mapped to quantiles)
+  {
     const cd = ctrl.cabin_density_slider;
     const levels = t("cabin_density_levels") ?? [];
-    _ctSlider = noUiSlider.create(ctSliderEl, {
+    _ctSlider = initSlider("tt-ct-slider", {
       start: [cd.default_step],
       connect: [true, false],
       step: 1,
       range: { min: 1, max: cd.steps },
-    });
-    _ctSlider.on("update", (values) => {
+    }, (values) => {
       const step = Math.round(parseFloat(values[0]));
-      const label = levels[step - 1] ?? step;
-      document.getElementById("tt-ct-val").textContent = label;
+      document.getElementById("tt-ct-val").textContent = levels[step - 1] ?? step;
     });
-    _ctSlider.on("change", () => teltturUpdate(_ttCfg));
   }
 
-  // Initialise noUiSlider for AR5 residential buffer
-  const ar5ResSliderEl = document.getElementById("tt-ar5-res-slider");
-  if (ar5ResSliderEl && typeof noUiSlider !== "undefined") {
-    const ar5b = ctrl.ar5_buffers;
-    const ar5s = scoring.ar5_land_use;
-    _ar5ResSlider = noUiSlider.create(ar5ResSliderEl, {
-      start: [ar5s.residential_buffer_m | 0],
+  // AR5 residential / industrial buffer sliders
+  {
+    const ar5Max = ctrl.ar5_buffers.slider_max_m | 0;
+    _ar5ResSlider = initSlider("tt-ar5-res-slider", {
+      start: [(scoring.ar5_land_use?.residential_buffer_m ?? 0) | 0],
       connect: [true, false],
       step: 100,
-      range: { min: 0, max: ar5b.slider_max_m | 0 },
-    });
-    _ar5ResSlider.on("update", (values) => {
+      range: { min: 0, max: ar5Max },
+    }, (values) => {
       document.getElementById("tt-ar5-res-val").textContent = Math.round(values[0]);
     });
-    _ar5ResSlider.on("change", () => teltturUpdate(_ttCfg));
-  }
-
-  // Initialise noUiSlider for AR5 industrial buffer
-  const ar5IndSliderEl = document.getElementById("tt-ar5-ind-slider");
-  if (ar5IndSliderEl && typeof noUiSlider !== "undefined") {
-    const ar5b = ctrl.ar5_buffers;
-    const ar5s = scoring.ar5_land_use;
-    _ar5IndSlider = noUiSlider.create(ar5IndSliderEl, {
-      start: [ar5s.industrial_buffer_m | 0],
+    _ar5IndSlider = initSlider("tt-ar5-ind-slider", {
+      start: [(scoring.ar5_land_use?.industrial_buffer_m ?? 0) | 0],
       connect: [true, false],
       step: 100,
-      range: { min: 0, max: ar5b.slider_max_m | 0 },
-    });
-    _ar5IndSlider.on("update", (values) => {
+      range: { min: 0, max: ar5Max },
+    }, (values) => {
       document.getElementById("tt-ar5-ind-val").textContent = Math.round(values[0]);
     });
-    _ar5IndSlider.on("change", () => teltturUpdate(_ttCfg));
   }
 
   // Fish genera dropdown events
@@ -938,21 +935,18 @@ function buildControls(cfg, lakeFields) {
     }
   }
 
-  // Initialise noUiSlider for accessibility range
-  const arSliderEl = document.getElementById("tt-ar-slider");
-  if (arSliderEl && typeof noUiSlider !== "undefined") {
+  // Accessibility range slider (two handles)
+  {
     const ar = ctrl.accessibility_range;
-    _arSlider = noUiSlider.create(arSliderEl, {
+    _arSlider = initSlider("tt-ar-slider", {
       start: [ar.min_m | 0, ar.max_m | 0],
       connect: true,
       step: 100,
       range: { min: 0, max: ar.slider_max_m | 0 },
-    });
-    _arSlider.on("update", (values) => {
+    }, (values) => {
       document.getElementById("tt-ar-min-val").textContent = Math.round(values[0]);
       document.getElementById("tt-ar-max-val").textContent = Math.round(values[1]);
     });
-    _arSlider.on("change", () => teltturUpdate(_ttCfg));
   }
 
   // Access-mode toggle (road vs public transport) — swaps which distance/climb
@@ -974,60 +968,47 @@ function buildControls(cfg, lakeFields) {
     });
   }
 
-  // Initialise noUiSlider for max acceptable climb
-  const climbSliderEl = document.getElementById("tt-climb-slider");
-  if (climbSliderEl && typeof noUiSlider !== "undefined") {
+  // Max acceptable climb slider
+  {
     const cl = ctrl.climb;
-    _climbSlider = noUiSlider.create(climbSliderEl, {
+    _climbSlider = initSlider("tt-climb-slider", {
       start: [cl.max_m | 0],
       connect: [true, false],
       step: 50,
       range: { min: 0, max: cl.slider_max_m | 0 },
-    });
-    _climbSlider.on("update", (values) => {
+    }, (values) => {
       document.getElementById("tt-climb-val").textContent = Math.round(values[0]);
     });
-    _climbSlider.on("change", () => teltturUpdate(_ttCfg));
   }
 
-  // Initialise noUiSlider for lake size range
-  const lsSliderEl = document.getElementById("tt-ls-slider");
-  if (lsSliderEl && typeof noUiSlider !== "undefined") {
-    _lakeSizeSlider = noUiSlider.create(lsSliderEl, {
-      start: [0, LAKE_SIZE_SLIDER_MAX_M2],
-      connect: true,
-      range: {
-        "min": [0, 100],
-        "15%": [1000, 500],
-        "35%": [10000, 2500],
-        "55%": [100000, 25000],
-        "70%": [1000000, 250000],
-        "85%": [10000000, 5000000],
-        "max": [LAKE_SIZE_SLIDER_MAX_M2],
-      },
-    });
-    _lakeSizeSlider.on("update", (values) => {
-      document.getElementById("tt-ls-min-val").textContent = formatArea(parseFloat(values[0]));
-      document.getElementById("tt-ls-max-val").textContent = formatArea(parseFloat(values[1]));
-    });
-    _lakeSizeSlider.on("change", () => teltturUpdate(_ttCfg));
-  }
+  // Lake size range slider (two handles, pyramid-scaled range)
+  _lakeSizeSlider = initSlider("tt-ls-slider", {
+    start: [0, LAKE_SIZE_SLIDER_MAX_M2],
+    connect: true,
+    range: {
+      "min": [0, 100],
+      "15%": [1000, 500],
+      "35%": [10000, 2500],
+      "55%": [100000, 25000],
+      "70%": [1000000, 250000],
+      "85%": [10000000, 5000000],
+      "max": [LAKE_SIZE_SLIDER_MAX_M2],
+    },
+  }, (values) => {
+    document.getElementById("tt-ls-min-val").textContent = formatArea(parseFloat(values[0]));
+    document.getElementById("tt-ls-max-val").textContent = formatArea(parseFloat(values[1]));
+  });
 
-  // Initialise noUiSlider for minimum overall score (discrete levels 1–5)
-  const msSliderEl = document.getElementById("tt-ms-slider");
-  if (msSliderEl && typeof noUiSlider !== "undefined") {
-    _minScoreSlider = noUiSlider.create(msSliderEl, {
-      start: [1],
-      connect: [true, false],
-      step: 1,
-      range: { min: 1, max: 5 },
-    });
-    _minScoreSlider.on("update", (values) => {
-      const lvl = Math.round(parseFloat(values[0]));
-      document.getElementById("tt-ms-val").textContent = t(`level_${lvl}`);
-    });
-    _minScoreSlider.on("change", () => teltturUpdate(_ttCfg));
-  }
+  // Minimum overall score slider (discrete levels 1–5)
+  _minScoreSlider = initSlider("tt-ms-slider", {
+    start: [1],
+    connect: [true, false],
+    step: 1,
+    range: { min: 1, max: 5 },
+  }, (values) => {
+    const lvl = Math.round(parseFloat(values[0]));
+    document.getElementById("tt-ms-val").textContent = t(`level_${lvl}`);
+  });
 }
 
 // ---------------------------------------------------------------------------
