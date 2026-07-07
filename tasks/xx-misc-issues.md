@@ -1,8 +1,24 @@
+# Misc issues
+
+## Backlog (still open)
+
+- Use a UI component framework to reduce the amount of javascript code, for ease of
+  maintenance and readability (no heavy framework with a separate build step).
+- Cluster colors are a bit hard to interpret. Not sure what they mean. Should perhaps
+  reflect the "mode" for the suitability? (Clustering itself shipped in task 38.)
+
+---
+
+## Historical (all shipped)
+
+Everything below is history: the early misc issues shipped as tasks 15–18, rounds 1–10
+shipped as tasks 19–41, and public-transport accessibility shipped as task 45. Kept for
+context on why decisions were made.
+
 Misc clean-up issues:
-- Markers should be inside the polygon instead of centroid
-- Use Colors in popup to indicate scores? (hard to read)
+- Markers should be inside the polygon instead of centroid → task 16
+- Use Colors in popup to indicate scores? (hard to read) → task 17
 - I think there is a mismatch with interactivity and clustering. For now, i should focus on the non-clustering variant.
-- Cluster colors are a bit hard to interpret. Not sure what they mean. Should perhaps reflect the "mode" for the suitability?
 
 ## First Viable Model
 
