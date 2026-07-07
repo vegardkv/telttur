@@ -4,6 +4,7 @@ from pathlib import Path
 
 import fiona
 import geopandas as gpd
+import pandas as pd
 from shapely.geometry import box
 
 from telttur.config import BBox
@@ -71,7 +72,7 @@ def extract_roads(
             "may be incomplete. Delete the cache and re-run."
         )
 
-    roads = gpd.pd.concat(frames, ignore_index=True)
+    roads = pd.concat(frames, ignore_index=True)
     roads = gpd.GeoDataFrame(roads, crs=CRS_UTM33)
 
     # Clip to bbox (exact clip after bbox pre-filter)

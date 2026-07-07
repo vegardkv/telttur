@@ -11,6 +11,7 @@ from pathlib import Path
 
 import fiona
 import geopandas as gpd
+import pandas as pd
 import requests
 
 from telttur.config import Ar5DataSource, Ar5LandUseConfig, BBox
@@ -89,7 +90,7 @@ def _fetch_ar5_wfs(bbox: BBox, timeout_s: float = 30.0) -> gpd.GeoDataFrame:
         raise RuntimeError("AR5 WFS response is missing an artype/arealtype field")
 
     gdf = gdf.rename(columns={artype_col: "artype"})
-    gdf["artype"] = gpd.pd.to_numeric(gdf["artype"], errors="coerce").astype("Int64")
+    gdf["artype"] = pd.to_numeric(gdf["artype"], errors="coerce").astype("Int64")
     return gdf[["geometry", "artype"]]
 
 
@@ -156,7 +157,7 @@ def _extract_n50_land_use_zones(
         non_empty = [f for f in frames if not f.empty]
         if not non_empty:
             return empty
-        return gpd.GeoDataFrame(gpd.pd.concat(non_empty, ignore_index=True), crs=CRS_UTM33)
+        return gpd.GeoDataFrame(pd.concat(non_empty, ignore_index=True), crs=CRS_UTM33)
 
     return _concat(industrial_frames), _concat(residential_frames)
 

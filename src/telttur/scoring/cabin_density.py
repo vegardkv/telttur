@@ -10,6 +10,7 @@ from pathlib import Path
 
 import fiona
 import geopandas as gpd
+import pandas as pd
 from shapely.geometry import box
 
 from telttur.config import BBox, CabinDensityConfig
@@ -65,7 +66,7 @@ def extract_buildings(gdb_paths: list[Path], bbox: BBox) -> gpd.GeoDataFrame:
             "be incomplete. Delete the cache and re-run."
         )
 
-    buildings = gpd.GeoDataFrame(gpd.pd.concat(frames, ignore_index=True), crs=CRS_UTM33)
+    buildings = gpd.GeoDataFrame(pd.concat(frames, ignore_index=True), crs=CRS_UTM33)
     return buildings.clip(box(*utm_bounds))
 
 
@@ -99,7 +100,7 @@ def extract_buildings_all(gdb_paths: list[Path], bbox: BBox) -> gpd.GeoDataFrame
     if not frames:
         return gpd.GeoDataFrame(columns=["geometry", "bygningstype"], crs=CRS_UTM33)
 
-    buildings = gpd.GeoDataFrame(gpd.pd.concat(frames, ignore_index=True), crs=CRS_UTM33)
+    buildings = gpd.GeoDataFrame(pd.concat(frames, ignore_index=True), crs=CRS_UTM33)
     return buildings.clip(box(*utm_bounds))
 
 
