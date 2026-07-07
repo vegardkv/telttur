@@ -89,7 +89,6 @@ telttur/
 │   ├── download.py          # Geonorge API download
 │   ├── roads.py             # Road extraction & buffering
 │   ├── lakes.py             # Lake extraction
-│   ├── landcover.py         # Land cover (WMS / vector)
 │   ├── map_generator.py     # Data export (JSON) — replaces Folium
 │   └── scoring/             # Scoring dimensions (cabin, access, AR5, fishing)
 ├── web/                     # Static frontend (Leaflet + vanilla JS)

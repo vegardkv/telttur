@@ -47,7 +47,6 @@ src/telttur/
 ├── download.py       # Geonorge API download
 ├── roads.py          # Road extraction & buffering
 ├── lakes.py          # Lake extraction
-├── landcover.py      # Land cover (WMS / vector)
 ├── data_export.py    # Outputs data.js for the frontend
 └── scoring/          # Scoring dimensions: cabin, accessibility, ar5, fishing
 

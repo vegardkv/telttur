@@ -1,1 +1,0 @@
-"""Utilities for map generation."""
