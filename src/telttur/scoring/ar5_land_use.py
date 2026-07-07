@@ -162,9 +162,7 @@ def _extract_n50_land_use_zones(
     return _concat(industrial_frames), _concat(residential_frames)
 
 
-def _fetch_and_split_wfs(
-    bbox: BBox, timeout_s: float
-) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+def _fetch_and_split_wfs(bbox: BBox, timeout_s: float) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """Fetch AR5 polygons via WFS and split into (industrial, residential)."""
     ar5 = _fetch_ar5_wfs(bbox, timeout_s=timeout_s)
     industrial = ar5[ar5["artype"].isin(_AR5_INDUSTRIAL_ARTYPES)][["geometry"]].copy()
