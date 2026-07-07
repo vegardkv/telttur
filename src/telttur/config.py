@@ -12,36 +12,6 @@ class BBox(BaseModel):
     west: float
 
 
-class CabinDensityThresholds(BaseModel):
-    """Density thresholds for cabin density scoring (upper bound per level).
-
-    The density metric is ``building_count / sqrt(area_m2)``, which normalises
-    for lake size so that a large remote lake with a handful of cabins does not
-    score the same as a small urban pond with the same number of buildings.
-
-    A lake receives a level if its building_density is <= the threshold for that
-    level.  Lakes exceeding the 'poor' threshold are scored Terrible.
-    """
-
-    excellent: float = 0.0  # pristine: no buildings at all
-    good: float = 0.01  # e.g. ≤3 buildings around a 90 000 m² lake
-    fair: float = 0.05  # e.g. ≤5 buildings around a 10 000 m² lake
-    poor: float = 0.15  # above this → Terrible
-
-
-class AccessibilityThresholds(BaseModel):
-    """Distance thresholds (metres) for accessibility scoring (upper bound per level).
-
-    A lake receives a level if its road_distance_m is <= the threshold for that level.
-    Lakes farther than the 'poor' threshold are scored Terrible.
-    """
-
-    excellent: float = 500.0  # < 500 m  → Excellent
-    good: float = 1000.0  # < 1 km   → Good
-    fair: float = 2000.0  # < 2 km   → Fair
-    poor: float = 5000.0  # < 5 km   → Poor; ≥ 5 km → Terrible
-
-
 class InteractiveAccessibilityRange(BaseModel):
     """Range slider config for interactive accessibility scoring."""
 
@@ -109,7 +79,6 @@ class CabinDensityConfig(BaseModel):
     """Configuration for cabin density scoring dimension."""
 
     buffer_m: float = 200.0
-    thresholds: CabinDensityThresholds = Field(default_factory=CabinDensityThresholds)
 
 
 class AccessibilityConfig(BaseModel):
@@ -118,7 +87,6 @@ class AccessibilityConfig(BaseModel):
     excluded_road_types: list[str] = Field(
         default_factory=lambda: ["P", "sti", "gangOgSykkelveg", "traktorveg"]
     )
-    thresholds: AccessibilityThresholds = Field(default_factory=AccessibilityThresholds)
 
 
 class Ar5DataSource(StrEnum):

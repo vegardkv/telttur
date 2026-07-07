@@ -22,7 +22,7 @@ fish_genera_mask    — integer bitmask of which prized genera are present
 JS-side scoring
 ---------------
 The user toggles which prized genera they care about.  Score = fraction of
-desired genera that are present at the lake, mapped to a 1–5 TentabilityLevel:
+desired genera that are present at the lake, mapped to a 1–5 level:
   0.00        → TERRIBLE
   (0.00–0.25] → POOR
   (0.25–0.50] → FAIR

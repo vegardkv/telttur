@@ -8,7 +8,6 @@ interactive slider-driven recomputation.
 
 Public API:
   process_scoring()            — full scoring pipeline (all enabled dimensions)
-  TentabilityLevel, LEVEL_NAMES, LEVEL_COLORS  — shared scale constants
 """
 
 from __future__ import annotations
@@ -21,22 +20,12 @@ import geopandas as gpd
 from telttur.elevation import ensure_dem
 from telttur.lakes import LakeCols
 from telttur.scoring import accessibility, ar5_land_use, cabin_density, fishing
-from telttur.scoring.common import (
-    LEVEL_COLORS,
-    LEVEL_NAMES,
-    TentabilityLevel,
-)
 from telttur.transport import load_transit_stops
 
 if TYPE_CHECKING:
     from telttur.config import BBox, ScoringConfig
 
-__all__ = [
-    "TentabilityLevel",
-    "LEVEL_NAMES",
-    "LEVEL_COLORS",
-    "process_scoring",
-]
+__all__ = ["process_scoring"]
 
 
 def process_scoring(  # noqa: PLR0913

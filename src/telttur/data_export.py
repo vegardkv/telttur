@@ -13,10 +13,6 @@ import pandas as pd
 from telttur.config import Config
 from telttur.lakes import LakeCols
 from telttur.restrictions import RESTRICTIONS as _RESTRICTIONS
-from telttur.scoring import (
-    LEVEL_COLORS,
-    LEVEL_NAMES,
-)
 from telttur.scoring.fishing import PRIZED_GENERA as _FISHING_PRIZED_GENERA
 
 # Coordinate precision: 6 decimals ≈ 0.1 m accuracy, sufficient for maps.
@@ -143,17 +139,8 @@ def _compute_density_quantiles(lakes: gpd.GeoDataFrame, steps: int) -> list[floa
 
 
 def build_config_block(config: Config, lakes: gpd.GeoDataFrame) -> dict[str, Any]:
-    """Extract scoring thresholds and interactive control defaults for the frontend."""
-    t2 = config.scoring.accessibility.thresholds
+    """Extract scoring parameters and interactive control defaults for the frontend."""
     scoring_cfg: dict[str, Any] = {
-        "accessibility": {
-            "thresholds": {
-                "excellent": t2.excellent,
-                "good": t2.good,
-                "fair": t2.fair,
-                "poor": t2.poor,
-            },
-        },
         "ar5_land_use": {
             "residential_buffer_m": config.scoring.ar5_land_use.residential_buffer_m,
             "industrial_buffer_m": config.scoring.ar5_land_use.industrial_buffer_m,
@@ -193,8 +180,6 @@ def build_config_block(config: Config, lakes: gpd.GeoDataFrame) -> dict[str, Any
         "scoring": scoring_cfg,
         "interactive": interactive_cfg,
         "min_lake_area_m2": config.min_lake_area_m2,
-        "level_names": LEVEL_NAMES,
-        "level_colors": LEVEL_COLORS,
     }
 
 
