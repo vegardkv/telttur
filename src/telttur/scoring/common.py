@@ -5,13 +5,6 @@ from __future__ import annotations
 from enum import IntEnum
 
 import geopandas as gpd
-from shapely.geometry import box
-
-from telttur.config import BBox
-
-EPSG_CODE_UTM33 = 25833
-CRS_UTM33 = f"EPSG:{EPSG_CODE_UTM33}"
-CRS_WGS84 = "EPSG:4326"
 
 
 class TentabilityLevel(IntEnum):
@@ -38,15 +31,6 @@ LEVEL_COLORS: dict[int, str] = {
     TentabilityLevel.GOOD: "#91cf60",
     TentabilityLevel.EXCELLENT: "#1a9850",
 }
-
-
-def _bbox_to_utm33(bbox: BBox) -> tuple[float, float, float, float]:
-    bbox_gdf = gpd.GeoDataFrame(
-        geometry=[box(bbox.west, bbox.south, bbox.east, bbox.north)],
-        crs=CRS_WGS84,
-    )
-    b = bbox_gdf.to_crs(CRS_UTM33).total_bounds
-    return (b[0], b[1], b[2], b[3])
 
 
 def _print_distribution(label: str, lakes: gpd.GeoDataFrame, col: str) -> None:

@@ -17,10 +17,8 @@ from shapely.ops import nearest_points
 
 from telttur.config import AccessibilityConfig
 from telttur.elevation import sample_elevations
+from telttur.geo import CRS_UTM33
 from telttur.lakes import LakeCols
-from telttur.scoring.common import (
-    CRS_UTM33,
-)
 
 # Non-motorised road categories — excluded from accessibility scoring because
 # they cannot be reached by car.

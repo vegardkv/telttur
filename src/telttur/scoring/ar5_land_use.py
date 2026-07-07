@@ -14,12 +14,8 @@ import geopandas as gpd
 import requests
 
 from telttur.config import Ar5DataSource, Ar5LandUseConfig, BBox
+from telttur.geo import CRS_UTM33, EPSG_CODE_UTM33, bbox_to_utm33
 from telttur.lakes import LakeCols
-from telttur.scoring.common import (
-    CRS_UTM33,
-    EPSG_CODE_UTM33,
-    _bbox_to_utm33,
-)
 
 # NIBIO AR5 WFS endpoint — same server as the WMS, supports SERVICE=WFS
 _AR5_WFS_URL = "https://wms.nibio.no/cgi-bin/ar5"
@@ -42,7 +38,7 @@ def _fetch_ar5_wfs(bbox: BBox, timeout_s: float = 30.0) -> gpd.GeoDataFrame:
     Returns a GeoDataFrame in UTM33 with at least an ``artype`` integer column.
     Raises ``RuntimeError`` on any connectivity or parsing failure.
     """
-    utm_bounds = _bbox_to_utm33(bbox)
+    utm_bounds = bbox_to_utm33(bbox)
     minx, miny, maxx, maxy = utm_bounds
 
     params: dict[str, str] = {
@@ -103,7 +99,7 @@ def _extract_n50_land_use_zones(
     Filters to only industrial/residential polygons per GDB before accumulating
     to avoid loading the entire arealdekke dataset into memory.
     """
-    utm_bounds = _bbox_to_utm33(bbox)
+    utm_bounds = bbox_to_utm33(bbox)
 
     industrial_frames: list[gpd.GeoDataFrame] = []
     residential_frames: list[gpd.GeoDataFrame] = []

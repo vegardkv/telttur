@@ -25,7 +25,7 @@ import pandas as pd
 import requests
 
 from telttur.config import BBox
-from telttur.scoring.common import CRS_UTM33, CRS_WGS84
+from telttur.geo import CRS_UTM33, CRS_WGS84
 
 _GTFS_URL = (
     "https://storage.googleapis.com/marduk-production/outbound/gtfs/rb_norway-aggregated-gtfs.zip"

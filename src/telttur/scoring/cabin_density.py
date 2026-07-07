@@ -13,11 +13,8 @@ import geopandas as gpd
 from shapely.geometry import box
 
 from telttur.config import BBox, CabinDensityConfig
+from telttur.geo import CRS_UTM33, bbox_to_utm33
 from telttur.lakes import LakeCols
-from telttur.scoring.common import (
-    CRS_UTM33,
-    _bbox_to_utm33,
-)
 
 # Norwegian building type codes (bygningstype) that indicate habitation:
 #   100–199: Residential buildings, including:
@@ -50,7 +47,7 @@ def extract_buildings(gdb_paths: list[Path], bbox: BBox) -> gpd.GeoDataFrame:
     _OBJECT_BUILDING_CODE = "Bygning"
 
     frames: list[gpd.GeoDataFrame] = []
-    utm_bounds = _bbox_to_utm33(bbox)
+    utm_bounds = bbox_to_utm33(bbox)
 
     for gdb_path in gdb_paths:
         for layer_name in find_building_layers(gdb_path):
@@ -97,7 +94,7 @@ def extract_buildings_all(gdb_paths: list[Path], bbox: BBox) -> gpd.GeoDataFrame
     _OBJECT_BUILDING_CODE = "Bygning"
 
     frames: list[gpd.GeoDataFrame] = []
-    utm_bounds = _bbox_to_utm33(bbox)
+    utm_bounds = bbox_to_utm33(bbox)
 
     for gdb_path in gdb_paths:
         for layer_name in find_building_layers(gdb_path):

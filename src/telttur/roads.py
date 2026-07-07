@@ -8,10 +8,7 @@ import geopandas as gpd
 from shapely.geometry import box
 
 from telttur.config import BBox
-
-# N50 uses UTM33 (EPSG:25833)
-CRS_UTM33 = "EPSG:25833"
-CRS_WGS84 = "EPSG:4326"
+from telttur.geo import CRS_UTM33, CRS_WGS84, bbox_to_utm33
 
 # Road category styling — vegkategori single-letter codes and typeveg values from N50
 ROAD_CATEGORIES: dict[str, dict] = {
@@ -48,24 +45,13 @@ def find_road_layers(gdb_path: Path) -> list[str]:
     return matches
 
 
-def _bbox_to_utm33(bbox: BBox) -> tuple[float, float, float, float]:
-    """Convert WGS84 bbox to UTM33 bounds (minx, miny, maxx, maxy)."""
-    bbox_gdf = gpd.GeoDataFrame(
-        geometry=[box(bbox.west, bbox.south, bbox.east, bbox.north)],
-        crs=CRS_WGS84,
-    )
-    bbox_utm = bbox_gdf.to_crs(CRS_UTM33)
-    b = bbox_utm.total_bounds  # minx, miny, maxx, maxy
-    return (b[0], b[1], b[2], b[3])
-
-
 def extract_roads(
     gdb_paths: list[Path],
     bbox: BBox,
 ) -> gpd.GeoDataFrame:
     """Extract road centerlines from N50 FGDB files, clipped to bbox."""
     frames: list[gpd.GeoDataFrame] = []
-    utm_bounds = _bbox_to_utm33(bbox)
+    utm_bounds = bbox_to_utm33(bbox)
 
     for gdb_path in gdb_paths:
         road_layers = find_road_layers(gdb_path)

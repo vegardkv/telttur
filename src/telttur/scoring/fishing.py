@@ -44,11 +44,8 @@ import requests
 from shapely.geometry import Point
 
 from telttur.config import FishingConfig
+from telttur.geo import CRS_UTM33, CRS_WGS84, EPSG_CODE_UTM33
 from telttur.lakes import LakeCols
-from telttur.scoring.common import (
-    CRS_UTM33,
-    CRS_WGS84,
-)
 
 _NINA_URL = "https://ipt.nina.no/archive.do?r=vanninfofisk"
 _NINA_ARCHIVE_NAME = "vanninfofisk.zip"
@@ -167,8 +164,7 @@ def score_fishing(
     lakes = lakes.copy()
 
     # Work in UTM33 for accurate buffering
-    epsg_utm33_code = 25833
-    lakes_utm = lakes.to_crs(CRS_UTM33) if lakes.crs.to_epsg() != epsg_utm33_code else lakes
+    lakes_utm = lakes.to_crs(CRS_UTM33) if lakes.crs.to_epsg() != EPSG_CODE_UTM33 else lakes
     buffered = lakes_utm.copy()
     buffered["geometry"] = buffered.geometry.buffer(config.buffer_m)
 

@@ -36,6 +36,7 @@ from rasterio.io import MemoryFile
 from rasterio.merge import merge as _merge
 from rasterio.transform import from_bounds
 
+from telttur.geo import CRS_UTM33
 from telttur.lakes import LakeCols
 
 # Bit definitions exported to the frontend config block.
@@ -47,8 +48,6 @@ DRINKING_WATER_BIT = 0
 
 _WMS_URL = "https://kart.mattilsynet.no/wmscache/service"
 _DW_LAYER = "Mattilsynet_Innsjo_Drikkevann"
-_CRS_UTM33 = "EPSG:25833"
-_CRS_WGS84 = "EPSG:4326"
 # Ground resolution of the rendered coverage (matches N50/DTM50 detail).
 _RES_M = 50.0
 # WMS GetMap tile cap per dimension (150 km at 50 m). The Mattilsynet cache
@@ -87,7 +86,7 @@ def _download_dw_tile(  # noqa: PLR0913
         "REQUEST": "GetMap",
         "LAYERS": _DW_LAYER,
         "STYLES": "",
-        "CRS": _CRS_UTM33,
+        "CRS": CRS_UTM33,
         "BBOX": f"{minx},{miny},{maxx},{maxy}",
         "WIDTH": str(width_px),
         "HEIGHT": str(height_px),
@@ -147,7 +146,7 @@ def _download_dw_tile(  # noqa: PLR0913
         width=width_px,
         count=1,
         dtype="uint8",
-        crs=_CRS_UTM33,
+        crs=CRS_UTM33,
         transform=transform,
     ) as dst:
         dst.write(painted, 1)
@@ -230,7 +229,7 @@ def tag_drinking_water(
         lakes[LakeCols.RESTRICTIONS_MASK] = np.array([], dtype=int)
         return lakes
 
-    pts = lakes.to_crs(_CRS_UTM33).geometry.representative_point()
+    pts = lakes.to_crs(CRS_UTM33).geometry.representative_point()
     valid = pts.notna().to_numpy() & ~pts.is_empty.to_numpy()
     xs = pts.x.to_numpy()
     ys = pts.y.to_numpy()

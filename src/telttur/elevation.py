@@ -9,18 +9,15 @@ import time
 from collections.abc import Sequence
 from pathlib import Path
 
-import geopandas as gpd
 import rasterio
 import requests
 from rasterio.merge import merge as _merge
-from shapely.geometry import box
 
 from telttur.config import BBox
+from telttur.geo import CRS_UTM33, bbox_to_utm33
 
 _DTM50_WCS = "https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833"
 _DTM50_COVERAGE = "nhm_dtm_topo_25833"
-_CRS_UTM33 = "EPSG:25833"
-_CRS_WGS84 = "EPSG:4326"
 _CT_TIFF = "tiff"
 _CT_OCTET = "octet-stream"
 # Service pixel limit: 3840 cols × 2160 rows. At 50 m resolution that caps each
@@ -42,8 +39,8 @@ def _download_dem_tile(  # noqa: PLR0913
         "VERSION": "1.0.0",
         "REQUEST": "GetCoverage",
         "COVERAGE": _DTM50_COVERAGE,
-        "CRS": _CRS_UTM33,
-        "RESPONSECRS": _CRS_UTM33,
+        "CRS": CRS_UTM33,
+        "RESPONSECRS": CRS_UTM33,
         "BBOX": f"{minx:.0f},{miny:.0f},{maxx:.0f},{maxy:.0f}",
         "RESX": "50",
         "RESY": "50",
@@ -106,11 +103,7 @@ def ensure_dem(data_dir: Path, bbox: BBox, timeout_s: float = 120.0) -> Path:
 
     data_dir.mkdir(parents=True, exist_ok=True)
 
-    bbox_gdf = gpd.GeoDataFrame(
-        geometry=[box(bbox.west, bbox.south, bbox.east, bbox.north)],
-        crs=_CRS_WGS84,
-    )
-    bounds = bbox_gdf.to_crs(_CRS_UTM33).total_bounds  # (minx, miny, maxx, maxy)
+    bounds = bbox_to_utm33(bbox)  # (minx, miny, maxx, maxy)
     pad = 500  # metres — cover lake/road points near the edge
     minx, miny, maxx, maxy = bounds[0] - pad, bounds[1] - pad, bounds[2] + pad, bounds[3] + pad
 
