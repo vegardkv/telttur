@@ -121,6 +121,8 @@ const BADGE_CLASSES = {
 const DEFAULT_LAKE_COLOR = "#67a9cf";
 // Lakes below the minimum-suitability threshold are greyed out rather than hidden.
 const BELOW_THRESHOLD_COLOR = "#bdbdbd";
+// Upper bound (50 km²) of the lake-size filter slider.
+const LAKE_SIZE_SLIDER_MAX_M2 = 50_000_000;
 
 // ---------------------------------------------------------------------------
 // State
@@ -187,7 +189,7 @@ function _lsMin() {
 
 /** Return the high handle value of the lake size slider (or default 50 km²). */
 function _lsMax() {
-  return _lakeSizeSlider ? parseFloat(_lakeSizeSlider.get()[1]) : 50000000;
+  return _lakeSizeSlider ? parseFloat(_lakeSizeSlider.get()[1]) : LAKE_SIZE_SLIDER_MAX_M2;
 }
 
 /** Return the minimum overall score to display (or default 1 = show all). */
@@ -797,7 +799,7 @@ function buildControls(cfg, lakeFields) {
       `<div id="tt-ls-range-label" style="margin-bottom:2px">` +
       `<span id="tt-ls-min-val" style="font-weight:bold">${formatArea(0)}</span>` +
       ` – ` +
-      `<span id="tt-ls-max-val" style="font-weight:bold">${formatArea(50000000)}</span>` +
+      `<span id="tt-ls-max-val" style="font-weight:bold">${formatArea(LAKE_SIZE_SLIDER_MAX_M2)}</span>` +
       `</div>` +
       `<div id="tt-ls-slider"></div>`;
     body.appendChild(filterDiv);
@@ -993,7 +995,7 @@ function buildControls(cfg, lakeFields) {
   const lsSliderEl = document.getElementById("tt-ls-slider");
   if (lsSliderEl && typeof noUiSlider !== "undefined") {
     _lakeSizeSlider = noUiSlider.create(lsSliderEl, {
-      start: [0, 50000000],
+      start: [0, LAKE_SIZE_SLIDER_MAX_M2],
       connect: true,
       range: {
         "min": [0, 100],
@@ -1002,7 +1004,7 @@ function buildControls(cfg, lakeFields) {
         "55%": [100000, 25000],
         "70%": [1000000, 250000],
         "85%": [10000000, 5000000],
-        "max": [50000000],
+        "max": [LAKE_SIZE_SLIDER_MAX_M2],
       },
     });
     _lakeSizeSlider.on("update", (values) => {
