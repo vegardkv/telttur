@@ -59,7 +59,7 @@ def get_fylke_bounds(
     Falls back to the hardcoded FYLKE_BOUNDS if the API is unavailable.
     Result format: {code: (name, (south, west, north, east))}
     """
-    if use_cache and "data" in _fylke_bounds_cache:  # noqa: PLR2004
+    if use_cache and "data" in _fylke_bounds_cache:
         return _fylke_bounds_cache["data"]
 
     try:
@@ -110,9 +110,8 @@ def get_available_areas(metadata_uuid: str = N50_METADATA_UUID) -> list[dict]:
 
 def _find_area_entry(areas: list[dict], fylke_code: str) -> dict | None:
     """Find the area entry matching a fylke code."""
-    _FYLKE_LABEL = "fylke"
     for area in areas:
-        if area.get("type") == _FYLKE_LABEL and area.get("code") == fylke_code:
+        if area.get("type") == "fylke" and area.get("code") == fylke_code:
             return area
     return None
 
@@ -283,7 +282,7 @@ def _download_and_extract(
     Raises on a not-ready file or a download error: the data is a hard dependency,
     so a swallowed download error would silently yield a partial map.
     """
-    if file_info.status != "ReadyForDownload":  # noqa: PLR2004
+    if file_info.status != "ReadyForDownload":
         msg = f"Geonorge file not ready for download: {file_info.name} (status {file_info.status})"
         raise RuntimeError(msg)
 

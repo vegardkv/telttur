@@ -113,12 +113,11 @@ def _extract_n50_land_use_zones(
 
     for gdb_path in gdb_paths:
         all_layers = fiona.listlayers(str(gdb_path))
-        _AREA_LABEL = "omrade"
         area_layers = [
             ln
             for ln in all_layers
             if any(kw in ln.lower() for kw in ("arealdekke", "arealbruk", "markslag"))
-            and _AREA_LABEL in ln.lower()
+            and "omrade" in ln.lower()
         ]
         found_area_layer = found_area_layer or bool(area_layers)
         for layer_name in area_layers:

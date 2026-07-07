@@ -139,7 +139,7 @@ class Config(BaseModel):
     def resolve_fylke(cls, data: object) -> object:
         if not isinstance(data, dict):
             return data
-        if "fylke" in data and "bbox" not in data:  # noqa: PLR2004
+        if "fylke" in data and "bbox" not in data:
             name = str(data["fylke"]).strip().lower()  # ty: ignore[invalid-argument-type]
             table = _fylke_bbox_table()
             bbox = table.get(name)

@@ -1,4 +1,3 @@
-# ruff: noqa: PLR2004
 """Road extraction and buffering from N50 Kartdata."""
 
 from pathlib import Path

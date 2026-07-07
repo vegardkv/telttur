@@ -101,7 +101,7 @@ def score_accessibility(
     excluded = set(config.excluded_road_types)
     drivable = (
         road_lines[~road_lines["category"].isin(excluded)]
-        if "category" in road_lines.columns  # noqa: PLR2004
+        if "category" in road_lines.columns
         else road_lines
     )
     _score_origin(

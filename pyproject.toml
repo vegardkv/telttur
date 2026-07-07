@@ -50,4 +50,4 @@ select = ["E", "F", "I", "UP", "B", "SIM", "PTH", "PLR0913", "PLR2004"]
 unresolved-attribute = "warn"
 
 [tool.ruff.lint.pylint]
-allow-magic-value-types = []
+allow-magic-value-types = ["str"]  # column-name/objtype string comparisons are not magic

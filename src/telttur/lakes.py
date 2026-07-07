@@ -53,7 +53,7 @@ def find_lake_layers(gdb_path: Path) -> list[str]:
     matches = [
         layer
         for layer in all_layers
-        if any(kw in layer.lower() for kw in water_keywords) and "omrade" in layer.lower()  # noqa: PLR2004
+        if any(kw in layer.lower() for kw in water_keywords) and "omrade" in layer.lower()
     ]
     if not matches:
         print(f"  Available layers in {gdb_path.name}: {all_layers}")

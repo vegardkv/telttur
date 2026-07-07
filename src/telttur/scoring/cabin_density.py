@@ -27,12 +27,11 @@ _RESIDENTIAL_MAX = 199
 def find_building_layers(gdb_path: Path) -> list[str]:
     """List layers in a .gdb that contain building point data."""
     all_layers = fiona.listlayers(str(gdb_path))
-    _BUILDING_POSITION_LABEL = "posisjon"
     return [
         layer
         for layer in all_layers
         if any(kw in layer.lower() for kw in ("bygning", "building"))
-        and _BUILDING_POSITION_LABEL in layer.lower()
+        and "posisjon" in layer.lower()
     ]
 
 
@@ -42,10 +41,6 @@ def extract_buildings(gdb_paths: list[Path], bbox: BBox) -> gpd.GeoDataFrame:
     Filters to objtype == 'Bygning' and bygningstype 100–199 (residential/cabins).
     This excludes masts, tanks, industrial buildings, barns, churches, etc.
     """
-    _BUILDING_TYPE_LABEL = "bygningstype"
-    _OBJECT_LABEL = "objtype"
-    _OBJECT_BUILDING_CODE = "Bygning"
-
     frames: list[gpd.GeoDataFrame] = []
     utm_bounds = bbox_to_utm33(bbox)
 
@@ -54,10 +49,10 @@ def extract_buildings(gdb_paths: list[Path], bbox: BBox) -> gpd.GeoDataFrame:
             print(f"  Reading {layer_name} from {gdb_path.name}...")
             gdf = read_n50_layer(gdb_path, layer_name, utm_bounds)
 
-            if _OBJECT_LABEL in gdf.columns:
-                gdf = gdf[gdf[_OBJECT_LABEL] == _OBJECT_BUILDING_CODE]
-            if _BUILDING_TYPE_LABEL in gdf.columns:
-                gdf = gdf[gdf[_BUILDING_TYPE_LABEL].between(_RESIDENTIAL_MIN, _RESIDENTIAL_MAX)]
+            if "objtype" in gdf.columns:
+                gdf = gdf[gdf["objtype"] == "Bygning"]
+            if "bygningstype" in gdf.columns:
+                gdf = gdf[gdf["bygningstype"].between(_RESIDENTIAL_MIN, _RESIDENTIAL_MAX)]
 
             frames.append(gdf)
 
@@ -84,10 +79,6 @@ def extract_buildings_all(gdb_paths: list[Path], bbox: BBox) -> gpd.GeoDataFrame
 
     Used for debugging only — not called in the normal pipeline.
     """
-    _BUILDING_TYPE_LABEL = "bygningstype"
-    _OBJECT_LABEL = "objtype"
-    _OBJECT_BUILDING_CODE = "Bygning"
-
     frames: list[gpd.GeoDataFrame] = []
     utm_bounds = bbox_to_utm33(bbox)
 
@@ -96,13 +87,13 @@ def extract_buildings_all(gdb_paths: list[Path], bbox: BBox) -> gpd.GeoDataFrame
             print(f"  Reading {layer_name} from {gdb_path.name} (debug)...")
             gdf = read_n50_layer(gdb_path, layer_name, utm_bounds)
 
-            if _OBJECT_LABEL in gdf.columns:
-                gdf = gdf[gdf[_OBJECT_LABEL] == _OBJECT_BUILDING_CODE]
+            if "objtype" in gdf.columns:
+                gdf = gdf[gdf["objtype"] == "Bygning"]
 
             # Keep only geometry + type code — everything else is noise for debugging
             keep = ["geometry"]
-            if _BUILDING_TYPE_LABEL in gdf.columns:
-                keep.append(_BUILDING_TYPE_LABEL)
+            if "bygningstype" in gdf.columns:
+                keep.append("bygningstype")
             frames.append(gdf[keep])
 
     if not frames:
