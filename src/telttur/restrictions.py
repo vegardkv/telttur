@@ -25,19 +25,18 @@ from __future__ import annotations
 
 import contextlib
 import math
-import time
 from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
 import rasterio
-import requests
 from rasterio.io import MemoryFile
 from rasterio.merge import merge as _merge
 from rasterio.transform import from_bounds
 
 from telttur.geo import CRS_UTM33
 from telttur.lakes import LakeCols
+from telttur.net import fetch_with_retry
 
 # Bit definitions exported to the frontend config block.
 RESTRICTIONS: list[dict[str, object]] = [
@@ -55,8 +54,6 @@ _RES_M = 50.0
 _MAX_TILE_PX = 3000
 # Pad the render extent so every lake point falls safely inside the coverage.
 _PAD_M = 500.0
-_RETRY_STATUSES = {429, 500, 502, 503, 504}
-_MAX_TILE_ATTEMPTS = 4  # 1 initial + 3 retries
 _CT_PNG = "image/png"
 
 
@@ -93,41 +90,14 @@ def _download_dw_tile(  # noqa: PLR0913
         "FORMAT": _CT_PNG,
         "TRANSPARENT": "TRUE",
     }
-    resp = None
-    for attempt in range(1, _MAX_TILE_ATTEMPTS + 1):
-        try:
-            resp = requests.get(_WMS_URL, params=params, timeout=timeout_s)
-            resp.raise_for_status()
-            break
-        except requests.HTTPError as exc:
-            status = exc.response.status_code if exc.response is not None else None
-            if attempt < _MAX_TILE_ATTEMPTS and status in _RETRY_STATUSES:
-                wait = 5 * (2 ** (attempt - 1))  # 5 s, 10 s, 20 s
-                print(
-                    f"      HTTP {status}, retrying in {wait}s "
-                    f"(attempt {attempt}/{_MAX_TILE_ATTEMPTS}) ..."
-                )
-                time.sleep(wait)
-            else:
-                raise RuntimeError(f"Failed to fetch Mattilsynet WMS tile: {exc}") from exc
-        except (requests.Timeout, requests.ConnectionError) as exc:
-            if attempt < _MAX_TILE_ATTEMPTS:
-                wait = 5 * (2 ** (attempt - 1))  # 5 s, 10 s, 20 s
-                print(
-                    f"      {type(exc).__name__}, retrying in {wait}s "
-                    f"(attempt {attempt}/{_MAX_TILE_ATTEMPTS}) ..."
-                )
-                time.sleep(wait)
-            else:
-                raise RuntimeError(f"Failed to fetch Mattilsynet WMS tile: {exc}") from exc
-        except requests.RequestException as exc:
-            raise RuntimeError(f"Failed to fetch Mattilsynet WMS tile: {exc}") from exc
-
-    assert resp is not None
-    ct = resp.headers.get("Content-Type", "").lower()
-    if _CT_PNG not in ct:
-        preview = resp.text[:300].replace("\n", " ")
-        raise RuntimeError(f"WMS returned unexpected Content-Type {ct!r}. Response: {preview}")
+    resp = fetch_with_retry(
+        _WMS_URL,
+        params,
+        timeout_s=timeout_s,
+        backoff_base_s=5,  # 5 s, 10 s, 20 s
+        expected_content_types=(_CT_PNG,),
+        error_label="Mattilsynet WMS tile",
+    )
 
     with MemoryFile(resp.content) as mem, mem.open() as src:
         band = src.read(1)
