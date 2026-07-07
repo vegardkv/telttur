@@ -9,6 +9,7 @@ from typing import Any
 
 import geopandas as gpd
 import pandas as pd
+import shapely
 
 from telttur.config import Config
 from telttur.lakes import LakeCols
@@ -94,9 +95,8 @@ def build_road_data(roads: gpd.GeoDataFrame) -> dict[str, Any]:
     if roads.empty:
         return {"type": "FeatureCollection", "features": []}
     roads_wgs84 = roads.to_crs("EPSG:4326")
-    # Round coordinates to reduce JSON size
-    import shapely
 
+    # Round coordinates to reduce JSON size
     def _round_geom(geom: Any) -> Any:
         return shapely.set_precision(geom, 1e-6)
 
@@ -220,7 +220,7 @@ def export_data(
     # web/app.js), so the dataset's bounding box is deliberately not exported.
     meta: dict[str, Any] = {
         "generated": datetime.now(UTC).isoformat(),
-        "region": getattr(config, "fylke", None) or "custom",
+        "region": config.fylke or "custom",
     }
 
     lake_rows, lake_fields = build_lake_data(lakes)
