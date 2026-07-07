@@ -67,7 +67,6 @@ def process_scoring(  # noqa: PLR0913
         lakes,
         road_lines,
         config.accessibility,
-        config.accessibility.excluded_road_types,
         dem_path=dem_path,
         stops=stops,
     )

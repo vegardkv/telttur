@@ -20,10 +20,6 @@ from telttur.elevation import sample_elevations
 from telttur.geo import CRS_UTM33
 from telttur.lakes import LakeCols
 
-# Non-motorised road categories — excluded from accessibility scoring because
-# they cannot be reached by car.
-_NON_MOTORIZED: set[str] = {"gangOgSykkelveg", "sti"}
-
 
 def _score_origin(  # noqa: PLR0913
     lakes: gpd.GeoDataFrame,
@@ -77,11 +73,10 @@ def _score_origin(  # noqa: PLR0913
     ]
 
 
-def score_accessibility(  # noqa: PLR0913
+def score_accessibility(
     lakes: gpd.GeoDataFrame,
     road_lines: gpd.GeoDataFrame,
     config: AccessibilityConfig,
-    excluded_road_types: list[str] | None = None,
     *,
     dem_path: Path,
     stops: gpd.GeoDataFrame | None = None,
@@ -96,7 +91,6 @@ def score_accessibility(  # noqa: PLR0913
 
     ``transit_*`` columns are only added when ``stops`` is provided.
     """
-    _CATEGORY_LABEL = "category"
     lakes = lakes.copy()
 
     lakes_utm = lakes.to_crs(CRS_UTM33)
@@ -104,10 +98,10 @@ def score_accessibility(  # noqa: PLR0913
     lake_sample = [(pt.x, pt.y) for pt in lake_pts_utm]
     lake_elevs = sample_elevations(dem_path, lake_sample)
 
-    excluded = set(excluded_road_types) if excluded_road_types is not None else _NON_MOTORIZED
+    excluded = set(config.excluded_road_types)
     drivable = (
         road_lines[~road_lines["category"].isin(excluded)]
-        if _CATEGORY_LABEL in road_lines.columns
+        if "category" in road_lines.columns  # noqa: PLR2004
         else road_lines
     )
     _score_origin(
