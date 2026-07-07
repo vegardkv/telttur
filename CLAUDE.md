@@ -52,7 +52,7 @@ src/telttur/
 
 web/
 ├── index.html
-├── app.js            # All frontend logic (~900 lines, single file)
+├── app.js            # All frontend logic (~1100 lines, single file)
 └── style.css
 ```
 
@@ -83,7 +83,7 @@ The `web/` frontend is a single-file vanilla JS app — no build step, no module
 
 - **No inline event handlers** — use `addEventListener`, never `onclick`/`oninput` attributes.
 - **No ES modules** — `file://` compatibility means no `type="module"`.
-- **Single file is intentional** — at current scale (~900 lines) splitting adds CORS complexity.
+- **Single file is intentional** — at current scale (~1100 lines) splitting adds CORS complexity.
 - **Bitmasks** are acceptable for compact per-lake flags (e.g. fishing genera).
 - **Prefer optional chaining** (`a?.b ?? default`) over verbose `&&` chains.
 - **Modern browsers only** — use standard CSS (`appearance`, `::slider-thumb`) and modern JS
