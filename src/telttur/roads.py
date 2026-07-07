@@ -8,7 +8,7 @@ import geopandas as gpd
 from shapely.geometry import box
 
 from telttur.config import BBox
-from telttur.geo import CRS_UTM33, CRS_WGS84, bbox_to_utm33
+from telttur.geo import CRS_UTM33, CRS_WGS84, bbox_to_utm33, read_n50_layer
 
 # Road category styling — vegkategori single-letter codes and typeveg values from N50
 ROAD_CATEGORIES: dict[str, dict] = {
@@ -61,14 +61,7 @@ def extract_roads(
 
         for layer_name in road_layers:
             print(f"  Reading {layer_name} from {gdb_path.name}...")
-            gdf = gpd.read_file(str(gdb_path), layer=layer_name, bbox=utm_bounds)
-
-            if gdf.crs is None:
-                gdf = gdf.set_crs(CRS_UTM33)
-            elif str(gdf.crs) != CRS_UTM33:
-                gdf = gdf.to_crs(CRS_UTM33)
-
-            frames.append(gdf)
+            frames.append(read_n50_layer(gdb_path, layer_name, utm_bounds))
 
     if not frames:
         # Category 1: N50 always ships a road centerline layer, so finding none means the

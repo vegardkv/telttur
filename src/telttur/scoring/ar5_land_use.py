@@ -14,7 +14,13 @@ import geopandas as gpd
 import requests
 
 from telttur.config import Ar5DataSource, Ar5LandUseConfig, BBox
-from telttur.geo import CRS_UTM33, EPSG_CODE_UTM33, bbox_to_utm33
+from telttur.geo import (
+    CRS_UTM33,
+    EPSG_CODE_UTM33,
+    bbox_to_utm33,
+    find_objtype_column,
+    read_n50_layer,
+)
 from telttur.lakes import LakeCols
 
 # NIBIO AR5 WFS endpoint — same server as the WMS, supports SERVICE=WFS
@@ -116,18 +122,10 @@ def _extract_n50_land_use_zones(
         ]
         found_area_layer = found_area_layer or bool(area_layers)
         for layer_name in area_layers:
-            gdf = gpd.read_file(str(gdb_path), layer=layer_name, bbox=utm_bounds)
-            if gdf.crs is None:
-                gdf = gdf.set_crs(CRS_UTM33)
-            elif gdf.crs.to_epsg() != EPSG_CODE_UTM33:
-                gdf = gdf.to_crs(CRS_UTM33)
-            gdf = gdf[gdf.geometry.geom_type.isin(["Polygon", "MultiPolygon"])]
-
-            type_col: str | None = None
-            for candidate in ("objtype", "OBJTYPE", "objType"):
-                if candidate in gdf.columns:
-                    type_col = candidate
-                    break
+            gdf = read_n50_layer(
+                gdb_path, layer_name, utm_bounds, geom_types=("Polygon", "MultiPolygon")
+            )
+            type_col = find_objtype_column(gdf)
             if type_col is None:
                 continue
 

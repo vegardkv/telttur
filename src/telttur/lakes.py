@@ -8,7 +8,13 @@ import geopandas as gpd
 from shapely.geometry import box
 
 from telttur.config import BBox
-from telttur.geo import CRS_UTM33, CRS_WGS84, bbox_to_utm33
+from telttur.geo import (
+    CRS_UTM33,
+    CRS_WGS84,
+    bbox_to_utm33,
+    find_objtype_column,
+    read_n50_layer,
+)
 
 
 class LakeCols(StrEnum):
@@ -71,27 +77,16 @@ def extract_lakes(
 
         for layer_name in lake_layers:
             print(f"  Reading {layer_name} from {gdb_path.name}...")
-            gdf = gpd.read_file(str(gdb_path), layer=layer_name, bbox=utm_bounds)
-
-            if gdf.crs is None:
-                gdf = gdf.set_crs(CRS_UTM33)
-            elif str(gdf.crs) != CRS_UTM33:
-                gdf = gdf.to_crs(CRS_UTM33)
+            gdf = read_n50_layer(
+                gdb_path, layer_name, utm_bounds, geom_types=("Polygon", "MultiPolygon")
+            )
 
             # Filter for lake-type features if there's an object type column
-            type_col = None
-            for candidate in ["objtype", "OBJTYPE", "objType"]:
-                if candidate in gdf.columns:
-                    type_col = candidate
-                    break
-
+            type_col = find_objtype_column(gdf)
             if type_col:
                 lake_types = ["Innsjø", "Innsjo", "InnsjøRegulert", "InnsjoRegulert", "Vann"]
                 mask = gdf[type_col].str.lower().isin([t.lower() for t in lake_types])
                 gdf = gdf[mask]
-
-            # Keep only polygon geometries
-            gdf = gdf[gdf.geometry.geom_type.isin(["Polygon", "MultiPolygon"])]
 
             frames.append(gdf)
 
