@@ -9,9 +9,7 @@ from telttur.lakes import LakeCols
 
 
 def _square(lng: float, lat: float, size: float = 0.01) -> Polygon:
-    return Polygon(
-        [(lng, lat), (lng + size, lat), (lng + size, lat + size), (lng, lat + size)]
-    )
+    return Polygon([(lng, lat), (lng + size, lat), (lng + size, lat + size), (lng, lat + size)])
 
 
 def _lakes_gdf(**columns) -> gpd.GeoDataFrame:
