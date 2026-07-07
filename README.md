@@ -92,6 +92,9 @@ uv run ruff format
 
 # Type check
 uv run ty check
+
+# Tests
+uv run pytest
 ```
 
 See `CLAUDE.md` for architecture notes, design principles, and coding guidelines.

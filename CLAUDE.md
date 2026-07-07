@@ -36,6 +36,9 @@ uv run ruff format
 
 # Type check
 uv run ty check
+
+# Tests
+uv run pytest
 ```
 
 ## Project Structure

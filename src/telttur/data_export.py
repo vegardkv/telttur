@@ -85,7 +85,8 @@ def build_lake_data(
 
         if name_col is not None:
             name_val = row.get(name_col)
-            entry.append(str(name_val) if name_val is not None else None)
+            is_missing = name_val is None or (isinstance(name_val, float) and pd.isna(name_val))
+            entry.append(None if is_missing else str(name_val))
 
         rows.append(entry)
 
