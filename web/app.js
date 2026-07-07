@@ -347,6 +347,44 @@ function computeScores(fields, cs) {
 }
 
 // ---------------------------------------------------------------------------
+// Marker styling — shared by initial render and live updates
+// ---------------------------------------------------------------------------
+
+// Style applied to markers hidden by the area / drinking-water filters.
+const HIDDEN_STYLE = {
+  fillColor: DEFAULT_LAKE_COLOR,
+  fillOpacity: 0,
+  opacity: 0,
+  weight: 0,
+};
+
+/**
+ * Compute the Leaflet style for a lake marker under the current control state,
+ * or null when the lake is hidden by the area / drinking-water filters.
+ * Lakes below the score threshold are greyed out (not hidden); unscored lakes
+ * (score 0) keep their default colour and are never greyed.
+ */
+function markerStyle(fields, cs) {
+  const area = fields.area || 0;
+  if (area < cs.minArea || area > cs.maxArea
+      || (cs.hideDrinkingWater && (fields.restrictions_mask & 1))) {
+    return null;
+  }
+  const score = computeScores(fields, cs).tentability_score || 0;
+  const below = score && score < cs.minScore;
+  const fillColor = below
+    ? BELOW_THRESHOLD_COLOR
+    : LEVEL_COLORS[score] || DEFAULT_LAKE_COLOR;
+  return {
+    fillColor,
+    color: "#333333",
+    weight: 0.8,
+    fillOpacity: 0.65,
+    opacity: 1,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Interactive update — called on every slider/checkbox change
 // ---------------------------------------------------------------------------
 
@@ -354,31 +392,7 @@ function teltturUpdate(cfg) {
   const cs = readControlState(cfg);
 
   for (const { marker, fields } of allMarkers) {
-    const area = fields.area || 0;
-
-    if (area < cs.minArea || area > cs.maxArea
-        || (cs.hideDrinkingWater && (fields.restrictions_mask & 1))) {
-      marker.setStyle({ fillOpacity: 0, opacity: 0, weight: 0 });
-      continue;
-    }
-
-    const live = computeScores(fields, cs);
-    const score = live.tentability_score || 0;
-
-    // Lakes below the threshold are greyed out (not hidden). Unscored lakes
-    // (score 0) keep their default colour and are never greyed.
-    const below = score && score < cs.minScore;
-    const fillColor = below
-      ? BELOW_THRESHOLD_COLOR
-      : LEVEL_COLORS[score] || DEFAULT_LAKE_COLOR;
-
-    marker.setStyle({
-      fillColor,
-      color: "#333333",
-      weight: 0.8,
-      fillOpacity: 0.65,
-      opacity: 1,
-    });
+    marker.setStyle(markerStyle(fields, cs) ?? HIDDEN_STYLE);
   }
 }
 
@@ -568,23 +582,10 @@ function populate(data) {
     }
 
     // Compute initial colour/visibility now so no post-load re-style is needed.
-    // Area filter hides; the score threshold greys lakes out instead.
-    const area = f.area || 0;
-    const score = computeScores(f, cs).tentability_score || 0;
-    const hidden = area < cs.minArea || area > cs.maxArea
-      || (cs.hideDrinkingWater && (f.restrictions_mask & 1));
-    const below = score && score < cs.minScore;
-    const fillColor = below
-      ? BELOW_THRESHOLD_COLOR
-      : LEVEL_COLORS[score] || DEFAULT_LAKE_COLOR;
-
     const marker = L.circleMarker([lat, lng], {
       radius: 8,
       color: "#333333",
-      weight: hidden ? 0 : 0.8,
-      fillColor: hidden ? DEFAULT_LAKE_COLOR : fillColor,
-      fillOpacity: hidden ? 0 : 0.65,
-      opacity: hidden ? 0 : 1,
+      ...(markerStyle(f, cs) ?? HIDDEN_STYLE),
     });
 
     marker.bindPopup("", { maxWidth: 300 });
